@@ -1,0 +1,9 @@
+AWS_ACCESS_KEY.txt
+AWS_SECRET_KEY.txt
+__pycache__/
+.DS_Store
+as.db
+cache_key.txt
+log_AWS_ACCESS_KEY.txt
+log_AWS_SECRET_KEY.txt
+secret_key.txt
