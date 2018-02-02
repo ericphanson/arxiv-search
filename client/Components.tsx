@@ -1,5 +1,23 @@
 import {notimpl} from './basic';
+import {paper} from './types';
+import * as React from 'react';
 
+interface state {
+    query : string,
+    papers : paper[]
+}
+
+class App extends React.Component<{},state> {
+    onQueryChange(query) {
+        this.setState({query});
+    }
+    render() {
+        let {query, papers} = this.state;
+        return [
+            <SearchBox query={query} onQueryChange={this.onQueryChange.bind(this)}/>,
+            <Papers papers={papers}/>]
+    }
+}
 
 function SearchBox(props : {query : string, onQueryChange(q : string) : void}) {
     let {query, onQueryChange} = props;
@@ -14,7 +32,7 @@ function SearchBox(props : {query : string, onQueryChange(q : string) : void}) {
 function Papers(props : {ps : paper[], done : boolean}) {
     let {ps, done} = props;
     let num = ps.length;
-    return <div id="maintable">
+    return <div id="maindiv">
         <div id="rtable">
         {ps.map(p => <Paper p={p}/>)}
         </div>
@@ -27,7 +45,8 @@ function Paper(props : {p : paper}) {
     let pdf_link = p.link.replace("abs", "pdf");
     let pdf_url = pdf_link === p.link ? pdf_link : pdf_link + ".pdf";
     return <div className="apaper" id={p.pid} key={p.pid}>
-        <span className="Z3988" title={build_ocoins_str(p)}></span>
+        {/* The below line has something to do with  " OpenURL COinS metadata element -- readable by Zotero, Mendeley, etc." */}
+        {/* <span className="Z3988" title={build_ocoins_str(p)}></span> */}
         <div className="paperdesc">
             <span className="ts">
                 <a href={p.link} target="_blank"> {p.title} </a>

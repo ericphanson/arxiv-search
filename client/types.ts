@@ -1,7 +1,7 @@
 
-type category = "quantum shit" | "algebraic gubbins"
+export type category = "quantum shit" | "algebraic gubbins"
 
-interface query {
+export interface query {
     query? : string,
     sort? : "relevance" | "date",
     /** Categories to filter; outer list is AND, inner list is OR. */
@@ -12,14 +12,14 @@ interface query {
     v1 : boolean
 }
 /**JSON object sent to _get_results() */
-interface request {
+export interface request {
     query : query,
     start_at : number,
     num_get : number,
     dyn : boolean
 }
 
-interface paper {
+export interface paper {
     title : string,
     pid
     rawpid
@@ -37,7 +37,7 @@ interface paper {
     in_library : boolean
 }
 
-interface response {
+export interface response {
     /**Something to do with rendering mathjax */
     dynamic : boolean,
     /**papers.length */
