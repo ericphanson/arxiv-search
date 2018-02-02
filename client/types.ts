@@ -11,7 +11,7 @@ interface query {
     author? : string,
     v1 : boolean
 }
-
+/**JSON object sent to _get_results() */
 interface request {
     query : query,
     start_at : number,
