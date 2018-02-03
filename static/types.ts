@@ -6,6 +6,8 @@ interface query {
     sort? : "relevance" | "date",
     /** Categories to filter; outer list is AND, inner list is OR. */
     category : category[][],
+    // as implemented now, start and end should be a timestamp in milliseconds since the epoch
+    // see https://www.epochconverter.com/. For example 1517425200000 is Wednesday, January 31, 2018 7:00:00 PM.
     time : "3days" | "week" | "day" | "all" | "month" | "year" | {start : number, end : number},
     primaryCategory? : category
     author? : string,

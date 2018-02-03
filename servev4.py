@@ -39,12 +39,6 @@ from requests_aws4auth import AWS4Auth
 from pyparsing import Word, alphas, Literal, Group, Suppress, OneOrMore, oneOf
 import threading
 
-# from jwcrypto import jwk, jws
-# from jwcrypto.common import json_encode
-# import boto3
-# import watchtower
-# various globals
-
 # -----------------------------------------------------------------------------
 
 # database configuration
@@ -59,6 +53,10 @@ AWS_SECRET_KEY = open('AWS_SECRET_KEY.txt', 'r').read().strip()
 log_AWS_ACCESS_KEY = open('log_AWS_ACCESS_KEY.txt', 'r').read().strip()
 log_AWS_SECRET_KEY = open('log_AWS_SECRET_KEY.txt', 'r').read().strip()
 CLOUDFRONT_URL = 'https://d3dq07j9ipgft2.cloudfront.net/'
+
+with open("all_categories.txt", 'r') as cats:
+  ALL_CATEGORIES =  cats.read().splitlines()
+
 
 # jwskey = jwk.JWK.generate(kty='oct', size=256)
 cache_key = open('cache_key.txt', 'r').read().strip()
@@ -787,6 +785,214 @@ def default_context(search, **kws):
   ans = dict(first_papers=first_papers,numresults=num_hits, totpapers=tot_papers, tweets=[], msg='', show_prompt=False, pid_to_users={}, user_features = user_features, user_interactivity = user_interactivity)
   ans.update(kws)
   return ans
+
+def cat_filter(search_in, groups_of_cats):
+    s = search_in
+    for group in groups_of_cats:
+      # perform an OR filter among the different categories in this group
+      if len(group)==1:
+        s = s.filter('term', tags__term__raw=group[0])
+      elif len(group) > 1:
+        s = s.filter('terms', tags__term__raw=group)
+    search_out = s
+    return search_out
+
+def prim_filter(search_in, prim_cat):
+    s = search_in
+    if prim_cat is not "any":
+      s = s.filter('term', arxiv_primary_category__term__raw=prim_cat)
+    search_out = s
+    return search_out
+
+def time_filter(search_in, time):
+  if time == "all":
+    return search_in
+  s = search_in  
+  if time in ["3days" , "week" , "day" , "month" , "year"]:
+    s = applyTimeFilter(s, time)
+  else:
+      s = s.filter('range', updated={'gte': time['start'] })
+      s = s.filter('range', updated={'lte': time['end'] })
+
+  search_out = s
+  return search_out
+
+def ver_filter(search_in, v1):
+    s = search_in
+    if v1:
+      s = s.filter('term', paperversion=1)
+    search_out = s
+    return search_out
+
+def san_dict_value(dictionary, key, typ, valid_options):
+    if key in dictionary:
+      value = dictionary[key]
+      if not isinstance(value, typ):
+        dictionary.pop(key, None)
+      elif not (value in valid_options):
+          dictionary.pop(key,None)
+    return dictionary
+
+def san_dict_bool(dictionary, key):
+    if key in dictionary:
+      value = dictionary[key]
+      if not isinstance(value, bool):
+        dictionary.pop(key, None)
+    return dictionary
+
+def san_dict_str(dictionary, key):
+    if key in dictionary:
+      value = dictionary[key]
+      if not isinstance(value, str):
+        dictionary.pop(key, None)
+      else:
+        dictionary[key] = sanitize_string(value)
+    return dictionary
+
+def san_dict_int(dictionary, key):
+    if key in dictionary:
+      value = dictionary[key]
+      if not isinstance(value, int):
+        dictionary.pop(key, None)
+    return dictionary
+
+def san_dict_keys(dictionary, valid_keys):
+  dictionary = { key: dictionary[key] for key in valid_keys if key in dictionary}
+  return dictionary
+
+def valid_list_of_cats(group):
+  valid_list = True
+  if not isinstance(group, list):
+    valid_list = False
+  else:
+    valid_list = all( [g in ALL_CATEGORIES for g in group])
+  return valid_list
+
+def sanitize_query_object(query_info):
+  valid_keys = ['query', 'sort', 'category', 'time', 'primaryCategory', 'author',' v1']
+  query_info = san_dict_keys(query_info, valid_keys)
+
+  if 'category' in query_info:
+    cats = query_info['category']
+    if not isinstance(cats,list):
+      query_info.pop('category')
+    for group in cats:
+      if not valid_list_of_cats(group):
+        cats.remove(group)
+
+
+  query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
+
+
+  query_info = san_dict_str(query_info, 'query')
+
+  query_info = san_dict_str(query_info, 'author')
+
+  query_info = san_dict_value(query_info, 'sort', str, ["relevance","date"])
+
+  query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
+  
+  query_info = san_dict_bool(query_info, 'v1')
+  
+  if 'time' in query_info:
+    time = query_info['time']
+    if isinstance(time, dict):
+        time = san_dict_keys(time, ['start','end'])
+        time = san_dict_int(time, 'start')
+        time = san_dict_int(time, 'end')
+        if not ( ('start' in time) and ('end' in time)):
+          query_info.pop('time',None)
+    else:
+      valid_times = ["3days" , "week" , "day" , "all" , "month" , "year"]
+      query_info = san_dict_value(query_info, 'time', str, valid_times)
+  return query_info
+
+def build_query(query_info):
+  query_info = sanitize_query_object(query_info)
+  search = Search(using=es, index='arxiv')
+  SORT_QUERY = 1
+  SORT_LIB = 2
+  SORT_DATE = 3
+
+  # author stuff not implemented yet
+
+  sort_auth = False
+  sort = SORT_DATE
+  #step 1: determine sorting
+  if 'query' in query_info:
+    if query_info['query'].trim() is not '':
+      sort = SORT_QUERY
+  elif 'sort' in query_info:
+    if query_info['sort'] == "relevance":
+      sort = SORT_LIB
+    elif query_info['sort'] == "date":
+      sort = SORT_DATE
+  
+  if 'author' in query_info:
+    if query_info['author'].trim() is not '':
+      sort_auth = True
+  
+  # need to sanitize!!
+
+  # add filters
+  if 'category' in query_info:
+    search = cat_filter(search, query_info['category'])
+  
+  if 'primaryCategory' in query_info:
+    search = prim_filter(search, query_info['primaryCategory'])
+
+  if 'time' in query_info:
+    search = time_filter(search, query_info['time'])
+    
+  if 'v1' in query_info:
+    search = ver_filter(search, query_info['v1'])
+  
+  # add sort
+
+  if sort == SORT_QUERY:
+    q = query_info['query'].strip()
+    search = search.query(MultiMatch( query=q, type = 'most_fields', \
+      fields=['title','summary', 'fulltext', 'all_authors', '_id']))
+  elif sort == SORT_DATE:
+    search = search.sort('-updated')
+  elif sort == SORT_LIB:
+    search = add_rec_query(search)
+
+  return search
+
+@app.route('/_getpapers', methods=['POST'])
+def _getpapers():
+  data = request.get_json()
+  start = data['start_at']
+  number = data['num_get']
+  dynamic = data['dyn']
+  query_info = data['query']
+
+  #need to build the query from the info given here
+  search = build_query(query_info)
+
+  search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+  search = search[start:start+number]
+  # if start+number >= num_results:
+    # more = False
+  # else:
+    # more = True
+  log_dict = {}
+  log_dict.update(search= search.to_dict())
+  log_dict.update(client_ip = request.remote_addr)
+  log_dict.update(client_route = request.access_route)
+  if 'X-Real-IP' in request.headers:
+    log_dict.update(client_x_real_ip = request.headers['X-Real-IP'])
+
+  access_log.info("ES search request", extra=log_dict )
+  # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
+  papers = getResults2(search)
+  # print(len(response))
+  # papers = encode_json(response)
+  # print(papers)
+  return jsonify(dict(papers=papers,dynamic=dynamic))
+  
+
 
 @app.route('/_getresults', methods=['POST'])
 def _getresults():
