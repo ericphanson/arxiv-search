@@ -8,3 +8,5 @@ log_AWS_ACCESS_KEY.txt
 log_AWS_SECRET_KEY.txt
 secret_key.txt
 tornado.log
+node_modules
+dist

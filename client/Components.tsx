@@ -1,25 +1,31 @@
 import {notimpl} from './basic';
 import {paper} from './types';
 import * as React from 'react';
+import { ChangeEvent } from 'react';
+//TODO webpack lets you 'import' images, css etc but it's a bit of a kludge.
+// @ts-ignore
+import saveImg from "./save.png";
+// @ts-ignore
+import savedImg from "./saved.png";
 
 interface state {
     query : string,
     papers : paper[]
 }
 
-class App extends React.Component<{},state> {
-    onQueryChange(query) {
-        this.setState({query});
+export class App extends React.Component<{},state> {
+    onQueryChange(e: ChangeEvent<HTMLInputElement>) {
+        this.setState({query:e.target.value});
     }
     render() {
         let {query, papers} = this.state;
         return [
             <SearchBox query={query} onQueryChange={this.onQueryChange.bind(this)}/>,
-            <Papers papers={papers}/>]
+            <Papers ps={papers} done={false}/>]
     }
 }
 
-function SearchBox(props : {query : string, onQueryChange(q : string) : void}) {
+function SearchBox(props : {query : string, onQueryChange(q : ChangeEvent<HTMLInputElement>) : void}) {
     let {query, onQueryChange} = props;
     return <div className="sbox">
         <form>
@@ -55,7 +61,7 @@ function Paper(props : {p : paper}) {
             <span className="as">
                 {p.authors.map((a: string) =>
                     <a href={`/search?q=${a.replace(/ /g, "+")}`}>{a}</a>)
-                    .interlace(", ")}
+                    .interlace(", " as any)}
             </span>
             <br />
             <span className="ds">{p.published_time}</span>
@@ -72,14 +78,14 @@ function Paper(props : {p : paper}) {
             <span className="spid">{p.pid}</span>
             <a href={pdf_url} target="_blank">pdf</a>
             <br />
-            <span className="sim" id={'sim' + p.pid} onclick={notimpl}>show similar</span>
-            <span className="sim" style="margin-left:5px; padding-left: 5px; border-left: 1px solid black;">
-                <a href={`https://scirate.com/arxiv/${strip_version(p.pid)}`} style={{ color: "black" }}>scirate</a>
+            <span className="sim" id={'sim' + p.pid} onClick={notimpl}>show similar</span>
+            <span className="sim" style={{marginLeft:"5px", paddingLeft: "5px", borderLeft: "1px solid black"}}>
+                <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }}>scirate</a>
             </span>
             <br />
-            <img src={p.in_library ? 'static/saved.png' : 'static/save.png'} className="save-icon" title="toggle save paper to library (requires login)" id={"lib" + p.pid} onclick={notimpl} />
+            <img src={p.in_library ? savedImg : saveImg} className="save-icon" title="toggle save paper to library (requires login)" id={"lib" + p.pid} onClick={notimpl} />
         </div>
-        <div style="clear:both;"></div>
+        <div style={{clear:"both"}}></div>
         {p.img && <div className="animg"><img src={p.img} /></div>}
         {p.abstract && <div><span className="tt">{p.abstract}</span></div>}
     </div>
