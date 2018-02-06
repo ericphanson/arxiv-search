@@ -920,7 +920,7 @@ def build_query(query_info):
   sort = SORT_DATE
   #step 1: determine sorting
   if 'query' in query_info:
-    if query_info['query'].trim() is not '':
+    if query_info['query'].strip() is not '':
       sort = SORT_QUERY
   elif 'sort' in query_info:
     if query_info['sort'] == "relevance":
@@ -929,7 +929,7 @@ def build_query(query_info):
       sort = SORT_DATE
   
   if 'author' in query_info:
-    if query_info['author'].trim() is not '':
+    if query_info['author'].strip() is not '':
       sort_auth = True
   
   # need to sanitize!!
