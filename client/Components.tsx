@@ -14,7 +14,7 @@ interface state {
     isLoading: boolean,
     error?: string
 }
-declare const results_url : string;
+declare const beta_results_url : string;
 export class App extends React.Component<{}, state> {
     constructor(props) {
         super(props);
@@ -40,7 +40,7 @@ export class App extends React.Component<{}, state> {
             num_get: 10,
             dyn: false
         }
-        let url = results_url;
+        let url = beta_results_url;
         let response = window.fetch(url, {
             method: "POST",
             body: JSON.stringify(request),
