@@ -42,6 +42,10 @@
     var numresults = {{ numresults }};
     var pid_to_users = {{ pid_to_users | tojson }};
     var msg = ''
+    // passed in from flask as json
+    // var tweets = {{ tweets | tojson }};
+    // var results_url = "{{ url_for('_getresults') }}";
+    // var beta_results_url = "{{ url_for('_getpapers') }}";
 
     if (get_param('sort') === 'rec') {
       var msg = "Sorting by personalized relevance (" + numresults + '):'
@@ -215,7 +219,7 @@
 
     // Wait for the page to load first
     //window.onload = function () {
-     
+
      // main();
 
       // var x = document.getElementsByClassName("link-to-update");
