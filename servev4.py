@@ -990,7 +990,7 @@ def _getpapers():
   # print(len(response))
   # papers = encode_json(response)
   # print(papers)
-  return jsonify(dict(papers=papers,dynamic=dynamic))
+  return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number))
   
 
 
