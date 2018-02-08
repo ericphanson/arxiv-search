@@ -41,25 +41,29 @@ import threading
 
 # -----------------------------------------------------------------------------
 
+root_dir = os.path.join(".")
+def key_dir(file): return os.path.join(root_dir,"keys",file)
+def server_dir(file): return os.path.join(root_dir,"server", file);
+
 # database configuration
-if os.path.isfile('secret_key.txt'):
-  SECRET_KEY = open('secret_key.txt', 'r').read()
+if os.path.isfile(key_dir('secret_key.txt')):
+  SECRET_KEY = open(key_dir('secret_key.txt'), 'r').read()
 else:
   SECRET_KEY = 'devkey, should be in a file'
 
-AWS_ACCESS_KEY = open('AWS_ACCESS_KEY.txt', 'r').read().strip()
-AWS_SECRET_KEY = open('AWS_SECRET_KEY.txt', 'r').read().strip()
+AWS_ACCESS_KEY = open(key_dir('AWS_ACCESS_KEY.txt'), 'r').read().strip()
+AWS_SECRET_KEY = open(key_dir('AWS_SECRET_KEY.txt'), 'r').read().strip()
 
-log_AWS_ACCESS_KEY = open('log_AWS_ACCESS_KEY.txt', 'r').read().strip()
-log_AWS_SECRET_KEY = open('log_AWS_SECRET_KEY.txt', 'r').read().strip()
+log_AWS_ACCESS_KEY = open(key_dir('log_AWS_ACCESS_KEY.txt'), 'r').read().strip()
+log_AWS_SECRET_KEY = open(key_dir('log_AWS_SECRET_KEY.txt'), 'r').read().strip()
 CLOUDFRONT_URL = 'https://d3dq07j9ipgft2.cloudfront.net/'
 
-with open("all_categories.txt", 'r') as cats:
+with open(server_dir("all_categories.txt"), 'r') as cats:
   ALL_CATEGORIES =  cats.read().splitlines()
 
 
 # jwskey = jwk.JWK.generate(kty='oct', size=256)
-cache_key = open('cache_key.txt', 'r').read().strip()
+cache_key = open(key_dir('cache_key.txt'), 'r').read().strip()
 
 
 user_features = True
@@ -1740,9 +1744,9 @@ if __name__ == "__main__":
   http_server = HTTPServer(WSGIContainer(app))
   http_server.listen(args.port, address='127.0.0.1')
   autoreload.start()
-  for dir, _, files in os.walk('templates'):
+  for dir, _, files in os.walk(server_dir('templates')):
         [autoreload.watch(dir + '/' + f) for f in files if not f.startswith('.')]
-  for dir, _, files in os.walk('static'):
+  for dir, _, files in os.walk(os.path.join('static')):
         [autoreload.watch(dir + '/' + f) for f in files if not f.startswith('.')]
   IOLoop.instance().start()
 

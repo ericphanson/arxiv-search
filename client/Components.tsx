@@ -1,11 +1,10 @@
 import { notimpl } from './basic';
 import { paper, request, response, query } from './types';
 import * as React from 'react';
-//TODO webpack lets you 'import' images, css etc but it's a bit of a kludge.
 // @ts-ignore
-import saveImg from "./save.png";
+import saveImg from "./assets/save.png";
 // @ts-ignore
-import savedImg from "./saved.png";
+import savedImg from "./assets/saved.png";
 
 interface state {
     /**Query used to fetch papers. */
@@ -93,7 +92,7 @@ class SearchBox extends React.Component<{ onSearch(q: query): void }, { searchSt
                 <input id="qfield" name="q" type="text" value={searchString}
                     onChange={e => this.setState({ searchString: e.target.value })}
                     onKeyDown={e => e.keyCode === 13 && onSearch && this.handleOnSearch()} />
-                <button onClick={() => this.handleOnSearch()} >Search!</button>
+                <button onClick={() => this.handleOnSearch()} >Search!!!</button>
             </form>
         </div>
     }
