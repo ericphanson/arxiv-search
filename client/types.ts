@@ -54,7 +54,10 @@ export interface response {
     /**Something to do with rendering mathjax */
     dynamic : boolean,
     start_at : number
-    /**`=== papers.length` */
-    num : number
+    /**The same as `num_get` in the request object. If `papers.length < num_get` then we are done. */
+    num_get : number
     papers : paper[]
+    /** The total number of papers that match the given query. */
+    total_papers : number
+
 }

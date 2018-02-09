@@ -8,10 +8,11 @@ interface state {
     /**Query used to fetch papers. */
     currentQuery: query,
     papers: paper[],
-    /**The number of papers that should be loaded. */
+    /**The number of papers that should be visible */
     requestCount : number,
     isLoading: boolean,
-    error?: string
+    error?: string,
+    isDone : boolean
 }
 declare const beta_results_url : string;
 export class App extends React.Component<{}, state> {
@@ -22,8 +23,9 @@ export class App extends React.Component<{}, state> {
                 query: "",
                 category: [],
                 time: "all",
-                v1: false
+                v1: false,
             },
+            isDone : false,
             requestCount : 10,
             papers: [],
             isLoading: true,
@@ -33,11 +35,12 @@ export class App extends React.Component<{}, state> {
         this.onSearch(this.state.currentQuery);
     }
     getPapers() {
+        let num_get = this.state.requestCount - this.state.papers.length
         let request: request = {
             query: this.state.currentQuery,
             start_at: this.state.papers.length,
-            num_get: this.state.requestCount,
-            dyn: false
+            num_get,
+            dyn: false,
         }
         let url = beta_results_url;
         let response = window.fetch(url, {
@@ -54,30 +57,30 @@ export class App extends React.Component<{}, state> {
             error => this.setState({ error: `Network error: ${error}` })
             )
             .then((r: response) => {
-                let {dynamic, start_at, num, papers} = r;
+                let {dynamic, start_at,  papers} = r;
                 let p = [...this.state.papers];
                 for (let i = 0; i < papers.length; i++) {
                     p[r.start_at + i] = papers[i];
                 }
-                this.setState({ papers: p , isLoading : false});
+                this.setState({ papers: p , isLoading : false, isDone : papers.length < num_get});
             })
     }
     onSearch(q: query) {
-        this.setState({ currentQuery: q, requestCount : 10, papers : [] }, () => this.getPapers());
+        this.setState({ currentQuery: q, requestCount : 10, papers : [], isDone : false }, () => this.getPapers());
     }
     onLoadMore() {
+        if (this.state.isLoading || this.state.isDone) {return;}
         console.log("loadmore called");
         this.setState({requestCount : this.state.requestCount + 10}, () => this.getPapers());
     }
     render() {
-        let { papers } = this.state;
-        let done = false;
+        let { papers, isDone, isLoading } = this.state;
         return [
             <SearchBox onSearch={(q) => this.onSearch(q)} />,
             <Infinite
                 pageStart={0}
                 loadMore={() => this.onLoadMore()}
-                hasMore={!this.state.isLoading && !done}
+                hasMore={!isDone}
                 loader={<div>Loading...</div>}
                 threshold={500} >
                 <div id="maindiv">
@@ -115,8 +118,6 @@ function Paper(props: { p: paper }) {
             <span className="cs">{
                 p.tags.map(c => <a key={c} className="link-to-update" href={`/?in=${c.replace(/ /g, "+")}`}>{c}</a>).interlace(" | ")
             }</span>
-            <br/>
-            <span className="ccs">{p.comment}</span>
         </div>
         <div className="dllinks">
             <span className="spid">{p.pid}</span>
