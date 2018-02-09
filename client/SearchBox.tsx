@@ -6,7 +6,8 @@ interface state {
     searchString: string,
     sort: query["sort"],
     prim : undefined | string,
-    time : query["time"]
+    time : query["time"],
+    cats : any[]
 }
 export class SearchBox extends React.Component<{ onSearch(q: query): void }, state> {
     constructor(props) {
@@ -15,13 +16,14 @@ export class SearchBox extends React.Component<{ onSearch(q: query): void }, sta
             searchString: "",
             sort: "date",
             prim : undefined,
-            time : "all"
+            time : "all",
+            cats : []
         }
     }
     handleOnSearch() {
         this.props.onSearch({
             query: this.state.searchString,
-            category: [],
+            category: this.state.cats.map(c => [c.value]),
             time: this.state.time,
             v1: false,
             sort: this.state.sort,
@@ -65,6 +67,10 @@ export class SearchBox extends React.Component<{ onSearch(q: query): void }, sta
                 <div>
                     <h4>time:</h4>
                     {radio("time", ["day", "3days", "week", "month", "year", "all"])}
+                </div>
+                <div>
+                    <h4>in:</h4>
+                    <Select.Creatable multi={true} options={options} value={this.state.cats} onChange={cats => {this.setState({cats}, () => this.handleOnSearch())}}/>
                 </div>
             </div>
         </div>
