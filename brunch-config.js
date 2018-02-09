@@ -3,6 +3,11 @@ module.exports = {
         watched : ["client"],
         public: "static"
     },
+    npm : {
+        styles : {
+            "react-select" : ["dist/react-select.css"]
+        }
+    },
     files: {
         javascripts: {
             entryPoints: {'client/main.tsx' : {
