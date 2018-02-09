@@ -46,4 +46,9 @@ export interface response {
     start_at : number
     num : number
     papers : paper[]
+    meta : meta
+}
+
+export interface meta {
+    tot_num_papers : number
 }
