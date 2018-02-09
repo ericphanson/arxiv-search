@@ -71,7 +71,7 @@ user_features = True
 user_interactivity = False
 print('read in AWS keys')
   
-app = Flask(__name__)
+app = Flask(__name__, static_folder=os.path.join("..","static"))
 app.config.from_object(__name__)
 # limiter = Limiter(app, default_limits=["1000 per hour", "20 per minute"])
 
@@ -966,6 +966,7 @@ def build_query(query_info):
 
 @app.route('/_getpapers', methods=['POST'])
 def _getpapers():
+  print("getting papers")
   data = request.get_json()
   start = data['start_at']
   number = data['num_get']
@@ -1635,7 +1636,9 @@ def logout():
   flash('You were logged out')
   return redirect(url_for('intmain'))
 
-
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
 
 
 # -----------------------------------------------------------------------------
@@ -1746,7 +1749,7 @@ if __name__ == "__main__":
   autoreload.start()
   for dir, _, files in os.walk(server_dir('templates')):
         [autoreload.watch(dir + '/' + f) for f in files if not f.startswith('.')]
-  for dir, _, files in os.walk(os.path.join('static')):
+  for dir, _, files in os.walk(os.path.join('..','static')):
         [autoreload.watch(dir + '/' + f) for f in files if not f.startswith('.')]
   IOLoop.instance().start()
 

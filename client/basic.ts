@@ -9,7 +9,7 @@ declare global {
 }
 if (!Array.prototype.interlace) {
     Array.prototype.interlace = function <T>(sep: T): T[] {
-        let ts = this;
+        let ts : any = this as any;
         if (ts.length === 0) { return ts; }
         let r = new Array<T>();
         r.push(ts[0]);

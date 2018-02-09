@@ -1,10 +1,6 @@
 import { notimpl } from './basic';
 import { paper, request, response, query } from './types';
 import * as React from 'react';
-// @ts-ignore
-import saveImg from "./assets/save.png";
-// @ts-ignore
-import savedImg from "./assets/saved.png";
 
 interface state {
     /**Query used to fetch papers. */
@@ -93,12 +89,10 @@ class SearchBox extends React.Component<{ onSearch(q: query): void }, { searchSt
         let { onSearch } = this.props;
         let { searchString } = this.state;
         return <div className="sbox">
-            <form>
-                <input id="qfield" name="q" type="text" value={searchString}
+                <input id="qfield" type="text" value={searchString}
                     onChange={e => this.setState({ searchString: e.target.value })}
                     onKeyDown={e => e.keyCode === 13 && onSearch && this.handleOnSearch()} />
-                <button onClick={() => this.handleOnSearch()} >Search!!!</button>
-            </form>
+                <button onClick={(() => this.handleOnSearch())} >Search!!!</button>
         </div>
     }
 }
@@ -151,7 +145,7 @@ function Paper(props: { p: paper }) {
                 <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }}>scirate</a>
             </span>
             <br />
-            <img src={p.in_library ? savedImg : saveImg} className="save-icon" title="toggle save paper to library (requires login)" id={"lib" + p.pid} onClick={notimpl} />
+            <img src={p.in_library ? "static/save.png" : "static/saved.png"} className="save-icon" title="toggle save paper to library (requires login)" id={"lib" + p.pid} onClick={notimpl} />
         </div>
         <div style={{ clear: "both" }}></div>
         {p.img && <div className="animg"><img src={p.img} /></div>}
