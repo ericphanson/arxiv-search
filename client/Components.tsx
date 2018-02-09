@@ -77,7 +77,8 @@ export class App extends React.Component<{}, state> {
                 pageStart={0}
                 loadMore={() => this.onLoadMore()}
                 hasMore={!this.state.isLoading && !done}
-                loader={<div>Loading...</div>} >
+                loader={<div>Loading...</div>}
+                threshold={500} >
                 <div id="maindiv">
                     <div id="rtable">
                     {papers.map(p => <Paper p={p} key={p.pid}/>)}
@@ -90,7 +91,7 @@ export class App extends React.Component<{}, state> {
 }
 function Papers(props: { ps: paper[], done: boolean }) {
     let { ps, done } = props;
-    let num = ps.length;
+    let num = ps.length; 
     return <div id="maindiv">
         <div id="rtable">
             {ps.map(p => <Paper p={p} />)}
