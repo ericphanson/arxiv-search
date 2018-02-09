@@ -4,27 +4,12 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Quant-ph frontend</title>
-
-  <!-- MathJax -->
-  <script type="text/x-mathjax-config">
-  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
-</script>
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_CHTML">
-  </script>
-
-  <!-- CSS -->
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-
-  <!-- Favicon -->
   <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" />
-
   <script src="{{ url_for('static', filename='vendor.js')}}"></script>
   <script src="{{ url_for('static', filename='bundle.js')}}"></script>
-
   <script>
-
     // passed in from flask as json
-
     var numresults = {{ numresults }};
     var pid_to_users = {{ pid_to_users | tojson }};
     var msg = ''
@@ -33,219 +18,24 @@
     // var results_url = "{{ url_for('_getresults') }}";
     var results_url = "{{ url_for('_getpapers') }}";
     var beta_results_url = "{{ url_for('_getpapers') }}";
-
-    if (get_param('sort') === 'rec') {
-      var msg = "Sorting by personalized relevance (" + numresults + '):'
-    } else {
-      var msg = "Most recent papers (" + (numresults) + '):';
-    }
-
+    // if (get_param('sort') === 'rec') {
+    //   var msg = "Sorting by personalized relevance (" + numresults + '):'
+    // } else {
+    //   var msg = "Most recent papers (" + (numresults) + '):';
+    // }
     var render_format = "{{ render_format }}";
     var username = "{{ g.user.username }}";
     var show_prompt = "{{ show_prompt }}";
     var pointer_ix = 0
     var wait_for_write = false;
     var first_papers = {{ first_papers | tojson }};
-
-
     var urlq = ''; // global will be read in to QueryString when load is done
-
-    // when page loads...
-/*     $(document).ready(function () {
-
-      urlq = QueryString.q;
-
-      // display message, if any
-      if (msg !== '') { d3.select("#rtable").append('div').classed('msg', true).html(msg); }
-
-      // add papers to #rtable
-      var done = writePapers(first_papers);
-      if (done || wait_for_write) { $("#loadmorebtn").hide(); }
-
-      // set up inifinite scrolling for adding more papers
-      $(window).on('scroll', function () {
-        var scrollTop = $(document).scrollTop();
-        var windowHeight = $(window).height();
-        var bodyHeight = $(document).height() - windowHeight;
-        var scrollPercentage = (scrollTop / bodyHeight);
-        // if( (scrollPercentage > 0.8) && !(wait_for_write)) {
-        if ((($(window).scrollTop() >= $(document).height() - $(window).height() - 800)) && !(wait_for_write)) {
-          var done = addPapers(5, true);
-          if (done) { $("#loadmorebtn").hide(); }
-          else {
-            $("#loadmorebtn").show();
-          }
-        }
-      });
-
-      // just in case scrolling is broken somehow, provide a button handler explicit
-      $("#loadmorebtn").on('click', function () {
-        var done = addPapers(5, true);
-        if (done) { $("#loadmorebtn").hide(); }
-      });
-
-      if (numresults === 0) { $("#loadmorebtn").hide(); }
-
-      if (!(typeof urlq == 'undefined')) {
-        d3.select("#qfield").attr('value', urlq.replace(/\+/g, " "));
-      }
-
-      // var vf = QueryString.vfilter; if(typeof vf === 'undefined') { vf = 'all'; }
-      var vf = get_param('ver'); if (vf === null) { vf = 'all'; }
-
-      var tf = get_param('range'); if (tf === null) { tf = 'all'; }
-
-      // var tf = QueryString.timefilter; if(typeof tf === 'undefined') { tf = 'all'; }
-
-      var clf = get_param('prim'); if (clf === null) { clf = 'any'; }
-
-
-      var link_endpoint = '/';
-      if (render_format === 'recent') { link_endpoint = ''; }
-      if (render_format === 'top') { link_endpoint = 'top'; }
-      if (render_format === 'recommend') { link_endpoint = 'recommend'; }
-      if (render_format === 'friends') { link_endpoint = 'friends'; }
-      // if(render_format === 'toptwtr') { link_endpoint = 'toptwtr'; }
-      // if(render_format === 'discussions') { link_endpoint = 'discussions'; }
-
-      var time_ranges = ['day', '3days', 'week', 'month', 'year', 'all'];
-      var time_txt = { 'day': 'Last day', '3days': 'Last 3 days', 'week': 'Last week', 'month': 'Last month', 'year': 'Last year', 'all': 'All time' }
-      var time_range = tf;
-
-
-      // set up time filtering options
-      if (render_format === 'recommend' || render_format === 'top' || render_format === 'recent' || render_format === 'friends' || render_format === 'search') {
-        // insert version filtering options for these views
-        var elt = d3.select('#recommend-time-choice');
-
-
-        var aelt_reset = elt.append('a').attr('href', '/');
-        var delt_reset = aelt_reset.append('div').classed('reset_choice', true).html('Reset');
-
-        elt.append('div').classed('fdivider', true).html('|');
-
-
-        var vflink = vf === 'all' ? '1' : 'all'; // toggle only showing v1 or not
-
-
-
-        // var aelt = elt.append('a').attr('href', '/'+link_endpoint+'?'+'timefilter='+time_range+'&vfilter='+vflink+'&cl='+clf);
-        var aelt = elt.append('a').attr('href', make_link('ver', vflink, true));
-
-        var delt = aelt.append('div').classed('vchoice', true).html('Only show v1');
-        if (vf === '1') { delt.classed('vchoice-selected', true); }
-
-        var clflink = clf === 'any' ? 'quant-ph' : 'any'; // toggle only showing v1 or not
-
-        // var aeltcl = elt.append('a').attr('href', '/'+link_endpoint+'?'+'timefilter='+time_range+'&vfilter='+vf+'&cl='+clflink);
-        var aeltcl = elt.append('a').attr('href', make_link('prim', clflink, true));
-
-
-        var deltcl = aeltcl.append('div').classed('clchoice', true).html('Allow crosslists');
-        if (clf === 'any') { deltcl.classed('clchoice-selected', true); }
-      }
-
-      // time choices for recommend/top
-      if (render_format === 'recent' || render_format === 'recommend' || render_format === 'top' || render_format === 'friends' || render_format === 'search') {
-        // insert time filtering options for these two views
-        var elt = d3.select('#recommend-time-choice');
-        elt.append('div').classed('fdivider', true).html('|');
-        for (var i = 0; i < time_ranges.length; i++) {
-          var time_range = time_ranges[i];
-          // var aelt = elt.append('a').attr('href', '/'+link_endpoint+'?'+'timefilter='+time_range+'&vfilter='+vf+'&cl='+clf);
-          var aelt = elt.append('a').attr('href', make_link('range', time_range, true));
-
-          var delt = aelt.append('div').classed('timechoice', true).html(time_txt[time_range]);
-          if (tf == time_range) { delt.classed('timechoice-selected', true); } // also render as chosen
-        }
-      }
-
-      // time choices for top tweets
-      // if(render_format === 'toptwtr') {
-      //   var tf = QueryString.timefilter; if(typeof tf === 'undefined') { tf = 'day'; } // default here is day
-      //   var time_ranges = ['day', 'week', 'month'];
-      //   var elt = d3.select('#recommend-time-choice');
-      //   for(var i=0;i<time_ranges.length;i++) {
-      //     var time_range = time_ranges[i];
-      //     var aelt = elt.append('a').attr('href', '/'+link_endpoint+'?'+'timefilter='+time_range);
-      //     var delt = aelt.append('div').classed('timechoice', true).html(time_txt[time_range]);
-      //     if(tf == time_range) { delt.classed('timechoice-selected', true); } // also render as chosen
-      //   }
-      // }
-
-      var xb = $("#xbanner");
-      if (xb.length !== 0) {
-        xb.click(function () { $("#banner").slideUp('fast'); })
-      }
-
-      // in top tab: color current choice
-      if (render_format === 'recent') { d3.select('#tabrecent').classed('tab-selected', true); }
-
-      if ((render_format === 'search') && ((get_param('sort') === 'date') || (get_param('sort') === null))) { d3.select('#tabrecent').classed('tab-selected', true); }
-
-      if (render_format === 'top') { d3.select('#tabtop').classed('tab-selected', true); }
-      // if( render_format === 'toptwtr') { d3.select('#tabtwtr').classed('tab-selected', true); }
-      if (render_format === 'friends') { d3.select('#tabfriends').classed('tab-selected', true); }
-      // if( render_format === 'discussions') { d3.select('#tabdiscussions').classed('tab-selected', true); }
-      if (render_format === 'recommend') { d3.select('#tabrec').classed('tab-selected', true); }
-
-      if ((render_format === 'search') && (get_param('sort') === 'rec')) { d3.select('#tabrec').classed('tab-selected', true); }
-
-      if (render_format === 'library') { d3.select('#tablib').classed('tab-selected', true); }
-
-      $("#goaway").on('click', function () {
-        $("#prompt").slideUp('fast');
-        $.post("/goaway", {}).done(function (data) { });
-      });
-    }); */
-
   </script>
-
-
-  <script type="text/javascript">
-
-    // Wait for the page to load first
-    //window.onload = function () {
-
-     // main();
-
-      // var x = document.getElementsByClassName("link-to-update");
-      // for (var i = 0; i < x.length; i++) {
-      //   var a = x[i];
-      //   a.onclick = function () {
-      //     var href = this.href
-      //     var parts = href.split("?")
-      //     var url_params = new URLSearchParams(parts[1]);
-
-      //     // only can handle one pair, so far...
-      //     var param = ""
-      //     var value = ""
-      //     for (var p of url_params) {
-      //       if (include_pair(p[0], p[1])) {
-      //         param = p[0]
-      //         value = p[1]
-      //       }
-      //     }
-      //     if (param === "") {
-      //       do_search()
-      //     } else {
-      //       do_search(param, value)
-      //     }
-      //     return false;
-      //   }
-      // }
-
-    //}
-  </script>
-
-
 </head>
 
 <body>
   <div id="titdiv">
-
     <!-- User account information on top right -->
-
     {% if user_features %}
     <div id="userinfo">
       {% if not g.user %}
@@ -261,7 +51,6 @@
       {% endif %}
     </div>
     {% endif %}
-
     <!-- Site information/banner on top left -->
     <a href="/">
       <div id="tittxt">
@@ -275,156 +64,8 @@
     </div>
     </a>
   </div>
-
-  <div id="flashesdiv">
-    {% with flashes = get_flashed_messages() %} {% if flashes %}
-    <ul class="flashes">
-      {% for message in flashes %}
-      <li>{{ message }} {% endfor %}
-    </ul>
-    {% endif %} {% endwith %}
-  </div>
-
-
-  <script>
-    // var q = document.getElementById('qfield')
-    // q.spellcheck = false
-    // q.textContent = query_to_string()
-    // q.innerHTML = query_to_string()
-    // q.focus();
-    // styleSearchField()
-    // function fire_search() {
-    //   var q = document.getElementById('qfield')
-    //   var string = q.innerText
-    //   string = string.replace(String.fromCharCode(160), ' ')
-    //   string = string.replace(/\s\s+/g, ' ')
-    //   window.location.href = get_search_url(string)
-    //   // console.log(get_search_url(string))
-    // }
-
-    // function do_search(add_param, add_value, kill_query = false) {
-    //   styleSearchField(add_param, add_value, kill_query)
-    //   fire_search()
-    // }
-
-    // $('#qfield').on('keydown', function (e) {
-    //   if (e.which == 13 && e.shiftKey == false) {
-    //     fire_search()
-    //     return false;
-    //   }
-    // });
-
-    // $('#qfield').on('keyup', function (e) {
-    //   if (e.which == 32 && e.shiftKey == false) {
-    //     console.log('space')
-    //     styleSearchField()
-    //     return true;
-    //   }
-    // });
-
-    // function styleSearchField(add_param = null, add_value = null, kill_query = false) {
-    //   // doSave()
-    //   var string = q.innerText
-    //   // string = string.replace('  ', ' ')
-
-    //   string = string.replace(String.fromCharCode(160), ' ')
-    //   string = string.replace(/\s\s+/g, ' ')
-
-    //   // console.log('innertext:')
-    //   // console.log(string)
-    //   var found = parse_query(string)
-    //   // console.log('found:')
-    //   // console.log(found)
-    //   if (add_param && add_value) {
-    //     found.params.unshift(add_param)
-    //     found.values.unshift(add_value)
-    //   }
-    //   if (kill_query) {
-    //     found.query = null
-    //   }
-    //   found = dedup_params(found)
-
-    //   // var hasParam = [false, false, false, false, false]
-    //   if (found.query === null) {
-    //     found.query = ""
-    //   }
-    //   // found.query = found.query 
-    //   found.query = found.query.trim()
-    //   var new_query = found.query + ' '
-    //   var new_html = found.query + '&nbsp;'
-    //   for (var v = 0, totv = valid_params.length; v < totv; v++) {
-    //     for (var i = 0, n = found.params.length; i < n; i++) {
-    //       if (found.params[i] === valid_params[v]) {
-
-    //         if (new_query === " ") {
-    //           new_query = ' ' + found.params[i] + ':' + found.values[i]
-    //           new_html = '&nbsp;' + '<span class=' + found.params[i] + '>' + found.params[i] + ':' + found.values[i] + '</span>'
-    //         } else {
-    //           new_query = new_query + ' ' + found.params[i] + ':' + found.values[i]
-    //           new_html = new_html + ' ' + '<span class=' + found.params[i] + '>' + found.params[i] + ':' + found.values[i].trim() + '</span>'
-    //         }
-    //         break;
-    //       }
-    //     }
-    //   }
-    //   console.log(new_html)
-
-    //   q.innerHTML = new_html
-
-    //   q.focus();
-    //   var textNode = q.firstChild;
-    //   console.log(textNode.length)
-    //   console.log(found.query.length)
-    //   var l = found.query.length === 0 ? 0 : found.query.length + 1;
-    //   var caret = Math.min(l, textNode.length);
-    //   var range = document.createRange();
-    //   range.setStart(textNode, caret);
-    //   range.setEnd(textNode, caret);
-    //   var sel = window.getSelection();
-    //   sel.removeAllRanges();
-    //   sel.addRange(range);
-    //}
-
-  </script>
-
-  <div id="pagebar">
-    <div class="pagelink" id="tabrecent">
-      <a id="recent_link" href="/">most recent</a>
-    </div>
-    {% if user_features %} {% if user_interactivity %}
-    <div class="pagelink" id="tabtop">
-      <a href="/top">top recent</a>
-    </div>
-    <div class="pagelink" id="tabfriends">
-      <a href="/friends">friends</a>
-    </div>
-    {% endif %}
-    <div class="pagelink" id="tabrec">
-      <a id="rec_link" href="/">recommended</a>
-    </div>
-    <div class="pagelink" id="tablib">
-      <a href="/library">library</a>
-    </div>
-    {% else %}
-    <div class="pagelink" id="tabmore">
-      <a href="/">more tabs coming eventually...</a>
-    </div>
-    {% endif %}
-  </div>
-
-  <script>
-    var reca = document.getElementById('rec_link'); //or grab it by tagname etc
-    reca.href = make_link('sort', 'rec', true, true)
-
-    var datea = document.getElementById('recent_link'); //or grab it by tagname etc
-    datea.href = make_link('sort', 'date', true, true)
-  </script>
-  <!-- this div will be rendered into dynamcially at init with JS -->
-  <div id="recommend-time-choice" class="centerdiv"></div>
-
   <!-- REACT ROOT -->
   <div id="root"></div>
-
 </body>
 
 </html>

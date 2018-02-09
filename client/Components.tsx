@@ -2,6 +2,7 @@ import { notimpl } from './basic';
 import { paper, request, response, query } from './types';
 import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
+import { SearchBox } from './SearchBox';
 
 interface state {
     /**Query used to fetch papers. */
@@ -84,50 +85,10 @@ export class App extends React.Component<{}, state> {
                     {papers.map(p => <Paper p={p} key={p.pid}/>)}
                     </div>
                 </div>
-            </Infinite>,
-            //<Papers ps={papers} done={done}/>
+            </Infinite>
         ]
     }
 }
-function Papers(props: { ps: paper[], done: boolean }) {
-    let { ps, done } = props;
-    let num = ps.length; 
-    return <div id="maindiv">
-        <div id="rtable">
-            {ps.map(p => <Paper p={p} />)}
-        </div>
-    </div>
-}
-
-class SearchBox extends React.Component<{ onSearch(q: query): void }, { searchString: string }> {
-    constructor(props) {
-        super(props);
-        this.state = {
-            searchString: ""
-        }
-    }
-    handleOnSearch() {
-        this.props.onSearch({
-            query: this.state.searchString,
-            category: [],
-            time: "all",
-            v1: false
-        });
-    }
-    render() {
-        let { onSearch } = this.props;
-        let { searchString } = this.state;
-        return <div id="sbox">
-                <input id="qfield" type="text" value={searchString}
-                    onChange={e => this.setState({ searchString: e.target.value })}
-                    onKeyDown={e => e.keyCode === 13 && onSearch && this.handleOnSearch()} />
-                <button onClick={(() => this.handleOnSearch())} >Search!!!</button>
-        </div>
-    }
-}
-
-
-
 
 function Paper(props: { p: paper }) {
     let { p } = props
