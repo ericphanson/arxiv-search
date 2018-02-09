@@ -57,7 +57,9 @@ export interface response {
     /**The same as `num_get` in the request object. If `papers.length < num_get` then we are done. */
     num_get : number
     papers : paper[]
-    /** The total number of papers that match the given query. */
-    total_papers : number
+    meta : meta
+}
 
+export interface meta {
+    tot_num_papers : number
 }

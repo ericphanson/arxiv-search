@@ -5,3 +5,4 @@ keys/
 tornado.log
 node_modules
 static
+.vscode

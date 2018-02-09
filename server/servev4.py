@@ -524,7 +524,6 @@ def encode_hit(p, send_images=True, send_abstracts=True):
   struct['comment'] = cc
   return struct
 
-
 def add_user_data_to_hit(struct):
   libids = set()
   if g.libids:
@@ -532,44 +531,6 @@ def add_user_data_to_hit(struct):
   
   struct['in_library'] = 1 if struct['rawpid'] in libids else 0
   return struct
-
-# def encode_json(ps,  send_images=True, send_abstracts=True):
-  
-#   ret = []
-#   for p in ps:
-#     struct = encode_hit(p, send_images, send_abstracts)
-#     struct = add_user_data_to_hit(struct)
-#     ret.append(struct)
-#   return ret
-
-# def cheater_query():
-#     ret = []
-#     idvv = '%sv%d' % ("0000.00000", 1)
-#     struct = {}
-#     struct['title'] = "No papers for cheaters"
-#     struct['pid'] = idvv
-#     struct['rawpid'] = "0000.00000"
-#     struct['category'] = ""
-#     struct['authors'] = ["Eric Hanson"]
-#     struct['link'] = "/"
-#     struct['abstract'] = "Please don't modify the queries."
-    
-#     struct['img'] =  'static/dog.jpg'
-#     struct['tags'] = ["no"]
-    
-#     # render time information nicely
-#     struct['published_time'] = '10/18/2017'
-#     struct['originally_published_time'] = '10/18/2017' 
-
-#     # fetch amount of discussion on this paper
-#     struct['num_discussion'] = 0
-
-  
-#     struct['comment'] = "really..."
-
-#     ret.append(struct)
-#     return ret
-
 
 
 def make_hash(o):
@@ -598,26 +559,27 @@ def make_hash(o):
 def getResults2(search):
   search_dict = search.to_dict()
   query_hash = make_hash(search_dict)
-  
   have = False
 
   with cached_queries_lock:
     if query_hash in cached_queries:
-      list_of_ids = cached_queries[query_hash]
+      d = cached_queries[query_hash]
+      list_of_ids = d["list_of_ids"]
+      meta = d["meta"]
       have = True
 
   if not have:
+    meta = get_meta_from_search(search)
     es_response = search.execute()
-    list_of_ids = process_query_to_cache(query_hash, es_response)
+    list_of_ids = process_query_to_cache(query_hash, es_response, meta)
 
   with cached_docs_lock:
     records = [ cached_docs[_id] for _id in list_of_ids ]
 
   records = [add_user_data_to_hit(r) for r in records]
+  return records, meta
 
-  return records
-
-def process_query_to_cache(query_hash, es_response):
+def process_query_to_cache(query_hash, es_response, meta):
   list_of_ids = []
 
   for record in es_response:
@@ -630,31 +592,10 @@ def process_query_to_cache(query_hash, es_response):
 
 
   with cached_queries_lock:
-    cached_queries[query_hash] =  list_of_ids
+    cached_queries[query_hash] =  dict(list_of_ids=list_of_ids,meta=meta)
 
   return list_of_ids
 
-
-
-# def getResults(search):
-#   d = search.to_dict()
-#   h = make_hash(d)
-
-#   with cached_queries_lock:
-#     check_in  = h in cached_queries
-  
-#   if check_in:
-#     # print('cached')
-#     with cached_queries_lock:
-#       result = cached_queries[h]
-#   else:
-#     # print('not cached')
-#     result = search.execute()
-#     with cached_queries_lock:
-#       cached_queries[h] = result
-
-#   process_query_to_cache(h, result)
-#   return result
 
 
 def addUserSearchesToCache():
@@ -719,12 +660,16 @@ def async_add_to_cache(search):
     t = threading.Thread(target=add_to_cache, args=(query_hash, search), daemon=True)
     t.start()
 
+def get_meta_from_search(search):
+  return dict(tot_num_papers=search.count())
+
 def add_to_cache(query_hash, search):
   # search = search.params(request_timeout=60)
+  meta = get_meta_from_search(search)
   with es_query_semaphore:
     es_response = search.execute()
   # with cached_queries_lock:
-  process_query_to_cache(query_hash, es_response)
+  process_query_to_cache(query_hash, es_response, meta)
     # cached_queries[h] = results
     # print(len(cached_queries))
     # print('async added %d' % h)
@@ -766,7 +711,7 @@ def default_context(search, **kws):
     search = search[0:10]
    
 
-    papers = getResults2(search)
+    papers, meta = getResults2(search)
     # papers = encode_json(response)
 
     first_papers = dict(papers=papers,dynamic=True)
@@ -991,11 +936,11 @@ def _getpapers():
 
   access_log.info("ES search request", extra=log_dict )
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
-  papers = getResults2(search)
+  papers, meta = getResults2(search)
   # print(len(response))
   # papers = encode_json(response)
   # print(papers)
-  return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number))
+  return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number, meta=meta))
   
 
 
@@ -1028,7 +973,7 @@ def _getresults():
 
   access_log.info("ES search request", extra=log_dict )
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
-  papers = getResults2(search)
+  papers, meta = getResults2(search)
   # print(len(response))
   # papers = encode_json(response)
   # print(papers)
