@@ -51,4 +51,9 @@ export interface response {
 
 export interface meta {
     tot_num_papers : number
+    /* date_hist_data gives a list of pairs (time,num_hits), 
+    where the time is in seconds since the unix epoch, 
+    and num_hits is the number of results in that bucket. Right now, the times should be Jan 1 of each year
+    for which there is a non-zero amount of papers. */
+    date_hist_data? : number[][]
 }
