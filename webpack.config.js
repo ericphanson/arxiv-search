@@ -4,7 +4,8 @@ module.exports = {
     module : {
         rules : [
             {test : /\.tsx?$/, use : "ts-loader", exclude: /node_modules/},
-            {test : /\.(png|svg|jpg|gif)$/, use : "file-loader"}
+            // {test : /\.(png|svg|jpg|gif)$/, use : "file-loader"},
+            // {test: /\.css/, use : ["style-loader", "css-loader"]}
         ]
     },
     devtool: "inline-source-map",

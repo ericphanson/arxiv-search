@@ -54,18 +54,23 @@ export class App extends React.Component<{}, state> {
             error => this.setState({ error: `Network error: ${error}` })
             )
             .then((r: response) => {
+                let {dynamic, start_at, num, papers} = r;
                 let p = [...this.state.papers];
-                for (let i = 0; i < r.papers.length; i++) {
-                    p[r.start_at + i] = r.papers[i];
+                for (let i = 0; i < papers.length; i++) {
+                    p[r.start_at + i] = papers[i];
                 }
                 this.setState({ papers: p , isLoading : false});
             })
     }
     render() {
         let { papers } = this.state;
+        let done = false;
         return [
             <SearchBox onSearch={(q) => this.onSearch(q)} />,
-            <Papers ps={papers} done={false} />]
+            <Papers ps={papers} done={false} />,
+            done && <div id="loadmore"> 
+            <button id="loadmorebtn">Load more...</button>
+        </div>]
     }
 }
 
@@ -106,7 +111,6 @@ function Papers(props: { ps: paper[], done: boolean }) {
         <div id="rtable">
             {ps.map(p => <Paper p={p} />)}
         </div>
-        {done && <div id="loadmore"> <button id="loadmorebtn">Load more...</button></div>}
     </div>
 }
 
@@ -121,13 +125,13 @@ function Paper(props: { p: paper }) {
             <span className="ts">
                 <a href={p.link} target="_blank"> {p.title} </a>
             </span>
-            <br />
+            <br/>
             <span className="as">
                 {p.authors.map((a: string) =>
                     <a href={`/search?q=${a.replace(/ /g, "+")}`}>{a}</a>)
                     .interlace(", " as any)}
             </span>
-            <br />
+            <br/>
             <span className="ds">{p.published_time}</span>
             {p.originally_published_time !== p.published_time
                 ? <span className="ds2">(v1: {p.originally_published_time})</span>
@@ -135,7 +139,7 @@ function Paper(props: { p: paper }) {
             <span className="cs">{
                 p.tags.map(c => <a className="link-to-update" href={`/?in=${c.replace(/ /g, "+")}`}>{c}</a>).interlace(" | ")
             }</span>
-            <br />
+            <br/>
             <span className="ccs">{p.comment}</span>
         </div>
         <div className="dllinks">
