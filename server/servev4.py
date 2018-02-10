@@ -667,20 +667,7 @@ def async_add_to_cache(search):
     t.start()
 
 
-def get_meta_from_response(response):
-  meta = dict(tot_num_papers=response.hits.total)
-  # print(vars(response))
-  if "aggregations" in response:
-    # for a in response.aggregations:
-      # print(a)
-    if "published_dates" in response.aggregations:
-      date_hist_data = []
-      for x in response.aggregations.published_dates.buckets:
-        time = round(x.key/1000)
-        num_hits = x.doc_count
-        date_hist_data.append([time,num_hits])
-      meta["date_hist_data"] = date_hist_data
-  return meta
+
 
 def add_to_cache(query_hash, search):
   # search = search.params(request_timeout=60)
@@ -930,10 +917,31 @@ def build_query(query_info):
 
   return search
 
-def add_aggs_to_search(search):
-    a = A('date_histogram', field='published', interval="year")
-    search.aggs.bucket('published_dates', a)
-    return search
+# def add_aggs_to_search(search):
+#     a = A('date_histogram', field='published', interval="year")
+#     search.aggs.bucket('published_dates', a)
+#     return search
+def get_meta_from_response(response):
+  meta = dict(tot_num_papers=response.hits.total)
+  # print(vars(response))
+  if "aggregations" in response:
+    # for a in response.aggregations:
+      # print(a)
+    if "published_dates" in response.aggregations:
+      date_hist_data = []
+      for x in response.aggregations.published_dates.buckets:
+        time = round(x.key/1000)
+        bucket = dict(time=time, num_results = x.doc_count)
+        date_hist_data.append(bucket)
+      meta["date_hist_data"] = date_hist_data
+    if "prim" in response.aggregations:
+      prim_data =[]
+      for prim in response.aggregations.prim.buckets:
+        bucket = dict(category=prim.key,num_results=prim.doc_count)
+        prim_data.append(bucket)
+      meta["prim_data"] = prim_data
+  return meta
+
 
 @app.route('/_getpapers', methods=['POST'])
 def _getpapers():
@@ -949,8 +957,12 @@ def _getpapers():
 
   search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
-  a = A('date_histogram', field='published', interval="year")
-  search.aggs.bucket('published_dates', a)
+  year_agg = A('date_histogram', field='published', interval="year")
+  search.aggs.bucket('published_dates', year_agg)
+
+  prim_agg = A('terms', field='arxiv_primary_category.term.raw')
+  search.aggs.bucket('prim', prim_agg)
+  
   # search = add_aggs_to_search(search)
   
   # if start+number >= num_results:
