@@ -52,7 +52,9 @@ export interface response {
 export interface meta {
     tot_num_papers : number
     date_hist_data? : date_data[]
-    prim_data? : prim_data[]
+    prim_data? : cat_data[]
+    in_data? : cat_data[]
+    
 }
 
 export interface date_data {
@@ -65,7 +67,7 @@ export interface date_data {
     num_results : number
 }
 
-export interface prim_data {
+export interface cat_data {
     category : string
     num_results : number
 }

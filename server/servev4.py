@@ -940,6 +940,12 @@ def get_meta_from_response(response):
         bucket = dict(category=prim.key,num_results=prim.doc_count)
         prim_data.append(bucket)
       meta["prim_data"] = prim_data
+    if "in_agg" in response.aggregations:
+      in_data =[]
+      for buck in response.aggregations.in_agg.buckets:
+        bucket = dict(category=buck.key,num_results=buck.doc_count)
+        in_data.append(bucket)
+      meta["in_data"] = in_data
   return meta
 
 
@@ -962,6 +968,9 @@ def _getpapers():
 
   prim_agg = A('terms', field='arxiv_primary_category.term.raw')
   search.aggs.bucket('prim', prim_agg)
+
+  in_agg = A('terms', field='tags.term.raw')
+  search.aggs.bucket('in_agg', in_agg)
   
   # search = add_aggs_to_search(search)
   
@@ -979,6 +988,7 @@ def _getpapers():
   access_log.info("ES search request", extra=log_dict )
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
   papers, meta = getResults2(search)
+  # print(meta)
   # print(len(response))
   # papers = encode_json(response)
   # print(papers)
