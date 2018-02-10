@@ -27,7 +27,7 @@ from elasticsearch.helpers import streaming_bulk, bulk, parallel_bulk
 import elasticsearch
 from itertools import islice
 import certifi
-from elasticsearch_dsl import Search, Q
+from elasticsearch_dsl import Search, Q, A
 from elasticsearch_dsl import FacetedSearch, TermsFacet, RangeFacet, DateHistogramFacet
 
 from elasticsearch_dsl.query import MultiMatch, Match, DisMax
@@ -65,6 +65,7 @@ with open(server_dir("all_categories.txt"), 'r') as cats:
 # jwskey = jwk.JWK.generate(kty='oct', size=256)
 cache_key = open(key_dir('cache_key.txt'), 'r').read().strip()
 
+AUTO_CACHE = False
 
 user_features = True
 
@@ -556,6 +557,8 @@ def make_hash(o):
   return hash(tuple(frozenset(sorted(new_o.items()))))
 
 
+
+
 def getResults2(search):
   search_dict = search.to_dict()
   query_hash = make_hash(search_dict)
@@ -569,8 +572,8 @@ def getResults2(search):
       have = True
 
   if not have:
-    meta = get_meta_from_search(search)
     es_response = search.execute()
+    meta = get_meta_from_response(es_response)
     list_of_ids = process_query_to_cache(query_hash, es_response, meta)
 
   with cached_docs_lock:
@@ -599,56 +602,59 @@ def process_query_to_cache(query_hash, es_response, meta):
 
 
 def addUserSearchesToCache():
-  # if 'user_id' not in session:
-    # return False
-  if not g.user:
-    return False
-  
-  uid = session['user_id']
-  with list_of_users_lock:
-    if uid in list_of_users_cached:
+  if AUTO_CACHE:
+    # if 'user_id' not in session:
+      # return False
+    if not g.user:
       return False
-    print('adding user %d to cache' % uid)
-    list_of_users_cached.append(uid)
-  ttstrs = {'day', '3days', 'week', 'month', 'alltime','none'}
+    
+    uid = session['user_id']
+    with list_of_users_lock:
+      if uid in list_of_users_cached:
+        return False
+      print('adding user %d to cache' % uid)
+      list_of_users_cached.append(uid)
+    ttstrs = {'day', '3days', 'week', 'month', 'alltime','none'}
 
-  # search = Search(using=es, index="arxiv")
+    # search = Search(using=es, index="arxiv")
 
-  svm = papers_from_svm()
-  if svm:
-    searches = [svm, svm.filter('term', paperversion=1)]
-    pages = [(0,10)]
-    for s in searches:
-      for p in pages:
-          for ttstr in ttstrs:
-            s2 = applyTimeFilter(s,ttstr)
-            s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-            s2 = s2[p[0]:p[1]]
-            async_add_to_cache(s2)
+    svm = papers_from_svm()
+    if svm:
+      searches = [svm, svm.filter('term', paperversion=1)]
+      pages = [(0,10)]
+      for s in searches:
+        for p in pages:
+            for ttstr in ttstrs:
+              s2 = applyTimeFilter(s,ttstr)
+              s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+              s2 = s2[p[0]:p[1]]
+              async_add_to_cache(s2)
 
-  lib = papers_from_library()
-  if lib:
-    searches = [lib.sort('-updated')]
-    pages = [(0,10),(10,15),(15,20),(20,25)]
-    for s in searches:
-      for p in pages:
-        s2 = s.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-        s2 = s2[p[0]:p[1]]
-        async_add_to_cache(s2)
-  return True
+    lib = papers_from_library()
+    if lib:
+      searches = [lib.sort('-updated')]
+      pages = [(0,10),(10,15),(15,20),(20,25)]
+      for s in searches:
+        for p in pages:
+          s2 = s.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+          s2 = s2[p[0]:p[1]]
+          async_add_to_cache(s2)
+  return AUTO_CACHE
 
 def addDefaultSearchesToCache():
-  search = Search(using=es, index="arxiv")
-  ttstrs = {'day', '3days', 'week', 'month', 'year', 'alltime', 'none'}
-  searches = [search.sort('-updated'), search.filter('term', paperversion=1).sort('-published')]
-  pages = [(0,10),(10,15),(15,20),(20,25),(25,30),(35,40),(45,50)]
-  for s in searches:
-    for p in pages:
-      for ttstr in ttstrs:
-        s2 = applyTimeFilter(s,ttstr)
-        s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-        s2 = s2[p[0]:p[1]]
-        async_add_to_cache(s2)
+  if AUTO_CACHE:
+    search = Search(using=es, index="arxiv")
+    ttstrs = {'day', '3days', 'week', 'month', 'year', 'alltime', 'none'}
+    searches = [search.sort('-updated'), search.filter('term', paperversion=1).sort('-published')]
+    pages = [(0,10),(10,15),(15,20),(20,25),(25,30),(35,40),(45,50)]
+    for s in searches:
+      for p in pages:
+        for ttstr in ttstrs:
+          s2 = applyTimeFilter(s,ttstr)
+          s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+          s2 = s2[p[0]:p[1]]
+          async_add_to_cache(s2)
+  return AUTO_CACHE
  
 
 def async_add_to_cache(search):
@@ -660,14 +666,15 @@ def async_add_to_cache(search):
     t = threading.Thread(target=add_to_cache, args=(query_hash, search), daemon=True)
     t.start()
 
-def get_meta_from_search(search):
-  return dict(tot_num_papers=search.count())
+
+
 
 def add_to_cache(query_hash, search):
   # search = search.params(request_timeout=60)
-  meta = get_meta_from_search(search)
   with es_query_semaphore:
     es_response = search.execute()
+  meta = get_meta_from_response(es_response)
+
   # with cached_queries_lock:
   process_query_to_cache(query_hash, es_response, meta)
     # cached_queries[h] = results
@@ -700,6 +707,7 @@ def _invalidate_cache():
 # -----------------------------------------------------------------------------
 
 def default_context(search, **kws):
+  search = False
   if search:
     # search = apply_global_filters(search)
     num_hits = search.count()
@@ -909,6 +917,38 @@ def build_query(query_info):
 
   return search
 
+# def add_aggs_to_search(search):
+#     a = A('date_histogram', field='published', interval="year")
+#     search.aggs.bucket('published_dates', a)
+#     return search
+def get_meta_from_response(response):
+  meta = dict(tot_num_papers=response.hits.total)
+  # print(vars(response))
+  if "aggregations" in response:
+    # for a in response.aggregations:
+      # print(a)
+    if "published_dates" in response.aggregations:
+      date_hist_data = []
+      for x in response.aggregations.published_dates.buckets:
+        time = round(x.key/1000)
+        bucket = dict(time=time, num_results = x.doc_count)
+        date_hist_data.append(bucket)
+      meta["date_hist_data"] = date_hist_data
+    if "prim" in response.aggregations:
+      prim_data =[]
+      for prim in response.aggregations.prim.buckets:
+        bucket = dict(category=prim.key,num_results=prim.doc_count)
+        prim_data.append(bucket)
+      meta["prim_data"] = prim_data
+    if "in_agg" in response.aggregations:
+      in_data =[]
+      for buck in response.aggregations.in_agg.buckets:
+        bucket = dict(category=buck.key,num_results=buck.doc_count)
+        in_data.append(bucket)
+      meta["in_data"] = in_data
+  return meta
+
+
 @app.route('/_getpapers', methods=['POST'])
 def _getpapers():
   print("getting papers")
@@ -923,6 +963,17 @@ def _getpapers():
 
   search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
+  year_agg = A('date_histogram', field='published', interval="year")
+  search.aggs.bucket('published_dates', year_agg)
+
+  prim_agg = A('terms', field='arxiv_primary_category.term.raw')
+  search.aggs.bucket('prim', prim_agg)
+
+  in_agg = A('terms', field='tags.term.raw')
+  search.aggs.bucket('in_agg', in_agg)
+  
+  # search = add_aggs_to_search(search)
+  
   # if start+number >= num_results:
     # more = False
   # else:
@@ -937,6 +988,7 @@ def _getpapers():
   access_log.info("ES search request", extra=log_dict )
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
   papers, meta = getResults2(search)
+  # print(meta)
   # print(len(response))
   # papers = encode_json(response)
   # print(papers)
