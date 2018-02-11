@@ -56,8 +56,15 @@ export interface meta {
     prim_data? : cat_data[]
     in_data? : cat_data[]
     time_filter_data? : tf_data[]
+    lib_data? : lib_data
     
-    
+}
+
+export interface lib_data {
+    // number of results in your library
+    in_lib : number
+    // number of results not in your library
+    out_lib : number
 }
 export interface tf_data {
     // time_range is "alltime" or "week", etc.

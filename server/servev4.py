@@ -169,7 +169,6 @@ def encode_hit(p, send_images=True, send_abstracts=True):
   if send_images:
     # struct['img'] = '/static/thumbs/' + idvv.replace('/','') + '.pdf.jpg'
     struct['img'] = CLOUDFRONT_URL + 'thumbs/' + pid.replace('/','') + '.pdf.jpg'
-  print(p['tags'])
   struct['tags'] = [t['term'] for t in p['tags']]
   # struct['tags'] = [t['term'] for t in p['tags']]
   
@@ -270,8 +269,10 @@ def ver_filter(v1):
 def lib_filter(only_lib):
     filt_q = Q()
     if only_lib:
-      #  TODO
-      print('todo')
+      # filt_q = Q('ids', type="paper", values= papers_from_library())
+      pids = ids_from_library()
+      if pids:
+        filt_q = Q('bool', filter=[Q('terms', id=pids)])
       # filt_q = filt_q & Q('term', paperversion=1)
     return filt_q
 
@@ -283,10 +284,10 @@ def build_query(query_info):
   SORT_DATE = 3
 
   # author stuff not implemented yet
-
   sort_auth = False
-  sort = SORT_DATE
+
   #step 1: determine sorting
+  sort = SORT_DATE  
   if 'query' in query_info:
     if query_info['query'].strip() is not '':
       sort = SORT_QUERY
@@ -301,6 +302,12 @@ def build_query(query_info):
       sort_auth = True
 
   # add filters
+  Q_lib = Q()
+  if 'only_libs' in query_info:
+    Q_lib =  lib_filter(query_info['only_libs'])
+  
+  Q_lib_on =  lib_filter(True)
+  
   Q_cat = Q()
   if 'category' in query_info:
     Q_cat = cat_filter(query_info['category'])
@@ -317,9 +324,10 @@ def build_query(query_info):
   if 'v1' in query_info:
     Q_v1= ver_filter(query_info['v1'])
   
-  search = search.post_filter(Q_cat & Q_prim & Q_time & Q_v1)
+  # add filters as post_filters so the aggregations don't get filtered
+  search = search.post_filter(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib)
   
-  # add sort
+  # add sorting
   if sort == SORT_QUERY:
     q = query_info['query'].strip()
     search = search.query(MultiMatch( query=q, type = 'most_fields', \
@@ -330,22 +338,22 @@ def build_query(query_info):
     search = add_rec_query(search)
 
 
-  # define aggregations
+  # define and add the aggregations, each filtered by all the filters except
+  # variables corresopnding to what the aggregation is binning over
   prim_agg = A('terms', field='arxiv_primary_category.term.raw')
-  prim_filt = A('filter', filter=(Q_cat & Q_time & Q_v1) )
+  prim_filt = A('filter', filter=(Q_cat & Q_time & Q_v1 & Q_lib) )
   search.aggs.bucket("prim_filt",prim_filt).bucket("prim_agg", prim_agg)
 
-  year_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1))
+  year_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1 & Q_lib))
   year_agg = A('date_histogram', field='published', interval="year")
   search.aggs.bucket('year_filt', year_filt).bucket('year_agg', year_agg)
 
-  in_filt = A('filter', filter=(Q_prim & Q_time & Q_v1))
+  in_filt = A('filter', filter=(Q_prim & Q_time & Q_v1 & Q_lib))
   in_agg = A('terms', field='tags.term.raw')
   search.aggs.bucket('in_filt', in_filt).bucket('in_agg',in_agg)
 
-  time_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1))
+  time_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1 & Q_lib))
   cutoffs = getTimesForFilters()
-  
   time_agg = A('date_range', field='updated', ranges = [{"to" : "now", "key" : "alltime"}, \
                                                               {"from" : cutoffs["year"], "key" : "year"}, \
                                                               {"from" : cutoffs["month"], "key" : "month"}, \
@@ -354,12 +362,22 @@ def build_query(query_info):
                                                               {"from" : cutoffs["day"], "key" : "day"}])
   search.aggs.bucket('time_filt', time_filt).bucket('time_agg', time_agg)
 
+  lib_filt =  A('filter', filter=(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib))
+  lib_agg = A('filters', filters= {"in_lib" : Q_lib_on, "out_lib": ~(Q_lib_on)})
+  search.aggs.bucket('lib_filt', lib_filt).bucket('lib_agg', lib_agg)
+
+  
+
   return search
 
 
 def get_meta_from_response(response):
   meta = dict(tot_num_papers=response.hits.total)
   if "aggregations" in response:
+    if "lib_filt" in response.aggregations:
+      bucks = response.aggregations.lib_filt.lib_agg.buckets
+      lib_data = {"in_lib" : bucks.in_lib.doc_count, "out_lib" : bucks.out_lib.doc_count}
+    meta["lib_data"] = lib_data
     if "year_filt" in response.aggregations:
       date_hist_data = []
       for x in response.aggregations.year_filt.year_agg.buckets:
@@ -712,7 +730,6 @@ def makepaperdict(pid):
     return d
 
 def add_papers_similar_query(search, pidlist):
-  listdict = []
   session['recent_sort'] = False
   dlist = [ makepaperdict(strip_version(v)) for v in pidlist ]
   if pidlist:
@@ -762,7 +779,12 @@ def papers_similar(vpid):
 
   return mlts
 
-
+def ids_from_library():
+  if g.libids:
+    out = g.libids
+  else:
+    out = None
+  return out
 
 def papers_from_library():
   if g.libids:
