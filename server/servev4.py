@@ -144,6 +144,276 @@ def teardown_request(exception):
   if db is not None:
     db.close()
 
+#------------------------------------------------------
+# Pass data to client
+#------------------------------------------------------ 
+
+def render_date(timestr):
+  timestruct = dateutil.parser.parse(timestr)
+  rendered_str = '%s %s %s' % (timestruct.day, timestruct.strftime('%b'), timestruct.year)
+  return rendered_str
+
+
+def encode_hit(p, send_images=True, send_abstracts=True):
+  pid = str(p['_rawid'])
+  idvv = '%sv%d' % (p['_rawid'], p['paperversion'])
+  struct = {}
+  struct['title'] = p['title']
+  struct['pid'] = idvv
+  struct['rawpid'] = p['_rawid']
+  struct['category'] = p['arxiv_primary_category']['term']
+  struct['authors'] = [a['name'] for a in p['authors']]
+  struct['link'] = p['link']
+  if send_abstracts:
+    struct['abstract'] = p['summary']
+  if send_images:
+    # struct['img'] = '/static/thumbs/' + idvv.replace('/','') + '.pdf.jpg'
+    struct['img'] = CLOUDFRONT_URL + 'thumbs/' + pid.replace('/','') + '.pdf.jpg'
+  print(p['tags'])
+  struct['tags'] = [t['term'] for t in p['tags']]
+  # struct['tags'] = [t['term'] for t in p['tags']]
+  
+  # render time information nicely
+  struct['published_time'] = render_date(p['updated'])
+  struct['originally_published_time'] = render_date(p['published'])
+
+  # fetch amount of discussion on this paper
+  struct['num_discussion'] = 0
+
+  # arxiv comments from the authors (when they submit the paper)
+  # cc = p.get('arxiv_comment', '')
+  try:
+    cc  = p['arxiv_comment']
+  except Exception as e:
+    cc = ""
+
+  if len(cc) > 100:
+    cc = cc[:100] + '...' # crop very long comments
+  struct['comment'] = cc
+  return struct
+
+def add_user_data_to_hit(struct):
+  libids = set()
+  if g.libids:
+    libids = set(g.libids)
+  
+  struct['in_library'] = 1 if struct['rawpid'] in libids else 0
+  return struct
+
+
+
+
+def getResults(search):
+  search_dict = search.to_dict()
+  query_hash = make_hash(search_dict)
+  have = False
+
+  with cached_queries_lock:
+    if query_hash in cached_queries:
+      d = cached_queries[query_hash]
+      list_of_ids = d["list_of_ids"]
+      meta = d["meta"]
+      have = True
+
+  if not have:
+    es_response = search.execute()
+    meta = get_meta_from_response(es_response)
+    list_of_ids = process_query_to_cache(query_hash, es_response, meta)
+
+  with cached_docs_lock:
+    records = [ cached_docs[_id] for _id in list_of_ids ]
+
+  records = [add_user_data_to_hit(r) for r in records]
+  return records, meta
+
+# def test_hash_speed():
+  # {'size': 10, 'query': {'match_all': {}}, 'sort': [{'updated': {'order': 'desc'}}], 'from': 0}
+
+# -----------------------------------------------------------------------------
+# Build and filter query
+# -----------------------------------------------------------------------------
+
+def cat_filter(groups_of_cats):
+    filt_q = Q()
+    for group in groups_of_cats:
+      if len(group)==1:
+        filt_q = filt_q & Q('term', tags__term__raw=group[0])
+      elif len(group) > 1:
+        # perform an OR filter among the different categories in this group                
+        filt_q = filt_q & Q('terms', tags__term__raw=group)
+
+    return filt_q
+
+def prim_filter(prim_cat):
+    filt_q = Q()
+    if prim_cat is not "any":
+      filt_q = Q('term', arxiv_primary_category__term__raw=prim_cat)
+    return filt_q
+
+def time_filter(time):
+  filt_q = Q()
+  if time == "all":
+    return filt_q
+  if time in ["3days" , "week" , "day" , "month" , "year"]:
+      filt_q = filt_q & getTimeFilterQuery(time)
+  else:
+      filt_q = filt_q &  Q('range', updated={'gte': time['start'] })
+      filt_q = filt_q &  Q('range', updated={'lte': time['end'] })
+  return filt_q
+
+def ver_filter(v1):
+    filt_q = Q()
+    if v1:
+      filt_q = filt_q & Q('term', paperversion=1)
+    return filt_q
+
+
+def build_query(query_info):
+  query_info = sanitize_query_object(query_info)
+  search = Search(using=es, index='arxiv')
+  SORT_QUERY = 1
+  SORT_LIB = 2
+  SORT_DATE = 3
+
+  # author stuff not implemented yet
+
+  sort_auth = False
+  sort = SORT_DATE
+  #step 1: determine sorting
+  if 'query' in query_info:
+    if query_info['query'].strip() is not '':
+      sort = SORT_QUERY
+  elif 'sort' in query_info:
+    if query_info['sort'] == "relevance":
+      sort = SORT_LIB
+    elif query_info['sort'] == "date":
+      sort = SORT_DATE
+  
+  if 'author' in query_info:
+    if query_info['author'].strip() is not '':
+      sort_auth = True
+
+  # add filters
+  Q_cat = Q()
+  if 'category' in query_info:
+    Q_cat = cat_filter(query_info['category'])
+  
+  Q_prim = Q()
+  if 'primaryCategory' in query_info:
+    Q_prim = prim_filter(query_info['primaryCategory'])
+
+  Q_time = Q()
+  if 'time' in query_info:
+    Q_time = time_filter(query_info['time'])
+    
+  Q_v1 = Q()
+  if 'v1' in query_info:
+    Q_v1= ver_filter(query_info['v1'])
+  
+  search = search.post_filter(Q_cat & Q_prim & Q_time & Q_v1)
+  
+  # add sort
+  if sort == SORT_QUERY:
+    q = query_info['query'].strip()
+    search = search.query(MultiMatch( query=q, type = 'most_fields', \
+      fields=['title','summary', 'fulltext', 'all_authors', '_id']))
+  elif sort == SORT_DATE:
+    search = search.sort('-updated')
+  elif sort == SORT_LIB:
+    search = add_rec_query(search)
+
+
+  # define aggregations
+  prim_agg = A('terms', field='arxiv_primary_category.term.raw')
+  prim_filt = A('filter', filter=(Q_cat & Q_time & Q_v1) )
+  search.aggs.bucket("prim_filt",prim_filt).bucket("prim_agg", prim_agg)
+
+  year_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1))
+  year_agg = A('date_histogram', field='published', interval="year")
+  search.aggs.bucket('year_filt', year_filt).bucket('year_agg', year_agg)
+
+  in_filt = A('filter', filter=(Q_prim & Q_time & Q_v1))
+  in_agg = A('terms', field='tags.term.raw')
+  search.aggs.bucket('in_filt', in_filt).bucket('in_agg',in_agg)
+
+  time_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1))
+  cutoffs = getTimesForFilters()
+  
+  time_agg = A('date_range', field='updated', ranges = [{"to" : "now", "key" : "alltime"}, \
+                                                              {"from" : cutoffs["year"], "key" : "year"}, \
+                                                              {"from" : cutoffs["month"], "key" : "month"}, \
+                                                              {"from" : cutoffs["week"], "key" : "week"}, \
+                                                              {"from" : cutoffs["3days"], "key" : "3days"}, \
+                                                              {"from" : cutoffs["day"], "key" : "day"}])
+  search.aggs.bucket('time_filt', time_filt).bucket('time_agg', time_agg)
+
+  return search
+
+
+def get_meta_from_response(response):
+  meta = dict(tot_num_papers=response.hits.total)
+  if "aggregations" in response:
+    if "year_filt" in response.aggregations:
+      date_hist_data = []
+      for x in response.aggregations.year_filt.year_agg.buckets:
+        time = round(x.key/1000)
+        bucket = dict(time=time, num_results = x.doc_count)
+        date_hist_data.append(bucket)
+      meta["date_hist_data"] = date_hist_data
+    if "prim_filt" in response.aggregations:
+      prim_data =[]
+      for prim in response.aggregations.prim_filt.prim_agg.buckets:
+        bucket = dict(category=prim.key,num_results=prim.doc_count)
+        prim_data.append(bucket)
+      meta["prim_data"] = prim_data
+
+    if "in_filt" in response.aggregations:
+      in_data =[]
+      for buck in response.aggregations.in_filt.in_agg.buckets:
+        bucket = dict(category=buck.key,num_results=buck.doc_count)
+        in_data.append(bucket)
+      meta["in_data"] = in_data
+    if "time_filt" in response.aggregations:
+      time_filter_data =[]
+      for buck in response.aggregations.time_filt.time_agg.buckets:
+        bucket = dict(time_range=buck.key,num_results=buck.doc_count)
+        time_filter_data.append(bucket)
+      meta["time_filter_data"] = time_filter_data
+  return meta
+
+
+@app.route('/_getpapers', methods=['POST'])
+def _getpapers():
+  print("getting papers")
+  data = request.get_json()
+  start = data['start_at']
+  number = data['num_get']
+  dynamic = data['dyn']
+  query_info = data['query']
+
+  #need to build the query from the info given here
+  search = build_query(query_info)
+
+  search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+  search = search[start:start+number]
+
+  log_dict = {}
+  log_dict.update(search= search.to_dict())
+  log_dict.update(client_ip = request.remote_addr)
+  log_dict.update(client_route = request.access_route)
+  if 'X-Real-IP' in request.headers:
+    log_dict.update(client_x_real_ip = request.headers['X-Real-IP'])
+
+  access_log.info("ES search request", extra=log_dict )
+  # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
+  papers, meta = getResults(search)
+
+  return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number, meta=meta))
+
+
+#----------------------------------------------------------------
+# Sanitize data from the client
+#----------------------------------------------------------------
 
 # from
 # https://gist.github.com/eranhirs/5c9ef5de8b8731948e6ed14486058842
@@ -161,6 +431,267 @@ def sanitize_string(text):
   # Escape odd quotes
   quote_count = text.count('"')
   return re.sub(r'(.*)"(.*)', r'\1\"\2', text) if quote_count % 2 == 1 else text
+
+
+
+def san_dict_value(dictionary, key, typ, valid_options):
+    if key in dictionary:
+      value = dictionary[key]
+      if not isinstance(value, typ):
+        dictionary.pop(key, None)
+      elif not (value in valid_options):
+          dictionary.pop(key,None)
+    return dictionary
+
+def san_dict_bool(dictionary, key):
+    if key in dictionary:
+      value = dictionary[key]
+      if not isinstance(value, bool):
+        dictionary.pop(key, None)
+    return dictionary
+
+def san_dict_str(dictionary, key):
+    if key in dictionary:
+      value = dictionary[key]
+      if not isinstance(value, str):
+        dictionary.pop(key, None)
+      else:
+        dictionary[key] = sanitize_string(value)
+    return dictionary
+
+def san_dict_int(dictionary, key):
+    if key in dictionary:
+      value = dictionary[key]
+      if not isinstance(value, int):
+        dictionary.pop(key, None)
+    return dictionary
+
+def san_dict_keys(dictionary, valid_keys):
+  dictionary = { key: dictionary[key] for key in valid_keys if key in dictionary}
+  return dictionary
+
+def valid_list_of_cats(group):
+  valid_list = True
+  if not isinstance(group, list):
+    valid_list = False
+  else:
+    valid_list = all( [g in ALL_CATEGORIES for g in group])
+  return valid_list
+
+def sanitize_query_object(query_info):
+  valid_keys = ['query', 'sort', 'category', 'time', 'primaryCategory', 'author',' v1']
+  query_info = san_dict_keys(query_info, valid_keys)
+
+  if 'category' in query_info:
+    cats = query_info['category']
+    if not isinstance(cats,list):
+      query_info.pop('category')
+    for group in cats:
+      if not valid_list_of_cats(group):
+        cats.remove(group)
+
+
+  query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
+
+  query_info = san_dict_str(query_info, 'query')
+
+  query_info = san_dict_str(query_info, 'author')
+
+  query_info = san_dict_value(query_info, 'sort', str, ["relevance","date"])
+
+  query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
+  
+  query_info = san_dict_bool(query_info, 'v1')
+  
+  if 'time' in query_info:
+    time = query_info['time']
+    if isinstance(time, dict):
+        time = san_dict_keys(time, ['start','end'])
+        time = san_dict_int(time, 'start')
+        time = san_dict_int(time, 'end')
+        if not ( ('start' in time) and ('end' in time)):
+          query_info.pop('time',None)
+    else:
+      valid_times = ["3days" , "week" , "day" , "all" , "month" , "year"]
+      query_info = san_dict_value(query_info, 'time', str, valid_times)
+  return query_info
+
+#--------------------------------------------------------
+# Caching
+#--------------------------------------------------------
+
+def make_hash(o):
+
+  """
+  Makes a hash from a dictionary, list, tuple or set to any level, that contains
+  only other hashable types (including any lists, tuples, sets, and
+  dictionaries).
+  """
+
+  if isinstance(o, (set, tuple, list)):
+
+    return tuple([make_hash(e) for e in o])    
+
+  elif not isinstance(o, dict):
+
+    return hash(o)
+
+  new_o = copy.deepcopy(o)
+  for k, v in new_o.items():
+    new_o[k] = make_hash(v)
+
+  return hash(tuple(frozenset(sorted(new_o.items()))))
+
+
+
+def process_query_to_cache(query_hash, es_response, meta):
+  list_of_ids = []
+
+  for record in es_response:
+    _id = record.meta.id
+
+    list_of_ids.append(_id)
+    with cached_docs_lock:
+      if _id not in cached_docs:
+        cached_docs[_id] = encode_hit(record)
+
+
+  with cached_queries_lock:
+    cached_queries[query_hash] =  dict(list_of_ids=list_of_ids,meta=meta)
+
+  return list_of_ids
+
+
+
+def addUserSearchesToCache():
+  if AUTO_CACHE:
+    # if 'user_id' not in session:
+      # return False
+    if not g.user:
+      return False
+    
+    uid = session['user_id']
+    with list_of_users_lock:
+      if uid in list_of_users_cached:
+        return False
+      print('adding user %d to cache' % uid)
+      list_of_users_cached.append(uid)
+    ttstrs = {'day', '3days', 'week', 'month', 'alltime','none'}
+
+    # search = Search(using=es, index="arxiv")
+
+    svm = papers_from_svm()
+    if svm:
+      searches = [svm, svm.filter('term', paperversion=1)]
+      pages = [(0,10)]
+      for s in searches:
+        for p in pages:
+            for ttstr in ttstrs:
+              s2 = applyTimeFilter(s,ttstr)
+              s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+              s2 = s2[p[0]:p[1]]
+              async_add_to_cache(s2)
+
+    lib = papers_from_library()
+    if lib:
+      searches = [lib.sort('-updated')]
+      pages = [(0,10),(10,15),(15,20),(20,25)]
+      for s in searches:
+        for p in pages:
+          s2 = s.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+          s2 = s2[p[0]:p[1]]
+          async_add_to_cache(s2)
+  return AUTO_CACHE
+
+def addDefaultSearchesToCache():
+  if AUTO_CACHE:
+    search = Search(using=es, index="arxiv")
+    ttstrs = {'day', '3days', 'week', 'month', 'year', 'alltime', 'none'}
+    searches = [search.sort('-updated'), search.filter('term', paperversion=1).sort('-published')]
+    pages = [(0,10),(10,15),(15,20),(20,25),(25,30),(35,40),(45,50)]
+    for s in searches:
+      for p in pages:
+        for ttstr in ttstrs:
+          s2 = applyTimeFilter(s,ttstr)
+          s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+          s2 = s2[p[0]:p[1]]
+          async_add_to_cache(s2)
+  return AUTO_CACHE
+ 
+
+def async_add_to_cache(search):
+  search_dict = search.to_dict()
+  query_hash = make_hash(search_dict)
+  with cached_queries_lock:
+    check_in  = query_hash in cached_queries
+  if not check_in:
+    t = threading.Thread(target=add_to_cache, args=(query_hash, search), daemon=True)
+    t.start()
+
+
+
+
+def add_to_cache(query_hash, search):
+  with es_query_semaphore:
+    es_response = search.execute()
+  meta = get_meta_from_response(es_response)
+  process_query_to_cache(query_hash, es_response, meta)
+
+
+@app.route('/_invalidate_cache')
+def _invalidate_cache():
+  secret = request.args.get('secret', False)
+  if secret == cache_key:
+    print('successfully invalidated cache')
+    flash('successfully invalidated cache')
+    global cached_queries
+    with cached_queries_lock:
+      cached_queries = {}
+    global list_of_users_cached
+    with list_of_users_lock:
+      list_of_users_cached = []
+
+    global cached_docs
+    with cached_docs_lock:
+      cached_docs = {}
+    addDefaultSearchesToCache()
+
+  return redirect(url_for('intmain'))
+
+#-------------------------------------------------
+# Old search functions
+#-------------------------------------------------
+
+def countpapers():
+  s = Search(using=es, index="arxiv")
+  return s.count()
+
+# def getrecentpapers():
+#   session['recent_sort'] = True
+#   s = Search(using=es, index="arxiv")
+#   return s
+
+
+
+
+def getpapers(pidlist):
+  search = Search(using = es, index='arxiv').update_from_dict({'query': {
+      "ids" : {
+        "type" : "paper",
+        "values" : pidlist
+    }
+    }
+  })
+  session['recent_sort'] = True
+  # print(pidlist)
+  return search
+
+
+def getpaper(pid):
+  return Search(using=es, index="arxiv").query("match", _id=pid)
+
+def isvalid(pid):
+  return not (getpaper(pid).count() == 0)
 
 
 def makepaperdict(pid):
@@ -251,257 +782,16 @@ def papers_from_svm():
   return out
 
 
-
-def render_date(timestr):
-  timestruct = dateutil.parser.parse(timestr)
-  rendered_str = '%s %s %s' % (timestruct.day, timestruct.strftime('%b'), timestruct.year)
-  return rendered_str
+#---------------------------------------------
+# Old pages and endpoints
+#----------------------------------------
 
 
-def encode_hit(p, send_images=True, send_abstracts=True):
-  pid = str(p['_rawid'])
-  idvv = '%sv%d' % (p['_rawid'], p['paperversion'])
-  struct = {}
-  struct['title'] = p['title']
-  struct['pid'] = idvv
-  struct['rawpid'] = p['_rawid']
-  struct['category'] = p['arxiv_primary_category']['term']
-  struct['authors'] = [a['name'] for a in p['authors']]
-  struct['link'] = p['link']
-  if send_abstracts:
-    struct['abstract'] = p['summary']
-  if send_images:
-    # struct['img'] = '/static/thumbs/' + idvv.replace('/','') + '.pdf.jpg'
-    struct['img'] = CLOUDFRONT_URL + 'thumbs/' + pid.replace('/','') + '.pdf.jpg'
-  struct['tags'] = [t['term'] for t in p['tags'] if isTag(t['term'])]
-  # struct['tags'] = [t['term'] for t in p['tags']]
+def default_context(**kws):
   
-  # render time information nicely
-  struct['published_time'] = render_date(p['updated'])
-  struct['originally_published_time'] = render_date(p['published'])
-
-  # fetch amount of discussion on this paper
-  struct['num_discussion'] = 0
-
-  # arxiv comments from the authors (when they submit the paper)
-  # cc = p.get('arxiv_comment', '')
-  try:
-    cc  = p['arxiv_comment']
-  except Exception as e:
-    cc = ""
-
-  if len(cc) > 100:
-    cc = cc[:100] + '...' # crop very long comments
-  struct['comment'] = cc
-  return struct
-
-def add_user_data_to_hit(struct):
-  libids = set()
-  if g.libids:
-    libids = set(g.libids)
-  
-  struct['in_library'] = 1 if struct['rawpid'] in libids else 0
-  return struct
-
-
-def make_hash(o):
-
-  """
-  Makes a hash from a dictionary, list, tuple or set to any level, that contains
-  only other hashable types (including any lists, tuples, sets, and
-  dictionaries).
-  """
-
-  if isinstance(o, (set, tuple, list)):
-
-    return tuple([make_hash(e) for e in o])    
-
-  elif not isinstance(o, dict):
-
-    return hash(o)
-
-  new_o = copy.deepcopy(o)
-  for k, v in new_o.items():
-    new_o[k] = make_hash(v)
-
-  return hash(tuple(frozenset(sorted(new_o.items()))))
-
-
-
-
-def getResults2(search):
-  search_dict = search.to_dict()
-  query_hash = make_hash(search_dict)
-  have = False
-
-  with cached_queries_lock:
-    if query_hash in cached_queries:
-      d = cached_queries[query_hash]
-      list_of_ids = d["list_of_ids"]
-      meta = d["meta"]
-      have = True
-
-  if not have:
-    es_response = search.execute()
-    meta = get_meta_from_response(es_response)
-    list_of_ids = process_query_to_cache(query_hash, es_response, meta)
-
-  with cached_docs_lock:
-    records = [ cached_docs[_id] for _id in list_of_ids ]
-
-  records = [add_user_data_to_hit(r) for r in records]
-  return records, meta
-
-def process_query_to_cache(query_hash, es_response, meta):
-  list_of_ids = []
-
-  for record in es_response:
-    _id = record.meta.id
-
-    list_of_ids.append(_id)
-    with cached_docs_lock:
-      if _id not in cached_docs:
-        cached_docs[_id] = encode_hit(record)
-
-
-  with cached_queries_lock:
-    cached_queries[query_hash] =  dict(list_of_ids=list_of_ids,meta=meta)
-
-  return list_of_ids
-
-
-
-def addUserSearchesToCache():
-  if AUTO_CACHE:
-    # if 'user_id' not in session:
-      # return False
-    if not g.user:
-      return False
-    
-    uid = session['user_id']
-    with list_of_users_lock:
-      if uid in list_of_users_cached:
-        return False
-      print('adding user %d to cache' % uid)
-      list_of_users_cached.append(uid)
-    ttstrs = {'day', '3days', 'week', 'month', 'alltime','none'}
-
-    # search = Search(using=es, index="arxiv")
-
-    svm = papers_from_svm()
-    if svm:
-      searches = [svm, svm.filter('term', paperversion=1)]
-      pages = [(0,10)]
-      for s in searches:
-        for p in pages:
-            for ttstr in ttstrs:
-              s2 = applyTimeFilter(s,ttstr)
-              s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-              s2 = s2[p[0]:p[1]]
-              async_add_to_cache(s2)
-
-    lib = papers_from_library()
-    if lib:
-      searches = [lib.sort('-updated')]
-      pages = [(0,10),(10,15),(15,20),(20,25)]
-      for s in searches:
-        for p in pages:
-          s2 = s.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-          s2 = s2[p[0]:p[1]]
-          async_add_to_cache(s2)
-  return AUTO_CACHE
-
-def addDefaultSearchesToCache():
-  if AUTO_CACHE:
-    search = Search(using=es, index="arxiv")
-    ttstrs = {'day', '3days', 'week', 'month', 'year', 'alltime', 'none'}
-    searches = [search.sort('-updated'), search.filter('term', paperversion=1).sort('-published')]
-    pages = [(0,10),(10,15),(15,20),(20,25),(25,30),(35,40),(45,50)]
-    for s in searches:
-      for p in pages:
-        for ttstr in ttstrs:
-          s2 = applyTimeFilter(s,ttstr)
-          s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-          s2 = s2[p[0]:p[1]]
-          async_add_to_cache(s2)
-  return AUTO_CACHE
- 
-
-def async_add_to_cache(search):
-  search_dict = search.to_dict()
-  query_hash = make_hash(search_dict)
-  with cached_queries_lock:
-    check_in  = query_hash in cached_queries
-  if not check_in:
-    t = threading.Thread(target=add_to_cache, args=(query_hash, search), daemon=True)
-    t.start()
-
-
-
-
-def add_to_cache(query_hash, search):
-  # search = search.params(request_timeout=60)
-  with es_query_semaphore:
-    es_response = search.execute()
-  meta = get_meta_from_response(es_response)
-
-  # with cached_queries_lock:
-  process_query_to_cache(query_hash, es_response, meta)
-    # cached_queries[h] = results
-    # print(len(cached_queries))
-    # print('async added %d' % h)
-
-@app.route('/_invalidate_cache')
-def _invalidate_cache():
-  secret = request.args.get('secret', False)
-  if secret == cache_key:
-    print('successfully invalidated cache')
-    flash('successfully invalidated cache')
-    global cached_queries
-    with cached_queries_lock:
-      cached_queries = {}
-    global list_of_users_cached
-    with list_of_users_lock:
-      list_of_users_cached = []
-
-    global cached_docs
-    with cached_docs_lock:
-      cached_docs = {}
-    addDefaultSearchesToCache()
-
-  return redirect(url_for('intmain'))
-# def test_hash_speed():
-  # {'size': 10, 'query': {'match_all': {}}, 'sort': [{'updated': {'order': 'desc'}}], 'from': 0}
-# -----------------------------------------------------------------------------
-# flask request handling
-# -----------------------------------------------------------------------------
-
-def default_context(search, **kws):
-  search = False
-  if search:
-    # search = apply_global_filters(search)
-    num_hits = search.count()
-    session['search_obj'] = search.to_dict()
-    print(search.to_dict())
-    print(num_hits)
-    # search = Search(using=es, index='arxiv').update_from_dict(session['search_obj'])
-    search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-    search = search[0:10]
-   
-
-    papers, meta = getResults2(search)
-    # papers = encode_json(response)
-
-    first_papers = dict(papers=papers,dynamic=True)
-
-
-  else:
-    num_hits = 0
-    session['search_obj'] = {}
-    first_papers = dict(papers={},dynamic=False)
-  # else:
-    # num_hits = 0
-
+  num_hits = 0
+  session['search_obj'] = {}
+  first_papers = dict(papers={},dynamic=False)
   
   tot_papers = countpapers()
   if 'msg' in kws:
@@ -513,314 +803,175 @@ def default_context(search, **kws):
   ans.update(kws)
   return ans
 
-def cat_filter(groups_of_cats):
-    filt_q = Q()
-    for group in groups_of_cats:
-      if len(group)==1:
-        filt_q = filt_q & Q('term', tags__term__raw=group[0])
-      elif len(group) > 1:
-        # perform an OR filter among the different categories in this group                
-        filt_q = filt_q & Q('terms', tags__term__raw=group)
+@app.route("/")
+def intmain():
+  ctx = default_context(render_format='recent',
+                        msg='Most recent papers:')
+  return render_template('main.html', **ctx)
 
-    return filt_q
 
-def prim_filter(prim_cat):
-    filt_q = Q()
-    if prim_cat is not "any":
-      filt_q = Q('term', arxiv_primary_category__term__raw=prim_cat)
-    return filt_q
+@app.route("/<request_cat>/<request_pid>")
+def rankold(request_cat,request_pid):
+  request_pid =  request_cat+"/"+request_pid
+  if not isvalidid(request_pid):
+    return '' # these are requests for icons, things like robots.txt, etc
+  search = papers_similar(request_pid)
+  ctx = default_context(render_format='paper')
+  return render_template('main.html', **ctx)
 
-def time_filter(time):
-  filt_q = Q()
-  if time == "all":
-    return filt_q
-  if time in ["3days" , "week" , "day" , "month" , "year"]:
-      filt_q = filt_q & getTimeFilterQuery(time)
+@app.route("/<request_pid>")
+def rank(request_pid=None):
+  if not isvalidid(request_pid):
+    return '' # these are requests for icons, things like robots.txt, etc
+  search = papers_similar(request_pid)
+  ctx = default_context(render_format='paper')
+  return render_template('main.html', **ctx)
+
+
+
+
+#------------------------------------------------- 
+# Recs and account
+#------------------------------------------------- 
+@app.route('/recommend', methods=['GET'])
+def recommend():
+  ctx = default_context(render_format='recommend',
+                        msg='Sorting by personalized relevance:' if g.user else 'You must be logged in and have some papers saved in your library.')
+  return render_template('main.html', **ctx)
+
+@app.route('/library')
+def library():
+  """ render user's library """
+  papers = papers_from_library()
+  # papers = papers.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+
+  num_papers = papers.count()
+  if g.user:
+    msg = '%d papers in your library:' % (num_papers, )
   else:
-      filt_q = filt_q &  Q('range', updated={'gte': time['start'] })
-      filt_q = filt_q &  Q('range', updated={'lte': time['end'] })
-  return filt_q
+    msg = 'You must be logged in. Once you are, you can save papers to your library (with the save icon on the right of each paper) and they will show up here.'
+  ctx = default_context(render_format='library', msg=msg)
+  return render_template('main.html', **ctx)
 
-def ver_filter(v1):
-    filt_q = Q()
-    if v1:
-      filt_q = filt_q & Q('term', paperversion=1)
-    return filt_q
+@app.route('/libtoggle', methods=['POST'])
+def review():
+  """ user wants to toggle a paper in his library """
+  
+  # make sure user is logged in
+  if not g.user:
+    return 'NO' # fail... (not logged in). JS should prevent from us getting here.
 
-def san_dict_value(dictionary, key, typ, valid_options):
-    if key in dictionary:
-      value = dictionary[key]
-      if not isinstance(value, typ):
-        dictionary.pop(key, None)
-      elif not (value in valid_options):
-          dictionary.pop(key,None)
-    return dictionary
+  idvv = request.form['pid'] # includes version
+  if not isvalidid(idvv):
+    return 'NO' # fail, malformed id. weird.
+  pid = strip_version(idvv)
+  if not isvalid(pid):
+    return 'NO' # we don't know this paper. wat
 
-def san_dict_bool(dictionary, key):
-    if key in dictionary:
-      value = dictionary[key]
-      if not isinstance(value, bool):
-        dictionary.pop(key, None)
-    return dictionary
+  uid = session['user_id'] # id of logged in user
 
-def san_dict_str(dictionary, key):
-    if key in dictionary:
-      value = dictionary[key]
-      if not isinstance(value, str):
-        dictionary.pop(key, None)
-      else:
-        dictionary[key] = sanitize_string(value)
-    return dictionary
+  # check this user already has this paper in library
+  record = query_db('''select * from library where
+          user_id = ? and paper_id = ?''', [uid, pid], one=True)
+  # print(record)
 
-def san_dict_int(dictionary, key):
-    if key in dictionary:
-      value = dictionary[key]
-      if not isinstance(value, int):
-        dictionary.pop(key, None)
-    return dictionary
-
-def san_dict_keys(dictionary, valid_keys):
-  dictionary = { key: dictionary[key] for key in valid_keys if key in dictionary}
-  return dictionary
-
-def valid_list_of_cats(group):
-  valid_list = True
-  if not isinstance(group, list):
-    valid_list = False
+  ret = 'NO'
+  if record:
+    # record exists, erase it.
+    g.db.execute('''delete from library where user_id = ? and paper_id = ?''', [uid, pid])
+    g.db.commit()
+    #print('removed %s for %s' % (pid, uid))
+    ret = 'OFF'
   else:
-    valid_list = all( [g in ALL_CATEGORIES for g in group])
-  return valid_list
+    # record does not exist, add it.
+    rawpid = strip_version(pid)
+    g.db.execute('''insert into library (paper_id, user_id, update_time) values (?, ?, ?)''',
+        [rawpid, uid, int(time.time())])
+    g.db.commit()
 
-def sanitize_query_object(query_info):
-  valid_keys = ['query', 'sort', 'category', 'time', 'primaryCategory', 'author',' v1']
-  query_info = san_dict_keys(query_info, valid_keys)
-
-  if 'category' in query_info:
-    cats = query_info['category']
-    if not isinstance(cats,list):
-      query_info.pop('category')
-    for group in cats:
-      if not valid_list_of_cats(group):
-        cats.remove(group)
-
-
-  query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
-
-
-  query_info = san_dict_str(query_info, 'query')
-
-  query_info = san_dict_str(query_info, 'author')
-
-  query_info = san_dict_value(query_info, 'sort', str, ["relevance","date"])
-
-  query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
+    #print('added %s for %s' % (pid, uid))
+    ret = 'ON'
   
-  query_info = san_dict_bool(query_info, 'v1')
+  with list_of_users_lock:
+    list_of_users_cached.remove(uid)
+  update_libids()
+  addUserSearchesToCache()
+
+  return ret
+
+
+@app.route('/account')
+def account():
+  return library()
+  # library()
+    # ctx = { 'totpapers': countpapers() }
+#     followers = []
+#     following = []
+#     # fetch all followers/following of the logged in user
+#     if g.user:
+#         username = get_username(session['user_id'])
+        
+#         # following_db = list(follow_collection.find({ 'who':username }))
+#         # for e in following_db:
+#             # following.append({ 'user':e['whom'], 'active':e['active'] })
+# # 
+#         # followers_db = list(follow_collection.find({ 'whom':username }))
+#         # for e in followers_db:
+#             # followers.append({ 'user':e['who'], 'active':e['active'] })
+# # 
+#     ctx['followers'] = followers
+#     ctx['following'] = following
+#     return render_template('account.html', **ctx)
+
+
+@app.route('/login', methods=['POST'])
+def login():
+  """ logs in the user. if the username doesn't exist creates the account """
   
-  if 'time' in query_info:
-    time = query_info['time']
-    if isinstance(time, dict):
-        time = san_dict_keys(time, ['start','end'])
-        time = san_dict_int(time, 'start')
-        time = san_dict_int(time, 'end')
-        if not ( ('start' in time) and ('end' in time)):
-          query_info.pop('time',None)
+  if not request.form['username']:
+    flash('You have to enter a username')
+  elif not request.form['password']:
+    flash('You have to enter a password')
+  elif get_user_id(request.form['username']) is not None:
+    # username already exists, fetch all of its attributes
+    user = query_db('''select * from user where
+          username = ?''', [request.form['username']], one=True)
+    if check_password_hash(user['pw_hash'], request.form['password']):
+      # password is correct, log in the user
+      session['user_id'] = get_user_id(request.form['username'])
+      added = addUserSearchesToCache()
+      if added:
+        print('addUser fired')
+      flash('User ' + request.form['username'] + ' logged in.')
     else:
-      valid_times = ["3days" , "week" , "day" , "all" , "month" , "year"]
-      query_info = san_dict_value(query_info, 'time', str, valid_times)
-  return query_info
+      # incorrect password
+      flash('User ' + request.form['username'] + ' already exists, wrong password.')
+  else:
+    # create account and log in
+    creation_time = int(time.time())
+    g.db.execute('''insert into user (username, pw_hash, creation_time) values (?, ?, ?)''',
+      [request.form['username'], 
+      generate_password_hash(request.form['password']), 
+      creation_time])
+    user_id = g.db.execute('select last_insert_rowid()').fetchall()[0][0]
+    g.db.commit()
 
-def build_query(query_info):
-  query_info = sanitize_query_object(query_info)
-  search = Search(using=es, index='arxiv')
-  SORT_QUERY = 1
-  SORT_LIB = 2
-  SORT_DATE = 3
-
-  # author stuff not implemented yet
-
-  sort_auth = False
-  sort = SORT_DATE
-  #step 1: determine sorting
-  if 'query' in query_info:
-    if query_info['query'].strip() is not '':
-      sort = SORT_QUERY
-  elif 'sort' in query_info:
-    if query_info['sort'] == "relevance":
-      sort = SORT_LIB
-    elif query_info['sort'] == "date":
-      sort = SORT_DATE
+    session['user_id'] = user_id
+    flash('New account %s created' % (request.form['username'], ))
   
-  if 'author' in query_info:
-    if query_info['author'].strip() is not '':
-      sort_auth = True
+  return redirect(url_for('intmain'))
 
-  # add filters
-  Q_cat = Q()
-  if 'category' in query_info:
-    Q_cat = cat_filter(query_info['category'])
-  
-  Q_prim = Q()
-  if 'primaryCategory' in query_info:
-    Q_prim = prim_filter(query_info['primaryCategory'])
+@app.route('/logout')
+def logout():
+  session.pop('user_id', None)
+  flash('You were logged out')
+  return redirect(url_for('intmain'))
 
-  Q_time = Q()
-  if 'time' in query_info:
-    Q_time = time_filter(query_info['time'])
-    
-  Q_v1 = Q()
-  if 'v1' in query_info:
-    Q_v1= ver_filter(query_info['v1'])
-  
-  search = search.post_filter(Q_cat & Q_prim & Q_time & Q_v1)
-  
-  # add sort
-
-  if sort == SORT_QUERY:
-    q = query_info['query'].strip()
-    search = search.query(MultiMatch( query=q, type = 'most_fields', \
-      fields=['title','summary', 'fulltext', 'all_authors', '_id']))
-  elif sort == SORT_DATE:
-    search = search.sort('-updated')
-  elif sort == SORT_LIB:
-    search = add_rec_query(search)
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
 
 
-  # define aggregations
-  prim_agg = A('terms', field='arxiv_primary_category.term.raw')
-  prim_filt = A('filter', filter=(Q_cat & Q_time & Q_v1) )
-  search.aggs.bucket("prim_filt",prim_filt).bucket("prim_agg", prim_agg)
-
-  year_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1))
-  year_agg = A('date_histogram', field='published', interval="year")
-  search.aggs.bucket('year_filt', year_filt).bucket('year_agg', year_agg)
-
-  in_filt = A('filter', filter=(Q_prim & Q_time & Q_v1))
-  in_agg = A('terms', field='tags.term.raw')
-  search.aggs.bucket('in_filt', in_filt).bucket('in_agg',in_agg)
-
-  time_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1))
-  cutoffs = getTimesForFilters()
-  
-  time_agg = A('date_range', field='updated', ranges = [{"to" : "now", "key" : "alltime"}, \
-                                                              {"from" : cutoffs["year"], "key" : "year"}, \
-                                                              {"from" : cutoffs["month"], "key" : "month"}, \
-                                                              {"from" : cutoffs["week"], "key" : "week"}, \
-                                                              {"from" : cutoffs["3days"], "key" : "3days"}, \
-                                                              {"from" : cutoffs["day"], "key" : "day"}])
-  search.aggs.bucket('time_filt', time_filt).bucket('time_agg', time_agg)
-
-  return search
-
-
-def get_meta_from_response(response):
-  meta = dict(tot_num_papers=response.hits.total)
-  if "aggregations" in response:
-    if "year_filt" in response.aggregations:
-      date_hist_data = []
-      for x in response.aggregations.year_filt.year_agg.buckets:
-        time = round(x.key/1000)
-        bucket = dict(time=time, num_results = x.doc_count)
-        date_hist_data.append(bucket)
-      meta["date_hist_data"] = date_hist_data
-    if "prim_filt" in response.aggregations:
-      prim_data =[]
-      for prim in response.aggregations.prim_filt.prim_agg.buckets:
-        bucket = dict(category=prim.key,num_results=prim.doc_count)
-        prim_data.append(bucket)
-      meta["prim_data"] = prim_data
-
-    if "in_filt" in response.aggregations:
-      in_data =[]
-      for buck in response.aggregations.in_filt.in_agg.buckets:
-        bucket = dict(category=buck.key,num_results=buck.doc_count)
-        in_data.append(bucket)
-      meta["in_data"] = in_data
-    if "time_filt" in response.aggregations:
-      time_filter_data =[]
-      for buck in response.aggregations.time_filt.time_agg.buckets:
-        bucket = dict(time_range=buck.key,num_results=buck.doc_count)
-        time_filter_data.append(bucket)
-      meta["time_filter_data"] = time_filter_data
-  return meta
-
-
-@app.route('/_getpapers', methods=['POST'])
-def _getpapers():
-  print("getting papers")
-  data = request.get_json()
-  start = data['start_at']
-  number = data['num_get']
-  dynamic = data['dyn']
-  query_info = data['query']
-
-  #need to build the query from the info given here
-  search = build_query(query_info)
-
-  search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-  search = search[start:start+number]
-  
-
-  
-  # search = add_aggs_to_search(search)
-  
-  # if start+number >= num_results:
-    # more = False
-  # else:
-    # more = True
-  log_dict = {}
-  log_dict.update(search= search.to_dict())
-  log_dict.update(client_ip = request.remote_addr)
-  log_dict.update(client_route = request.access_route)
-  if 'X-Real-IP' in request.headers:
-    log_dict.update(client_x_real_ip = request.headers['X-Real-IP'])
-
-  access_log.info("ES search request", extra=log_dict )
-  # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
-  papers, meta = getResults2(search)
-  # print(meta)
-  # print(len(response))
-  # papers = encode_json(response)
-  # print(papers)
-  return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number, meta=meta))
-  
-
-
-# @app.route('/_getresults', methods=['POST'])
-# def _getresults():
-#   if 'search_obj' in session:
-#     search_query = session['search_obj']
-#   else:
-#     search_query = getrecentpapers()
-#   data = request.get_json()
-#   start = data['start_at']
-#   number = data['num_get']
-#   # number = 5
-#   dynamic = data['dyn']
-#   search = Search(using=es, index='arxiv').update_from_dict(search_query)
-#   # num_results = search.count()
-
-#   search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-#   search = search[start:start+number]
-#   # if start+number >= num_results:
-#     # more = False
-#   # else:
-#     # more = True
-#   log_dict = {};
-#   log_dict.update(search= search.to_dict())
-#   log_dict.update(client_ip = request.remote_addr)
-#   log_dict.update(client_route = request.access_route)
-#   if 'X-Real-IP' in request.headers:
-#     log_dict.update(client_x_real_ip = request.headers['X-Real-IP'])
-
-#   access_log.info("ES search request", extra=log_dict )
-#   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
-#   papers, meta = getResults2(search)
-#   # print(len(response))
-#   # papers = encode_json(response)
-#   # print(papers)
-#   return jsonify(dict(papers=papers,dynamic=dynamic))
-  
 
 
 @app.route('/goaway', methods=['POST'])
@@ -833,6 +984,10 @@ def goaway():
     print('adding', uid, username, 'to goaway.')
     goaway_collection.insert_one({ 'uid':uid, 'time':int(time.time()) })
   return 'OK'
+
+#--------------------------------
+# Times and time filters
+#--------------------------------
 
 def getNextArXivPublishCutoff(time):
   dow = time.weekday()
@@ -945,7 +1100,7 @@ def getTimeFilterQuery(ttstr) :
   legend = {'day':1, '3days':3, 'week':5, 'month':30, 'year':365}
 
   if ttstr not in legend:
-    return search
+    return Q()
   # legend = {'new':1, 'recent':5, 'week':7, 'month':30, 'year':365}
 
   tt = legend.get(ttstr, 7)
@@ -956,492 +1111,6 @@ def getTimeFilterQuery(ttstr) :
 def applyTimeFilter(search, ttstr):
   return search.post_filter(getTimeFilterQuery(ttstr))
 
-def apply_global_filters(search):
-  vstr = request.args.get('vfilter', 'all')
-  rsort = session.get('recent_sort', False)
-
-  if rsort:
-    search = search.sort('-updated')
-  if vstr == '1':
-    search = search.filter('term', paperversion=1)
-    if rsort:
-      search = search.sort('-published')
-  
-  ttstr = request.args.get('timefilter', 'none') # default is none
-  search = applyTimeFilter(search, ttstr)
-
-  CLstr = request.args.get('cl', 'allow') # default is allow crosslists
-  cat_str = request.args.get('cat', 'quant-ph') # default is quant-ph
-
-  if CLstr == 'deny':
-    search = search.filter('term', arxiv_primary_category__term__raw=cat_str)
-    # search = search.update_from_dict({
-    #  "filter": {
-    #   "term": {
-    #     "arxiv_primary_category.term.raw": cat_str
-    #   }
-    # }})
-
-  return search
-
-def countpapers():
-  s = Search(using=es, index="arxiv")
-  return s.count()
-
-def getrecentpapers():
-  session['recent_sort'] = True
-  s = Search(using=es, index="arxiv")
-  return s
-
-@app.route("/")
-def intmain():
-  search = getrecentpapers()
-
-  ctx = default_context(search, render_format='recent',
-                        msg='Most recent papers:')
-  return render_template('main.html', **ctx)
-
-
-@app.route("/<request_cat>/<request_pid>")
-def rankold(request_cat,request_pid):
-  request_pid =  request_cat+"/"+request_pid
-  if not isvalidid(request_pid):
-    return '' # these are requests for icons, things like robots.txt, etc
-  search = papers_similar(request_pid)
-  ctx = default_context(search, render_format='paper')
-  return render_template('main.html', **ctx)
-
-@app.route("/<request_pid>")
-def rank(request_pid=None):
-  if not isvalidid(request_pid):
-    return '' # these are requests for icons, things like robots.txt, etc
-  search = papers_similar(request_pid)
-  ctx = default_context(search, render_format='paper')
-  return render_template('main.html', **ctx)
-
-
-def getpapers(pidlist):
-  search = Search(using = es, index='arxiv').update_from_dict({'query': {
-      "ids" : {
-        "type" : "paper",
-        "values" : pidlist
-    }
-    }
-  })
-  session['recent_sort'] = True
-  # print(pidlist)
-  return search
-
-
-def getpaper(pid):
-  return Search(using=es, index="arxiv").query("match", _id=pid)
-
-def isvalid(pid):
-  return not (getpaper(pid).count() == 0)
-
-# @app.route('/discuss', methods=['GET'])
-# def discuss():
-#   """ return discussion related to a paper """
-#   pid = request.args.get('id', '') # paper id of paper we wish to discuss
-#   p = getpaper(pid);
-#   if p is None:
-#     papers = []
-#   else:
-#     papers = [p];
-
-#   # fetch the comments
-#   comms_cursor = comments.find({ 'pid':pid }).sort([('time_posted', pymongo.DESCENDING)])
-#   comms = list(comms_cursor)
-#   for c in comms:
-#     c['_id'] = str(c['_id']) # have to convert these to strs from ObjectId, and backwards later http://api.mongodb.com/python/current/tutorial.html
-
-#   # fetch the counts for all tags
-#   tag_counts = []
-#   for c in comms:
-#     cc = [tags_collection.count({ 'comment_id':c['_id'], 'tag_name':t }) for t in TAGS]
-#     tag_counts.append(cc);
-
-#   # and render
-#   ctx = default_context(papers, render_format='default', comments=comms, gpid=pid, tags=TAGS, tag_counts=tag_counts)
-#   return render_template('discuss.html', **ctx)
-
-# @app.route('/comment', methods=['POST'])
-# def comment():
-#   """ user wants to post a comment """
-#   anon = int(request.form['anon'])
-
-#   if g.user and (not anon):
-#     username = get_username(session['user_id'])
-#   else:
-#     # generate a unique username if user wants to be anon, or user not logged in.
-#     username = 'anon-%s-%s' % (str(int(time.time())), str(randrange(1000)))
-
-#   # process the raw pid and validate it, etc
-#   try:
-#     pid = request.form['pid']
-#     if not isvalid(pid): raise Exception("invalid pid")
-#     version = getpaper(pid)['paperversion'] # most recent version of this paper
-#   except Exception as e:
-#     print(e)
-#     return 'bad pid. This is most likely Andrej\'s fault.'
-
-#   # create the entry
-#   entry = {
-#     'user': username,
-#     'pid': pid, # raw pid with no version, for search convenience
-#     'version': version, # version as int, again as convenience
-#     'conf': request.form['conf'],
-#     'anon': anon,
-#     'time_posted': time.time(),
-#     'text': request.form['text'],
-#   }
-
-#   # enter into database
-#   # print(entry)
-#   comments.insert_one(entry)
-#   return 'OK'
-
-# @app.route("/discussions", methods=['GET'])
-# def discussions():
-#   # return most recently discussed papers
-#   comms_cursor = comments.find().sort([('time_posted', pymongo.DESCENDING)]).limit(100)
-
-#   # get the (unique) set of papers.
-#   papers = []
-#   have = set()
-#   for e in comms_cursor:
-#     pid = e['pid']
-#     if isvalid(pid) and not pid in have:
-#       have.add(pid)
-#       papers.append(getpaper(pid))
-
-#   ctx = default_context(papers, render_format="discussions")
-#   return render_template('main.html', **ctx)
-
-# @app.route('/toggletag', methods=['POST'])
-# def toggletag():
-
-#   if not g.user: 
-#     return 'You have to be logged in to tag. Sorry - otherwise things could get out of hand FAST.'
-
-#   # get the tag and validate it as an allowed tag
-#   tag_name = request.form['tag_name']
-#   if not tag_name in TAGS:
-#     print('tag name %s is not in allowed tags.' % (tag_name, ))
-#     return "Bad tag name. This is most likely Andrej's fault."
-
-#   pid = request.form['pid']
-#   comment_id = request.form['comment_id']
-#   username = get_username(session['user_id'])
-#   time_toggled = time.time()
-#   entry = {
-#     'username': username,
-#     'pid': pid,
-#     'comment_id': comment_id,
-#     'tag_name': tag_name,
-#     'time': time_toggled,
-#   }
-
-#   # remove any existing entries for this user/comment/tag
-#   result = tags_collection.delete_one({ 'username':username, 'comment_id':comment_id, 'tag_name':tag_name })
-#   if result.deleted_count > 0:
-#     print('cleared an existing entry from database')
-#   else:
-#     print('no entry existed, so this is a toggle ON. inserting:')
-#     # print(entry)
-#     tags_collection.insert_one(entry)
-#   return 'OK'
-
-# @app.route("/search", methods=['GET'])
-# def search():
-#   q = request.args.get('q', '') # get the search request
-#   search = papers_search(q) # perform the query and get sorted documents
-#   ctx = default_context(search, render_format="search")
-#   return render_template('main.html', **ctx)
-
-@app.route('/recommend', methods=['GET'])
-def recommend():
-  """ return user's svm sorted list """
-  # ttstr = request.args.get('timefilter', 'week') # default is week
-  # vstr = request.args.get('vfilter', 'all') # default is all (no filter)
-  # legend = {'day':1, '3days':3, 'week':7, 'month':30, 'year':365}
-  # tt = legend.get(ttstr, None)
-  # if g.user:
-  papers = papers_from_svm()
-  if not papers:
-    papers = []
-  # papers = papers_filterpaperversion(papers, vstr)
-  ctx = default_context(papers, render_format='recommend',
-                        msg='Sorting by personalized relevance:' if g.user else 'You must be logged in and have some papers saved in your library.')
-  return render_template('main.html', **ctx)
-
-
-# @app.route('/top', methods=['GET'])
-# def top():
-#   """ return top papers """
-#   # ttstr = request.args.get('timefilter', 'week') # default is week
-#   # legend = {'day':1, '3days':3, 'week':7, 'month':30, 'year':365, 'alltime':10000}
-#   # tt = legend.get(ttstr, 7)
-#   # curtime = int(time.time()) # in seconds
-
-#   # mint =curtime - tt*24*60*60;
-
-#   # search = Search(using=es).sort('-libcount').filter('range', time_published={'gte': mint })
-
-
-#   ctx = default_context(search, render_format='top',
-#                         msg="")
-#   return render_template('main.html', **ctx)
-
-# @app.route('/toptwtr', methods=['GET'])
-# def toptwtr():
-#   """ return top papers """
-#   ttstr = request.args.get('timefilter', 'day') # default is day
-#   tweets_top = {'day':tweets_top1, 'week':tweets_top7, 'month':tweets_top30}[ttstr]
-#   cursor = tweets_top.find().sort([('vote', pymongo.DESCENDING)]).limit(100)
-#   papers, tweets = [], []
-#   for rec in cursor:
-#     if isvalid(rec['pid']):
-#       papers.append(getpaper(rec['pid']))
-#       tweet = {k:v for k,v in rec.items() if k != '_id'}
-#       tweets.append(tweet)
-#   ctx = default_context(papers, render_format='toptwtr', tweets=tweets,
-#                         msg='Top papers mentioned on Twitter over last ' + ttstr + ':')
-#   return render_template('main.html', **ctx)
-
-@app.route('/library')
-def library():
-  """ render user's library """
-  papers = papers_from_library()
-  # papers = papers.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-
-  num_papers = papers.count()
-  if g.user:
-    msg = '%d papers in your library:' % (num_papers, )
-  else:
-    msg = 'You must be logged in. Once you are, you can save papers to your library (with the save icon on the right of each paper) and they will show up here.'
-  ctx = default_context(papers, render_format='library', msg=msg)
-  return render_template('main.html', **ctx)
-
-@app.route('/libtoggle', methods=['POST'])
-def review():
-  """ user wants to toggle a paper in his library """
-  
-  # make sure user is logged in
-  if not g.user:
-    return 'NO' # fail... (not logged in). JS should prevent from us getting here.
-
-  idvv = request.form['pid'] # includes version
-  if not isvalidid(idvv):
-    return 'NO' # fail, malformed id. weird.
-  pid = strip_version(idvv)
-  if not isvalid(pid):
-    return 'NO' # we don't know this paper. wat
-
-  uid = session['user_id'] # id of logged in user
-
-  # check this user already has this paper in library
-  record = query_db('''select * from library where
-          user_id = ? and paper_id = ?''', [uid, pid], one=True)
-  # print(record)
-
-  ret = 'NO'
-  if record:
-    # record exists, erase it.
-    g.db.execute('''delete from library where user_id = ? and paper_id = ?''', [uid, pid])
-    g.db.commit()
-    #print('removed %s for %s' % (pid, uid))
-    ret = 'OFF'
-  else:
-    # record does not exist, add it.
-    rawpid = strip_version(pid)
-    g.db.execute('''insert into library (paper_id, user_id, update_time) values (?, ?, ?)''',
-        [rawpid, uid, int(time.time())])
-    g.db.commit()
-
-    #print('added %s for %s' % (pid, uid))
-    ret = 'ON'
-  
-  with list_of_users_lock:
-    list_of_users_cached.remove(uid)
-  update_libids()
-  addUserSearchesToCache()
-
-  return ret
-
-# @app.route('/friends', methods=['GET'])
-# def friends():
-    
-#     ttstr = request.args.get('timefilter', 'week') # default is week
-#     legend = {'day':1, '3days':3, 'week':7, 'month':30, 'year':365}
-#     tt = legend.get(ttstr, 7)
-
-#     papers = []
-#     pid_to_users = {}
-#     if g.user:
-#         # gather all the people we are following
-#         username = get_username(session['user_id'])
-#         edges = list(follow_collection.find({ 'who':username }))
-#         # fetch all papers in all of their libraries, and count the top ones
-#         counts = {}
-#         for edict in edges:
-#             whom = edict['whom']
-#             uid = get_user_id(whom)
-#             user_library = query_db('''select * from library where user_id = ?''', [uid])
-#             libids = [strip_version(x['paper_id']) for x in user_library]
-#             for lid in libids:
-#                 if not lid in counts:
-#                     counts[lid] = []
-#                 counts[lid].append(whom)
-
-#         keys = list(counts.keys())
-#         keys.sort(key=lambda k: len(counts[k]), reverse=True) # descending by count
-#         papers = [getpaper(pid) for x in keys]
-#         # finally filter by date
-#         curtime = int(time.time()) # in seconds
-#         papers = [x for x in papers if curtime - x['time_published'] < tt*24*60*60]
-#         # trim at like 100
-#         if len(papers) > 100: papers = papers[:100]
-#         # trim counts as well correspondingly
-#         pid_to_users = { p['_rawid'] : counts.get(p['_rawid'], []) for p in papers }
-
-#     if not g.user:
-#         msg = "You must be logged in and follow some people to enjoy this tab."
-#     else:
-#         if len(papers) == 0:
-#             msg = "No friend papers present. Try to extend the time range, or add friends by clicking on your account name (top, right)"
-#         else:
-#             msg = "Papers in your friend's libraries:"
-
-#     ctx = default_context(papers, render_format='friends', pid_to_users=pid_to_users, msg=msg)
-#     return render_template('main.html', **ctx)
-
-@app.route('/account')
-def account():
-  return library()
-  # library()
-    # ctx = { 'totpapers': countpapers() }
-#     followers = []
-#     following = []
-#     # fetch all followers/following of the logged in user
-#     if g.user:
-#         username = get_username(session['user_id'])
-        
-#         # following_db = list(follow_collection.find({ 'who':username }))
-#         # for e in following_db:
-#             # following.append({ 'user':e['whom'], 'active':e['active'] })
-# # 
-#         # followers_db = list(follow_collection.find({ 'whom':username }))
-#         # for e in followers_db:
-#             # followers.append({ 'user':e['who'], 'active':e['active'] })
-# # 
-#     ctx['followers'] = followers
-#     ctx['following'] = following
-#     return render_template('account.html', **ctx)
-
-@app.route('/requestfollow', methods=['POST'])
-def requestfollow():
-    if request.form['newf'] and g.user:
-        # add an entry: this user is requesting to follow a second user
-        who = get_username(session['user_id'])
-        whom = request.form['newf']
-        # make sure whom exists in our database
-        whom_id = get_user_id(whom)
-        if whom_id is not None:
-            e = { 'who':who, 'whom':whom, 'active':0, 'time_request':int(time.time()) }
-            print('adding request follow:')
-            print(e)
-            follow_collection.insert_one(e)
-
-    return redirect(url_for('account'))
-
-@app.route('/removefollow', methods=['POST'])
-def removefollow():
-    user = request.form['user']
-    lst = request.form['lst']
-    if user and lst:
-        username = get_username(session['user_id'])
-        if lst == 'followers':
-            # user clicked "X" in their followers list. Erase the follower of this user
-            who = user
-            whom = username
-        elif lst == 'following':
-            # user clicked "X" in their following list. Stop following this user.
-            who = username
-            whom = user
-        else:
-            return 'NOTOK'
-
-        delq = { 'who':who, 'whom':whom }
-        print('deleting from follow collection:', delq)
-        follow_collection.delete_one(delq)
-        return 'OK'
-    else:
-        return 'NOTOK'
-
-@app.route('/addfollow', methods=['POST'])
-def addfollow():
-    user = request.form['user']
-    lst = request.form['lst']
-    if user and lst:
-        username = get_username(session['user_id'])
-        if lst == 'followers':
-            # user clicked "OK" in the followers list, wants to approve some follower. make active.
-            who = user
-            whom = username
-            delq = { 'who':who, 'whom':whom }
-            print('making active in follow collection:', delq)
-            follow_collection.update_one(delq, {'$set':{'active':1}})
-            return 'OK'
-        
-    return 'NOTOK'
-
-@app.route('/login', methods=['POST'])
-def login():
-  """ logs in the user. if the username doesn't exist creates the account """
-  
-  if not request.form['username']:
-    flash('You have to enter a username')
-  elif not request.form['password']:
-    flash('You have to enter a password')
-  elif get_user_id(request.form['username']) is not None:
-    # username already exists, fetch all of its attributes
-    user = query_db('''select * from user where
-          username = ?''', [request.form['username']], one=True)
-    if check_password_hash(user['pw_hash'], request.form['password']):
-      # password is correct, log in the user
-      session['user_id'] = get_user_id(request.form['username'])
-      added = addUserSearchesToCache()
-      if added:
-        print('addUser fired')
-      flash('User ' + request.form['username'] + ' logged in.')
-    else:
-      # incorrect password
-      flash('User ' + request.form['username'] + ' already exists, wrong password.')
-  else:
-    # create account and log in
-    creation_time = int(time.time())
-    g.db.execute('''insert into user (username, pw_hash, creation_time) values (?, ?, ?)''',
-      [request.form['username'], 
-      generate_password_hash(request.form['password']), 
-      creation_time])
-    user_id = g.db.execute('select last_insert_rowid()').fetchall()[0][0]
-    g.db.commit()
-
-    session['user_id'] = user_id
-    flash('New account %s created' % (request.form['username'], ))
-  
-  return redirect(url_for('intmain'))
-
-@app.route('/logout')
-def logout():
-  session.pop('user_id', None)
-  flash('You were logged out')
-  return redirect(url_for('intmain'))
-
-@app.route('/static/<path:path>')
-def send_static(path):
-    return send_from_directory('static', path)
 
 
 # -----------------------------------------------------------------------------
