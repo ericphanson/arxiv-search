@@ -892,23 +892,24 @@ def build_query(query_info):
     if query_info['author'].strip() is not '':
       sort_auth = True
 
-  # define aggregations
-  prim_agg = A('terms', field='arxiv_primary_category.term.raw')
-  # prim_filter = A('filter', filter= Q('range', updated={'gte':  1618362554000 }))
-  # search.aggs.bucket("prim",prim_agg).bucket("filt", prim_filter)
-
   # add filters
+  Q_cat = Q()
   if 'category' in query_info:
-    search = search.post_filter(cat_filter(query_info['category']))
+    Q_cat = cat_filter(query_info['category'])
   
+  Q_prim = Q()
   if 'primaryCategory' in query_info:
-    search = search.post_filter(prim_filter(query_info['primaryCategory']))
+    Q_prim = prim_filter(query_info['primaryCategory'])
 
+  Q_time = Q()
   if 'time' in query_info:
-    search = search.post_filter(time_filter(query_info['time']))
+    Q_time = time_filter(query_info['time'])
     
+  Q_v1 = Q()
   if 'v1' in query_info:
-    search = search.post_filter(ver_filter(query_info['v1']))
+    Q_v1= ver_filter(query_info['v1'])
+  
+  search = search.post_filter(Q_cat & Q_prim & Q_time & Q_v1)
   
   # add sort
 
@@ -921,64 +922,62 @@ def build_query(query_info):
   elif sort == SORT_LIB:
     search = add_rec_query(search)
 
-  # year_agg = A('date_histogram', field='published', interval="year")
-  # search.aggs.bucket('published_dates', year_agg)
 
-  
+  # define aggregations
+  prim_agg = A('terms', field='arxiv_primary_category.term.raw')
+  prim_filt = A('filter', filter=(Q_cat & Q_time & Q_v1) )
+  search.aggs.bucket("prim_filt",prim_filt).bucket("prim_agg", prim_agg)
 
+  year_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1))
+  year_agg = A('date_histogram', field='published', interval="year")
+  search.aggs.bucket('year_filt', year_filt).bucket('year_agg', year_agg)
+
+  in_filt = A('filter', filter=(Q_prim & Q_time & Q_v1))
   in_agg = A('terms', field='tags.term.raw')
-  search.aggs.bucket('in_agg', in_agg)
+  search.aggs.bucket('in_filt', in_filt).bucket('in_agg',in_agg)
 
+  time_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1))
   cutoffs = getTimesForFilters()
   
-  time_filter_agg = A('date_range', field='updated', ranges = [{"to" : "now", "key" : "alltime"}, \
+  time_agg = A('date_range', field='updated', ranges = [{"to" : "now", "key" : "alltime"}, \
                                                               {"from" : cutoffs["year"], "key" : "year"}, \
                                                               {"from" : cutoffs["month"], "key" : "month"}, \
                                                               {"from" : cutoffs["week"], "key" : "week"}, \
                                                               {"from" : cutoffs["3days"], "key" : "3days"}, \
                                                               {"from" : cutoffs["day"], "key" : "day"}])
-  search.aggs.bucket('time_filter_agg', time_filter_agg)
+  search.aggs.bucket('time_filt', time_filt).bucket('time_agg', time_agg)
 
   return search
 
-# def add_aggs_to_search(search):
-#     a = A('date_histogram', field='published', interval="year")
-#     search.aggs.bucket('published_dates', a)
-#     return search
+
 def get_meta_from_response(response):
   meta = dict(tot_num_papers=response.hits.total)
-  # print(vars(response))
   if "aggregations" in response:
-    # for a in response.aggregations:
-      # print(a)
-    if "published_dates" in response.aggregations:
+    if "year_filt" in response.aggregations:
       date_hist_data = []
-      for x in response.aggregations.published_dates.buckets:
+      for x in response.aggregations.year_filt.year_agg.buckets:
         time = round(x.key/1000)
         bucket = dict(time=time, num_results = x.doc_count)
         date_hist_data.append(bucket)
       meta["date_hist_data"] = date_hist_data
-    if "prim" in response.aggregations:
+    if "prim_filt" in response.aggregations:
       prim_data =[]
-      for prim in response.aggregations.prim.buckets:
-        print(prim )
+      for prim in response.aggregations.prim_filt.prim_agg.buckets:
         bucket = dict(category=prim.key,num_results=prim.doc_count)
         prim_data.append(bucket)
-      print("prim_data=")
-      print(prim_data)
       meta["prim_data"] = prim_data
-    if "in_agg" in response.aggregations:
+
+    if "in_filt" in response.aggregations:
       in_data =[]
-      for buck in response.aggregations.in_agg.buckets:
+      for buck in response.aggregations.in_filt.in_agg.buckets:
         bucket = dict(category=buck.key,num_results=buck.doc_count)
         in_data.append(bucket)
       meta["in_data"] = in_data
-    if "time_filter_agg" in response.aggregations:
+    if "time_filt" in response.aggregations:
       time_filter_data =[]
-      for buck in response.aggregations.time_filter_agg.buckets:
+      for buck in response.aggregations.time_filt.time_agg.buckets:
         bucket = dict(time_range=buck.key,num_results=buck.doc_count)
         time_filter_data.append(bucket)
-      print(time_filter_data)
       meta["time_filter_data"] = time_filter_data
   return meta
 
