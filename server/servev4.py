@@ -267,6 +267,13 @@ def ver_filter(v1):
       filt_q = filt_q & Q('term', paperversion=1)
     return filt_q
 
+def lib_filter(only_lib):
+    filt_q = Q()
+    if only_lib:
+      #  TODO
+      print('todo')
+      # filt_q = filt_q & Q('term', paperversion=1)
+    return filt_q
 
 def build_query(query_info):
   query_info = sanitize_query_object(query_info)
@@ -479,7 +486,7 @@ def valid_list_of_cats(group):
   return valid_list
 
 def sanitize_query_object(query_info):
-  valid_keys = ['query', 'sort', 'category', 'time', 'primaryCategory', 'author',' v1']
+  valid_keys = ['query', 'sort', 'category', 'time', 'primaryCategory', 'author','v1', 'only_lib']
   query_info = san_dict_keys(query_info, valid_keys)
 
   if 'category' in query_info:
@@ -500,6 +507,8 @@ def sanitize_query_object(query_info):
   query_info = san_dict_value(query_info, 'sort', str, ["relevance","date"])
 
   query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
+  
+  query_info = san_dict_bool(query_info, 'only_lib')
   
   query_info = san_dict_bool(query_info, 'v1')
   

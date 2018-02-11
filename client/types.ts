@@ -11,7 +11,8 @@ export interface query {
     time : "3days" | "week" | "day" | "all" | "month" | "year" | {start : number, end : number},
     primaryCategory? : category
     author? : string,
-    v1 : boolean
+    v1 : boolean,
+    only_lib : boolean
 }
 /**JSON object sent to _get_results() */
 export interface request {
