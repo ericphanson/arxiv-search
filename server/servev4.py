@@ -144,94 +144,6 @@ def teardown_request(exception):
   if db is not None:
     db.close()
 
-# -----------------------------------------------------------------------------
-# search/sort functionality
-# -----------------------------------------------------------------------------
-
-# class ArxivDateFacet(Facet):
-#     agg_type = 'date_histogram'
-
-#     DATE_INTERVALS = {
-#         'alltime': lambda d: _getCutoff(d,'alltime'),
-#         'month': lambda d: _getCutoff(d,'month'),
-#         'week': lambda d: _getCutoff(d,'week'),
-#         '3days': lambda d: _getCutoff(d,'3days'),
-#         'day': lambda d: _getCutoff(d,'day'),
-#     }
-
-#     def _getCutoff(now, ttstr):
-#       legend = {'day':1, '3days':3, 'week':7, 'month':30, 'year':365, 'alltime':10000}
-#       tt = legend.get(ttstr, 7)
-#       # account for published vs announced
-#       back = now + timedelta(days=-1) +timedelta(days=-1*tt)
-#       back18 = back.replace(hour=18,minute=0,second=0,microsecond=0)
-#       if back > back18:
-#         back = back18
-#       if back < back18:
-#         back = back18 + timedelta(days=-1)
-#       back = back+ timedelta(seconds = -1)
-#       time_cutoff = round(back.timestamp()* 1000)
-#       return time_cutoff
-
-#     def __init__(self, **kwargs):
-#         kwargs.setdefault("min_doc_count", 0)
-#         super(DateHistogramFacet, self).__init__(**kwargs)
-
-#     def get_value(self, bucket):
-#         if not isinstance(bucket['key'], datetime):
-#             # Elasticsearch returns key=None instead of 0 for date 1970-01-01,
-#             # so we need to set key to 0 to avoid TypeError exception
-#             if bucket['key'] is None:
-#                 bucket['key'] = 0
-#             return datetime.utcfromtimestamp(int(bucket['key']) / 1000)
-#         else:
-#             return bucket['key']
-
-#     def get_value_filter(self, filter_value):
-#         return Q('range', **{
-#             self._params['field']: {
-#                 'gte': filter_value,
-#                 'lt': self.DATE_INTERVALS[self._params['interval']](filter_value)
-#             }
-#         })  
-
-
-# def getTimeCutoff(ttstr):
-#       now = datetime.now(tzutc())
-#       legend = {'day':1, '3days':3, 'week':7, 'month':30, 'year':365, 'alltime':10000}
-#       tt = legend.get(ttstr, 7)
-#       # account for published vs announced
-#       back = now + timedelta(days=-1) +timedelta(days=-1*tt)
-#       back18 = back.replace(hour=18,minute=0,second=0,microsecond=0)
-#       if back >= back18:
-#         back = back18
-#       if back < back18:
-#         back = back18 + timedelta(days=-1)
-#       # back = back+ timedelta(seconds = -1)
-#       time_cutoff = round(back.timestamp()* 1000)
-#       return time_cutoff, round(now.timestamp()*1000)
-
-# class ArxivSearch(FacetedSearch):
-#     # doc_types = [papers, ]
-#     # fields that should be searched
-#     fields = ['title','summary', 'fulltext', 'all_authors', '_id']
-
-#     recent_ranges = [
-#           (legend, (getTimeCutoff(legend)[0], getTimeCutoff(legend)[1]))
-#           for legend in ['day', '3days', 'week', 'month', 'year', 'alltime'] ]
-#     facets = {
-#         # use bucket aggregations to define facets
-#         'cats': TermsFacet(field='tags.term.raw'),
-#         'updated_hist': DateHistogramFacet(field='updated', interval='year'),
-#         'published_hist': DateHistogramFacet(field='published', interval='year'),
-#         'recent_updated_range' : RangeFacet(field="updated", ranges=recent_ranges),
-#         'recent_published_range' : RangeFacet(field="published", ranges=recent_ranges)
-#     }
-
-#     def search(self):
-#         # override methods to add custom pieces
-#         s = super().search()
-#         return s
 
 # from
 # https://gist.github.com/eranhirs/5c9ef5de8b8731948e6ed14486058842
@@ -250,147 +162,6 @@ def sanitize_string(text):
   quote_count = text.count('"')
   return re.sub(r'(.*)"(.*)', r'\1\"\2', text) if quote_count % 2 == 1 else text
 
-
-def takeTokens(type_of_token, string):
-  emptystr = ""
-  found_tokens = []
-  removes = []
-  for tokens, matchstart, matchend in type_of_token.scanString(string):
-    strtokens = [emptystr.join(instance) for instance in tokens.asList()]
-    found_tokens.append(strtokens)
-    removes.append(string[matchstart:matchend])
-
-  temp = string
-  for r in removes:
-    temp =temp.replace(r,"")
-  post_string = temp
-  return found_tokens, post_string
-
-def flatten_list(list_of_lists):
-  return [item for sublist in list_of_lists for item in sublist]
-
-
-def isTag(string):
-  istag = False
-  tag = Group(OneOrMore(Word(alphas) + oneOf('- .')) + Word(alphas))
-  found_tokens, post_string = takeTokens(tag, string)
-  if ( len(found_tokens) == 1 ):
-    if post_string == "":
-      istag = True
-  return istag
-
-def filter_in(q_in,search_in):
-  tag = Group(OneOrMore(Word(alphas) + oneOf('- .')) + Word(alphas))
-
-  cat = Suppress("in:") + tag
-  cats = OneOrMore(cat)
-  
-  multcat = Suppress("in:") + OneOrMore(tag + Suppress(Literal(',')) ) + tag
-  multcats = OneOrMore(multcat)
-  
-  found_mc, post_mc = takeTokens(multcats, q_in)
-
-  found_c, post_c = takeTokens(cats, post_mc)
-  all_cats = list(set(flatten_list(found_mc + found_c)))
-
-  q_out = post_c
-  search_out = search_in
-  if len(all_cats) == 1:
-    search_out = search_in.filter('term', tags__term__raw=all_cats[0])
-  if len(all_cats) > 1:
-    search_out = search_in.filter('terms', tags__term__raw=all_cats)
-
-  return q_out, search_out
-
-def filter_prim(q_in,search_in):
-  tag = Group(OneOrMore(Word(alphas) + oneOf('- .')) + Word(alphas))
-
-  prim = Suppress("prim:") + ( tag ^ Literal('any') )
-
-  found_prim, post_prim = takeTokens(prim, q_in)
-  found_prim = list(set(flatten_list(found_prim)))
-
-  q_out = post_prim
-  search_out = search_in
-  if len(found_prim) == 1:
-    if not (found_prim[0] == 'any'):
-      search_out = search_in.filter('term', arxiv_primary_category__term__raw=found_prim[0])
-
-  return q_out, search_out
-
-def filter_time_range(q_in,search_in):
-  time_range_values = oneOf('day 3days week month year all')
-
-  ran_token = Suppress("range:") + time_range_values
-
-  found_ran, post_ran = takeTokens(ran_token, q_in)
-  found_ran = list(set(flatten_list(found_ran)))
-
-  q_out = post_ran
-  search_out = search_in
-  if len(found_ran) == 1:
-    search_out = applyTimeFilter(search_in, found_ran[0])
-
-  return q_out, search_out
-
-def filter_version(q_in,search_in):
-  version_values = oneOf('1 all')
-
-  ver_token = Suppress("ver:") + version_values
-
-  found_ver, post_ver = takeTokens(ver_token, q_in)
-  found_ver = list(set(flatten_list(found_ver)))
-
-  q_out = post_ver
-  search_out = search_in
-  if len(found_ver) == 1:
-    if found_ver[0] == '1':
-      search_out = search_out.filter('term', paperversion=1)
-
-  return q_out, search_out
-
-
-def sort_and_finish(q_in,search_in):
-  sort_options = oneOf("rec date")
-  sort = Suppress("sort:") + sort_options
-
-  found_sorts, post_sorts = takeTokens(sort, q_in)
-  found_sorts = list(set(flatten_list(found_sorts)))
-
-  print(post_sorts)
-  print(found_sorts)
-  q_out = post_sorts
-  search_out = search_in
-  sort_date = False
-  if len(found_sorts) == 1:
-    # if found_sorts[0] == "rec":
-      # sort_date = False
-    if found_sorts[0] == "date":
-      sort_date = True
-  if sort_date:
-    search_out = search_in.sort('-updated')
-  qsan = sanitize_string(q_out).strip()
-  if qsan != "" :
-    search_out = search_out.query(MultiMatch( query=qsan, type = 'most_fields', \
-      fields=['title','summary', 'fulltext', 'all_authors', '_id']))
-  else: 
-    qsan = "" 
-    search_out = add_rec_query(search_out)
-
-
-  return qsan, search_out
-
-
-def papers_search(qraw):
-  s = Search(using=es, index="arxiv")
-
-  q, s = filter_in(qraw, s)
-  q, s = filter_prim(q, s)
-  q, s = filter_time_range(q, s)
-  q, s = filter_version(q, s)
-  q, s = sort_and_finish(q, s)
-
-  return s
 
 def makepaperdict(pid):
     d = {
@@ -421,7 +192,6 @@ def add_papers_similar_query(search, pidlist):
 
 
 def papers_similar_to_list_query(pidlist):
-  listdict = []
   session['recent_sort'] = False
   dlist = [ makepaperdict(strip_version(v)) for v in pidlist ]
   if pidlist:
@@ -746,29 +516,24 @@ def default_context(search, **kws):
 def cat_filter(groups_of_cats):
     filt_q = Q()
     for group in groups_of_cats:
-      # perform an OR filter among the different categories in this group
       if len(group)==1:
         filt_q = filt_q & Q('term', tags__term__raw=group[0])
-        
       elif len(group) > 1:
+        # perform an OR filter among the different categories in this group                
         filt_q = filt_q & Q('terms', tags__term__raw=group)
 
     return filt_q
 
 def prim_filter(prim_cat):
-    # s = search_in
     filt_q = Q()
     if prim_cat is not "any":
       filt_q = Q('term', arxiv_primary_category__term__raw=prim_cat)
-    # search_out = s
-    # return search_out
     return filt_q
 
 def time_filter(time):
   filt_q = Q()
   if time == "all":
     return filt_q
-  # s = search_in  
   if time in ["3days" , "week" , "day" , "month" , "year"]:
       filt_q = filt_q & getTimeFilterQuery(time)
   else:
@@ -777,11 +542,9 @@ def time_filter(time):
   return filt_q
 
 def ver_filter(v1):
-    # s = search_in
     filt_q = Q()
     if v1:
       filt_q = filt_q & Q('term', paperversion=1)
-    # search_out = s
     return filt_q
 
 def san_dict_value(dictionary, key, typ, valid_options):
@@ -1023,40 +786,40 @@ def _getpapers():
   
 
 
-@app.route('/_getresults', methods=['POST'])
-def _getresults():
-  if 'search_obj' in session:
-    search_query = session['search_obj']
-  else:
-    search_query = getrecentpapers()
-  data = request.get_json()
-  start = data['start_at']
-  number = data['num_get']
-  # number = 5
-  dynamic = data['dyn']
-  search = Search(using=es, index='arxiv').update_from_dict(search_query)
-  # num_results = search.count()
+# @app.route('/_getresults', methods=['POST'])
+# def _getresults():
+#   if 'search_obj' in session:
+#     search_query = session['search_obj']
+#   else:
+#     search_query = getrecentpapers()
+#   data = request.get_json()
+#   start = data['start_at']
+#   number = data['num_get']
+#   # number = 5
+#   dynamic = data['dyn']
+#   search = Search(using=es, index='arxiv').update_from_dict(search_query)
+#   # num_results = search.count()
 
-  search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-  search = search[start:start+number]
-  # if start+number >= num_results:
-    # more = False
-  # else:
-    # more = True
-  log_dict = {};
-  log_dict.update(search= search.to_dict())
-  log_dict.update(client_ip = request.remote_addr)
-  log_dict.update(client_route = request.access_route)
-  if 'X-Real-IP' in request.headers:
-    log_dict.update(client_x_real_ip = request.headers['X-Real-IP'])
+#   search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+#   search = search[start:start+number]
+#   # if start+number >= num_results:
+#     # more = False
+#   # else:
+#     # more = True
+#   log_dict = {};
+#   log_dict.update(search= search.to_dict())
+#   log_dict.update(client_ip = request.remote_addr)
+#   log_dict.update(client_route = request.access_route)
+#   if 'X-Real-IP' in request.headers:
+#     log_dict.update(client_x_real_ip = request.headers['X-Real-IP'])
 
-  access_log.info("ES search request", extra=log_dict )
-  # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
-  papers, meta = getResults2(search)
-  # print(len(response))
-  # papers = encode_json(response)
-  # print(papers)
-  return jsonify(dict(papers=papers,dynamic=dynamic))
+#   access_log.info("ES search request", extra=log_dict )
+#   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
+#   papers, meta = getResults2(search)
+#   # print(len(response))
+#   # papers = encode_json(response)
+#   # print(papers)
+#   return jsonify(dict(papers=papers,dynamic=dynamic))
   
 
 
@@ -1389,12 +1152,12 @@ def isvalid(pid):
 #     tags_collection.insert_one(entry)
 #   return 'OK'
 
-@app.route("/search", methods=['GET'])
-def search():
-  q = request.args.get('q', '') # get the search request
-  search = papers_search(q) # perform the query and get sorted documents
-  ctx = default_context(search, render_format="search")
-  return render_template('main.html', **ctx)
+# @app.route("/search", methods=['GET'])
+# def search():
+#   q = request.args.get('q', '') # get the search request
+#   search = papers_search(q) # perform the query and get sorted documents
+#   ctx = default_context(search, render_format="search")
+#   return render_template('main.html', **ctx)
 
 @app.route('/recommend', methods=['GET'])
 def recommend():
