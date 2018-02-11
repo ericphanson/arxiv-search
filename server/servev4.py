@@ -743,43 +743,46 @@ def default_context(search, **kws):
   ans.update(kws)
   return ans
 
-def cat_filter(search_in, groups_of_cats):
-    s = search_in
+def cat_filter(groups_of_cats):
+    filt_q = Q()
     for group in groups_of_cats:
       # perform an OR filter among the different categories in this group
       if len(group)==1:
-        s = s.filter('term', tags__term__raw=group[0])
+        filt_q = filt_q & Q('term', tags__term__raw=group[0])
+        
       elif len(group) > 1:
-        s = s.filter('terms', tags__term__raw=group)
-    search_out = s
-    return search_out
+        filt_q = filt_q & Q('terms', tags__term__raw=group)
 
-def prim_filter(search_in, prim_cat):
-    s = search_in
+    return filt_q
+
+def prim_filter(prim_cat):
+    # s = search_in
+    filt_q = Q()
     if prim_cat is not "any":
-      s = s.filter('term', arxiv_primary_category__term__raw=prim_cat)
-    search_out = s
-    return search_out
+      filt_q = Q('term', arxiv_primary_category__term__raw=prim_cat)
+    # search_out = s
+    # return search_out
+    return filt_q
 
-def time_filter(search_in, time):
+def time_filter(time):
+  filt_q = Q()
   if time == "all":
-    return search_in
-  s = search_in  
+    return filt_q
+  # s = search_in  
   if time in ["3days" , "week" , "day" , "month" , "year"]:
-    s = applyTimeFilter(s, time)
+      filt_q = filt_q & getTimeFilterQuery(time)
   else:
-      s = s.filter('range', updated={'gte': time['start'] })
-      s = s.filter('range', updated={'lte': time['end'] })
+      filt_q = filt_q &  Q('range', updated={'gte': time['start'] })
+      filt_q = filt_q &  Q('range', updated={'lte': time['end'] })
+  return filt_q
 
-  search_out = s
-  return search_out
-
-def ver_filter(search_in, v1):
-    s = search_in
+def ver_filter(v1):
+    # s = search_in
+    filt_q = Q()
     if v1:
-      s = s.filter('term', paperversion=1)
-    search_out = s
-    return search_out
+      filt_q = filt_q & Q('term', paperversion=1)
+    # search_out = s
+    return filt_q
 
 def san_dict_value(dictionary, key, typ, valid_options):
     if key in dictionary:
@@ -888,21 +891,24 @@ def build_query(query_info):
   if 'author' in query_info:
     if query_info['author'].strip() is not '':
       sort_auth = True
-  
-  # need to sanitize!!
+
+  # define aggregations
+  prim_agg = A('terms', field='arxiv_primary_category.term.raw')
+  # prim_filter = A('filter', filter= Q('range', updated={'gte':  1618362554000 }))
+  # search.aggs.bucket("prim",prim_agg).bucket("filt", prim_filter)
 
   # add filters
   if 'category' in query_info:
-    search = cat_filter(search, query_info['category'])
+    search = search.post_filter(cat_filter(query_info['category']))
   
   if 'primaryCategory' in query_info:
-    search = prim_filter(search, query_info['primaryCategory'])
+    search = search.post_filter(prim_filter(query_info['primaryCategory']))
 
   if 'time' in query_info:
-    search = time_filter(search, query_info['time'])
+    search = search.post_filter(time_filter(query_info['time']))
     
   if 'v1' in query_info:
-    search = ver_filter(search, query_info['v1'])
+    search = search.post_filter(ver_filter(query_info['v1']))
   
   # add sort
 
@@ -914,6 +920,24 @@ def build_query(query_info):
     search = search.sort('-updated')
   elif sort == SORT_LIB:
     search = add_rec_query(search)
+
+  # year_agg = A('date_histogram', field='published', interval="year")
+  # search.aggs.bucket('published_dates', year_agg)
+
+  
+
+  in_agg = A('terms', field='tags.term.raw')
+  search.aggs.bucket('in_agg', in_agg)
+
+  cutoffs = getTimesForFilters()
+  
+  time_filter_agg = A('date_range', field='updated', ranges = [{"to" : "now", "key" : "alltime"}, \
+                                                              {"from" : cutoffs["year"], "key" : "year"}, \
+                                                              {"from" : cutoffs["month"], "key" : "month"}, \
+                                                              {"from" : cutoffs["week"], "key" : "week"}, \
+                                                              {"from" : cutoffs["3days"], "key" : "3days"}, \
+                                                              {"from" : cutoffs["day"], "key" : "day"}])
+  search.aggs.bucket('time_filter_agg', time_filter_agg)
 
   return search
 
@@ -937,8 +961,11 @@ def get_meta_from_response(response):
     if "prim" in response.aggregations:
       prim_data =[]
       for prim in response.aggregations.prim.buckets:
+        print(prim )
         bucket = dict(category=prim.key,num_results=prim.doc_count)
         prim_data.append(bucket)
+      print("prim_data=")
+      print(prim_data)
       meta["prim_data"] = prim_data
     if "in_agg" in response.aggregations:
       in_data =[]
@@ -946,6 +973,13 @@ def get_meta_from_response(response):
         bucket = dict(category=buck.key,num_results=buck.doc_count)
         in_data.append(bucket)
       meta["in_data"] = in_data
+    if "time_filter_agg" in response.aggregations:
+      time_filter_data =[]
+      for buck in response.aggregations.time_filter_agg.buckets:
+        bucket = dict(time_range=buck.key,num_results=buck.doc_count)
+        time_filter_data.append(bucket)
+      print(time_filter_data)
+      meta["time_filter_data"] = time_filter_data
   return meta
 
 
@@ -963,14 +997,8 @@ def _getpapers():
 
   search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
-  year_agg = A('date_histogram', field='published', interval="year")
-  search.aggs.bucket('published_dates', year_agg)
+  
 
-  prim_agg = A('terms', field='arxiv_primary_category.term.raw')
-  search.aggs.bucket('prim', prim_agg)
-
-  in_agg = A('terms', field='tags.term.raw')
-  search.aggs.bucket('in_agg', in_agg)
   
   # search = add_aggs_to_search(search)
   
@@ -1119,24 +1147,25 @@ def getLastCutoffs():
 
   return cutoffs
 
-def applyTimeFilter(search, ttstr):
-  legend = {'day':1, '3days':3, 'week':5, 'month':30, 'year':365}
+def getTimesForFilters():
+  legend = {'day':1, '3days':3, 'week':5, 'month':30, 'year':365}  
+  cutoffs = {}
+  for day,cutoff in legend.items():
+    cutoffs[day] = get_time_for_days_ago(cutoff)
+  return cutoffs
 
-  if ttstr not in legend:
-    return search
-  # legend = {'new':1, 'recent':5, 'week':7, 'month':30, 'year':365}
 
-  tt = legend.get(ttstr, 7)
-
+def get_time_for_days_ago(days):
+  
   now = datetime.now(tzutc())
 
-  if tt < 10:
+  if days < 10:
     cutoffs= getLastCutoffs()
 
-    cutoff = cutoffs[tt+1]
+    cutoff = cutoffs[days+1]
   else:
     # account for published vs announced
-    back = now + timedelta(days=-1) +timedelta(days=-1*tt)
+    back = now + timedelta(days=-1) +timedelta(days=-1*days)
 
     back18 = back.replace(hour=18,minute=0,second=0,microsecond=0)
     if back > back18:
@@ -1144,11 +1173,26 @@ def applyTimeFilter(search, ttstr):
     if back < back18:
       back = back18 + timedelta(days=-1)
     cutoff = back+ timedelta(seconds = -1)
-
-  
   time_cutoff = round(cutoff.timestamp()* 1000)
   
-  return search.filter('range', updated={'gte': time_cutoff })
+  return time_cutoff
+
+  
+
+def getTimeFilterQuery(ttstr) :
+  legend = {'day':1, '3days':3, 'week':5, 'month':30, 'year':365}
+
+  if ttstr not in legend:
+    return search
+  # legend = {'new':1, 'recent':5, 'week':7, 'month':30, 'year':365}
+
+  tt = legend.get(ttstr, 7)
+  time_cutoff = get_time_for_days_ago(tt)
+  
+  return Q('range', updated={'gte': time_cutoff })
+
+def applyTimeFilter(search, ttstr):
+  return search.post_filter(getTimeFilterQuery(ttstr))
 
 def apply_global_filters(search):
   vstr = request.args.get('vfilter', 'all')

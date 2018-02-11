@@ -54,9 +54,15 @@ export interface meta {
     date_hist_data? : date_data[]
     prim_data? : cat_data[]
     in_data? : cat_data[]
+    time_filter_data? : tf_data[]
+    
     
 }
-
+export interface tf_data {
+    // time_range is "alltime" or "week", etc.
+    time_range : string
+    num_results : number
+}
 export interface date_data {
     /*  time is in seconds since the unix epoch. 
     Right now, the times should be Jan 1 of each year
