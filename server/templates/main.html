@@ -15,7 +15,7 @@
     var msg = ''
     //passed in from flask as json
     var tweets = {{ tweets | tojson }};
-    // var results_url = "{{ url_for('_getresults') }}";
+    
     var results_url = "{{ url_for('_getpapers') }}";
     var beta_results_url = "{{ url_for('_getpapers') }}";
     // if (get_param('sort') === 'rec') {
