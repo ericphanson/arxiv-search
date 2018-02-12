@@ -367,12 +367,20 @@ def build_query(query_info):
   lib_agg = A('filters', filters= {"in_lib" : Q_lib_on, "out_lib": ~(Q_lib_on)})
   search.aggs.bucket('lib_filt', lib_filt).bucket('lib_agg', lib_agg)
 
-  auth_filt =  A('filter', filter=(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib))
-  sampler_agg = A('sampler', shard_size=1000)
-  auth_agg = A('significant_terms', field='all_authors')
+  async_search = Search(using=es, index='arxiv')  
+  if sort == SORT_QUERY:
+    q = query_info['query'].strip()
+    async_search = async_search.query(MultiMatch( query=q, type = 'most_fields', \
+      fields=['title','summary', 'fulltext', 'all_authors', '_id']))
+  async_search = async_search.filter(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib)
+  
+  sampler_agg = A('sampler', shard_size=200)
+  auth_agg = A('significant_terms', field='authors.name.keyword')
   # s2 = Search(index="arxiv",using=es)
-  search.aggs.bucket('auth_filt', auth_filt).bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
-  # r =s2.execute()
+  async_search.aggs.bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
+  r =async_search.execute()
+  print(r.aggregations.sampler_agg.auth_agg.buckets)
+  
   # print(r.aggregations.auth_filt.auth_agg.buckets)
 
   return search
@@ -382,12 +390,12 @@ def get_meta_from_response(response):
   meta = dict(tot_num_papers=response.hits.total)
   if "aggregations" in response:
     # if "auth_filt" in response.aggregations:
-    print(response.aggregations.auth_filt.sampler_agg.auth_agg.buckets)
-    count = 0
-    for buck in response.aggregations.auth_filt.sampler_agg.auth_agg.buckets:
-      count=count+1
-      if count < 3:
-        print(buck)
+    # print(response.aggregations.auth_filt.sampler_agg.auth_agg.buckets)
+    # count = 0
+    # for buck in response.aggregations.auth_filt.sampler_agg.auth_agg.buckets:
+    #   count=count+1
+    #   if count < 3:
+    #     print(buck)
       # print(response.aggregations.auth_filt.sampler_agg.auth_agg.buckets)
       # print(response.aggregations.auth_filt.top_hits.auth_agg.buckets)
     if "lib_filt" in response.aggregations:
@@ -395,32 +403,40 @@ def get_meta_from_response(response):
       lib_data = {"in_lib" : bucks.in_lib.doc_count, "out_lib" : bucks.out_lib.doc_count}
     meta["lib_data"] = lib_data
     if "year_filt" in response.aggregations:
-      date_hist_data = []
+      date_hist_data = {}
       for x in response.aggregations.year_filt.year_agg.buckets:
-        time = round(x.key/1000)
-        bucket = dict(time=time, num_results = x.doc_count)
-        date_hist_data.append(bucket)
+        timestamp = round(x.key/1000)
+        num_results = x.doc_count
+        date_hist_data[timestamp] = num_results
       meta["date_hist_data"] = date_hist_data
     if "prim_filt" in response.aggregations:
-      prim_data =[]
+      prim_data = {}
       for prim in response.aggregations.prim_filt.prim_agg.buckets:
-        bucket = dict(category=prim.key,num_results=prim.doc_count)
-        prim_data.append(bucket)
+        cat = prim.key
+        num_results = prim.doc_count
+        prim_data[cat] = num_results
       meta["prim_data"] = prim_data
 
     if "in_filt" in response.aggregations:
-      in_data =[]
+      in_data = {}
       for buck in response.aggregations.in_filt.in_agg.buckets:
-        bucket = dict(category=buck.key,num_results=buck.doc_count)
-        in_data.append(bucket)
+        cat = buck.key
+        num_results = buck.doc_count
+        in_data[cat] = num_results
       meta["in_data"] = in_data
     if "time_filt" in response.aggregations:
-      time_filter_data =[]
+      time_filter_data = {}
       for buck in response.aggregations.time_filt.time_agg.buckets:
-        bucket = dict(time_range=buck.key,num_results=buck.doc_count)
-        time_filter_data.append(bucket)
+        time_range=buck.key
+        num_results=buck.doc_count
+        time_filter_data[time_range] = num_results
       meta["time_filter_data"] = time_filter_data
   return meta
+
+@app.route('/_getmeta', methods=['POST'])
+def _getmeta():
+    meta = {}
+    return jsonify(meta)
 
 
 @app.route('/_getpapers', methods=['POST'])

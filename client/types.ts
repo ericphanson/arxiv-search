@@ -63,37 +63,11 @@ export interface response {
 }
 
 export interface meta {
-    tot_num_papers : number
-    date_hist_data? : date_data[]
-    prim_data? : cat_data[]
-    in_data? : cat_data[]
-    time_filter_data? : tf_data[]
-    lib_data? : lib_data
-    
-}
-
-export interface lib_data {
-    /** Number of results in your library */
-    in_lib : number
-    /** Number of results not in your library */
-    out_lib : number
-}
-export interface tf_data {
-    /** time_range is "alltime" or "week", etc. */
-    time_range : timeFilter
-    num_results : number
-}
-export interface date_data {
-    /**  time is in seconds since the unix epoch. 
-    Right now, the times should be Jan 1 of each year
-    for which there is a non-zero amount of papers.*/
-    time : timestamp
-
-    /** num_results is the number of results in that bucket.  */
-    num_results : number
-}
-
-export interface cat_data {
-    category : string
-    num_results : number
+    tot_num_papers? : number
+    date_hist_data? : {[timestamp : number]:number}
+    prim_data? : {[cat : string]:number}
+    in_data? : {[cat : string]:number}
+    time_filter_data? : {[time : string]:number}
+    lib_data? : {in_lib : number, out_lib : number}
+    auth_data? : {[name : string] : number}
 }
