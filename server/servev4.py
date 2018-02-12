@@ -407,7 +407,7 @@ def parse_author_name(name_in):
   return name_out
 
 def get_meta_from_response(response):
-  meta = dict(tot_num_papers=response.hits.total)
+  meta = {}
   if "aggregations" in response:
     if "sig_filt" in response.aggregations:
       if "sampler_agg" in response.aggregations.sig_filt:
@@ -514,6 +514,8 @@ def _getpapers():
   search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
 
+  tot_num_papers = search.count()
+  # print(tot_num_papers)
   log_dict = {}
   log_dict.update(search= search.to_dict())
   log_dict.update(client_ip = request.remote_addr)
@@ -527,7 +529,7 @@ def _getpapers():
   print('done papers')
   # testmeta(query_info)
   # testslowmeta(query_info)
-  return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number, meta=meta))
+  return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number, tot_num_papers=tot_num_papers))
 
 
 #----------------------------------------------------------------

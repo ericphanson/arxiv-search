@@ -59,11 +59,10 @@ export interface response {
     /**The same as `num_get` in the request object. If `papers.length < num_get` then we are done. */
     num_get : number
     papers : paper[]
-    meta : meta
+    tot_num_papers : number
 }
 
 export interface meta {
-    tot_num_papers? : number
     date_hist_data? : {[timestamp : number]:number}
     prim_data? : {[cat : string]:number}
     in_data? : {[cat : string]:number}
