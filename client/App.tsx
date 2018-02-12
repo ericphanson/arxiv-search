@@ -12,6 +12,7 @@ interface state {
     error?: string,
     isDone: boolean
     meta: meta,
+    tot_num_papers : number,
     /**Query used to fetch results */
     activeQuery: query
     /**Query currently being edited. */
@@ -50,6 +51,7 @@ export class App extends React.Component<{}, state> {
             requestCount: 10,
             papers: [],
             isLoading: true,
+            tot_num_papers : undefined
         }
     }
     componentDidMount() {
@@ -71,7 +73,7 @@ export class App extends React.Component<{}, state> {
             for (let i = 0; i < papers.length; i++) {
                 p[r.start_at + i] = papers[i];
             }
-            this.setState({ papers: p, isLoading: false, isDone: papers.length < num_get});
+            this.setState({ papers: p, isLoading: false, isDone: papers.length < num_get, tot_num_papers : r.tot_num_papers});
         });
     }
     /**Replace activeQuery with nextQuery and fetch papers. */
@@ -111,7 +113,7 @@ export class App extends React.Component<{}, state> {
             </div>
             <div className="app-filters">
                 <div>
-                    {meta && (<p className="app-total"><strong>{meta.tot_num_papers}</strong> results</p>)}
+                    {this.state.tot_num_papers && (<p className="app-total"><strong>{this.state.tot_num_papers}</strong> results</p>)}
                     <h4>time:</h4>
                     <table>
                         <tbody>
@@ -140,6 +142,7 @@ export class App extends React.Component<{}, state> {
                     </div>
                 </div>
             </Infinite>
+            {this.state.isDone && <h2 className="app-done">Done</h2>}
         </div>
     }
 }

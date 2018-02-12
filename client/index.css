@@ -23,6 +23,12 @@
     flex-flow: column nowrap;
 }
 
+.app-done {
+    grid-column: content;
+    grid-row: 4;
+    align-content: center;
+}
+
 .app-results {
     grid-column-start: content;
     grid-row-start: 3
