@@ -27,7 +27,7 @@ from elasticsearch.helpers import streaming_bulk, bulk, parallel_bulk
 import elasticsearch
 from itertools import islice
 import certifi
-from elasticsearch_dsl import Search, Q, A
+from elasticsearch_dsl import Search, Q, A, Mapping
 from elasticsearch_dsl import FacetedSearch, TermsFacet, RangeFacet, DateHistogramFacet
 
 from elasticsearch_dsl.query import MultiMatch, Match, DisMax
@@ -323,6 +323,7 @@ def build_query(query_info):
   Q_v1 = Q()
   if 'v1' in query_info:
     Q_v1= ver_filter(query_info['v1'])
+
   
   # add filters as post_filters so the aggregations don't get filtered
   search = search.post_filter(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib)
@@ -366,7 +367,13 @@ def build_query(query_info):
   lib_agg = A('filters', filters= {"in_lib" : Q_lib_on, "out_lib": ~(Q_lib_on)})
   search.aggs.bucket('lib_filt', lib_filt).bucket('lib_agg', lib_agg)
 
-  
+  auth_filt =  A('filter', filter=(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib))
+  sampler_agg = A('sampler', shard_size=1000)
+  auth_agg = A('significant_terms', field='all_authors')
+  # s2 = Search(index="arxiv",using=es)
+  search.aggs.bucket('auth_filt', auth_filt).bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
+  # r =s2.execute()
+  # print(r.aggregations.auth_filt.auth_agg.buckets)
 
   return search
 
@@ -374,6 +381,15 @@ def build_query(query_info):
 def get_meta_from_response(response):
   meta = dict(tot_num_papers=response.hits.total)
   if "aggregations" in response:
+    # if "auth_filt" in response.aggregations:
+    print(response.aggregations.auth_filt.sampler_agg.auth_agg.buckets)
+    count = 0
+    for buck in response.aggregations.auth_filt.sampler_agg.auth_agg.buckets:
+      count=count+1
+      if count < 3:
+        print(buck)
+      # print(response.aggregations.auth_filt.sampler_agg.auth_agg.buckets)
+      # print(response.aggregations.auth_filt.top_hits.auth_agg.buckets)
     if "lib_filt" in response.aggregations:
       bucks = response.aggregations.lib_filt.lib_agg.buckets
       lib_data = {"in_lib" : bucks.in_lib.doc_count, "out_lib" : bucks.out_lib.doc_count}
@@ -1183,6 +1199,8 @@ if __name__ == "__main__":
                           port=80,
                           connection_class=RequestsHttpConnection,
                           http_auth=auth)
+  # m = Mapping.from_es('arxiv', 'paper', using=es)
+  # print(m.authors)
 
   ES_log_handler = CMRESHandler(hosts=[{'host': es_host, 'port': 80}],
                            auth_type=CMRESHandler.AuthType.AWS_SIGNED_AUTH, aws_access_key= log_AWS_ACCESS_KEY,
