@@ -1,11 +1,32 @@
+
 .apaper {
 	margin-top: 25px;
-	/* min-height: 300px; */
+	display: grid;
+
+	grid-template-columns: auto 180px;
 }
 
 .paperdesc {
-	float: left;
-	width: 750px;
+	grid-column: 1;
+	grid-row: 1;
+}
+
+.dllinks {
+	text-align: right;
+	grid-column: 2;
+	grid-row: 1
+}
+.animg {
+	grid-column: 1 / span 2;
+	grid-row:2;
+}
+.animg img {
+	max-width: 100%;
+}
+
+.abstract {
+	grid-column: 1 / span 2;
+	grid-row: 3;
 }
 
 .ts {
@@ -36,7 +57,6 @@
 	color: #099;
 	font-size: 14px;
 }
-
 .cs {
 	color: #009;
 	font-size: 14px;
@@ -46,10 +66,6 @@
 .cs a:hover{ text-decoration: underline; color: #00F; }
 .cs a:active{ text-decoration: none; color: #009; }
 
-.dllinks {
-	float: right;
-	text-align: right;
-}
 
 .spid {
 	font-size: 14px;
@@ -70,13 +86,6 @@
 	margin-top: 5px;
 }
 
-.animg {
-	text-align: left;
-	height: 156px;
-}
-.animg img {
-	max-width: 100%;
-}
 
 .tt {
 	color: #000;

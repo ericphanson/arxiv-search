@@ -1,6 +1,6 @@
 import { paper } from "./types";
-import * as React from 'react'
 import { notimpl } from "./basic";
+import * as React from 'react'
 
 export function Paper(props: { p: paper }) {
     let { p } = props
@@ -39,8 +39,7 @@ export function Paper(props: { p: paper }) {
             <br />
             <img src={p.in_library ? "static/save.png" : "static/saved.png"} className="save-icon" title="toggle save paper to library (requires login)" id={"lib" + p.pid} onClick={notimpl} />
         </div>
-        <div style={{ clear: "both" }}></div>
         {p.img && <div className="animg"><img src={p.img} /></div>}
-        {p.abstract && <div><span className="tt">{p.abstract}</span></div>}
+        {p.abstract && <div className="abstract"><span className="tt">{p.abstract}</span></div>}
     </div>
 }

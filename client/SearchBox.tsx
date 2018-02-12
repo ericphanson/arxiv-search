@@ -71,7 +71,6 @@ interface state {
     tags: tag[]
 }
 let category_options = all_categories//.map(x => ({ value: x, label: x }))
-let timeFilters = ["day", "3days", "week", "month", "year", "alltime"] as timeFilter[]
 export class SearchBox extends React.Component<{ onSearch(q: query): void, meta?: meta }, state> {
     constructor(props) {
         super(props);
@@ -95,9 +94,6 @@ export class SearchBox extends React.Component<{ onSearch(q: query): void, meta?
             only_lib: false
         });
     }
-    handleTime(tf: timeFilter) {
-        this.setState({ time: tf }, () => this.handleOnSearch())
-    }
     render() {
         let { onSearch, meta } = this.props;
         let { searchString, sort, prim } = this.state;
@@ -106,23 +102,12 @@ export class SearchBox extends React.Component<{ onSearch(q: query): void, meta?
             let prim_data = meta.prim_data.find(cd => cd.category === cat);
             if (prim_data === undefined) {return {cat}}
             return {cat, count : prim_data.num_results} 
-        })
+        }).sort((a:any,b:any) => b.count - a.count)
         const radio = (field, options) => options.map(o => <label><input type="radio" name={field} id={o} checked={this.state[field] === o} onChange={() => this.setState({ [field]: o }, () => this.handleOnSearch())} />{o}</label>)
 
-        const tf_data = (tf: timeFilter) => {
-            if (meta === undefined || meta.time_filter_data === undefined) { return undefined; }
-            let tf_data = meta.time_filter_data.find(x => x.time_range === tf);
-            if (tf_data === undefined) { return undefined; }
-            return `(${tf_data.num_results})`;
-        }
 
-        return <div className="search">
-            <div id="sbox">
-                <input id="qfield" type="text" value={searchString}
-                    onChange={e => this.setState({ searchString: e.target.value })}
-                    onKeyDown={e => e.keyCode === 13 && onSearch && this.handleOnSearch()} />
-            </div>
-            <div>
+
+        return <div className="app-search">
                 <div>
                     <h4>prim:</h4>
                     <Select
@@ -141,24 +126,12 @@ export class SearchBox extends React.Component<{ onSearch(q: query): void, meta?
                 </div>
                 <div>
                     <h4>time:</h4>
-                    <table>
-                        <tbody>
-                            {timeFilters.map(tf => <tr key={tf.toString()}>
-                                <td onClick={() => this.handleTime(tf)}>
-                                    <input type="radio" name="time"
-                                        checked={this.state.time === tf} />
-                                    {tf.toString()}
-                                </td>
-                                <td className="result-count">{tf_data(tf)}</td>
-                            </tr>)}
-                        </tbody>
-                    </table>
+
                 </div>
                 <div>
                     <h4>in:</h4>
                     <Select.Creatable multi={true} options={options} value={this.state.cats} onChange={cats => { this.setState({ cats }, () => this.handleOnSearch()) }} />
                 </div>
             </div>
-        </div>
     }
 }

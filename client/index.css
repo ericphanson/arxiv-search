@@ -1,0 +1,25 @@
+.app-root {
+    display: grid;
+    grid-template-columns: 40px [side] 200px [content] auto 40px;
+    grid-template-rows: 40px 40px auto;
+}
+
+.app-banner {
+    grid-column-start: side;
+    grid-column-end: span content;
+    align-self: center;
+}
+
+.app-search {
+    grid-column-start: side;
+    grid-row-start: 3;
+    margin: 8px;
+    display: flex;
+    flex-flow: column nowrap;
+}
+
+.app-results {
+    grid-column-start: content;
+    grid-row-start: 3
+}
+

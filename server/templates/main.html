@@ -34,37 +34,6 @@
 </head>
 
 <body>
-
-  <div id="titdiv">
-    <!-- User account information on top right -->
-    {% if user_features %}
-    <div id="userinfo">
-      {% if not g.user %}
-      <form action="{{ url_for('login') }}" method="post">
-        User:
-        <input type="text" name="username" class="input-no-border"> Pass:
-        <input type="password" name="password" class="input-no-border">
-        <input type="submit" value="Login or Create" class="btn-fancy">
-      </form>
-      {% else %}
-      <a href="{{ url_for('account') }}">{{ g.user.username }}</a>
-      <a href="{{ url_for('logout') }}">log out</a>
-      {% endif %}
-    </div>
-    {% endif %}
-    <!-- Site information/banner on top left -->
-    <a href="/">
-      <div id="tittxt">
-        <h1>Quant-ph frontend</h1>
-        Modified from
-        <ahref="http://www.arxiv-sanity.com/">arxiv-sanity</a> which was built by
-    <a href="https://twitter.com/karpathy">@karpathy</a>.
-    <br /> Serving {{ totpapers }} papers from
-    <a href="https://arxiv.org/find/quant-ph">quant-ph</a> via an
-    <a href="https://www.elastic.co/">elasticsearch</a> database.
-    </div>
-    </a>
-  </div>
   <!-- REACT ROOT -->
   <div id="root"></div>
 </body>
