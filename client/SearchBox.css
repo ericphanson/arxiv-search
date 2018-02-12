@@ -1,30 +1,37 @@
 
-.searchbox {
+.app-searchbar {
     display: flex;
+    flex-direction: row;
     flex-wrap: nowrap;
-    width: 100px;
 }
 
 .searchinput {
     border: solid 1px #999;
     background-color: white;
-    /* line-height: 40px; */
-    /* font-size: 10px; */
     color: "#333";
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
     padding: 4px;
     outline: 0;
+    font-size: 32px;
+    width:100%;
+    
+    box-sizing: border-box;
 }
 
 #qbutton {
     border: solid 1px #999;
     border-left-width: 0px;
     background: rgb(194, 194, 194);
-    background-image: url('./static/search.png');
+    background-image: url('./search.png');
     background-repeat: no-repeat;
     background-position: center center;      
     flex : 0 0 30px;
     border-top-right-radius: 4px;
     border-bottom-right-radius: 4px;
+    align-self: stretch;
+    height: 100%;
+    width: 40px;
+    box-sizing: border-box;
+    margin:0;
 }

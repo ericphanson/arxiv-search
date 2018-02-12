@@ -1,7 +1,7 @@
 .app-root {
     display: grid;
     grid-template-columns: 40px [side] 200px [content] auto 40px;
-    grid-template-rows: 40px 40px auto;
+    grid-template-rows: 40px auto auto;
 }
 
 .app-banner {
@@ -10,7 +10,12 @@
     align-self: center;
 }
 
-.app-search {
+.app-searchbar {
+    grid-column: content;
+    grid-row:2;
+}
+
+.app-filters {
     grid-column-start: side;
     grid-row-start: 3;
     margin: 8px;
