@@ -15,10 +15,10 @@ interface state {
     /**Query used to fetch results */
     activeQuery: query
     /**Query currently being edited. */
-    nextQuery : query
+    nextQuery: query
 }
 let timeFilters = ["day", "3days", "week", "month", "year", "alltime"] as timeFilter[]
-const defaultQuery : query = {
+const defaultQuery: query = {
     query: "",
     category: [],
     v1: false,
@@ -27,8 +27,8 @@ const defaultQuery : query = {
 }
 declare const beta_results_url: string;
 
-function sendRequest(url : string, request, callback : (response : any) => void) {
-    window.fetch(url,  {
+function sendRequest(url: string, request, callback: (response: any) => void) {
+    window.fetch(url, {
         method: "POST",
         body: JSON.stringify(request),
         headers: { "Content-Type": "application/json" },
@@ -44,8 +44,8 @@ export class App extends React.Component<{}, state> {
         super(props);
         this.state = {
             activeQuery: defaultQuery,
-            nextQuery : defaultQuery,
-            meta: { },
+            nextQuery: defaultQuery,
+            meta: {},
             isDone: false,
             requestCount: 10,
             papers: [],
@@ -71,33 +71,35 @@ export class App extends React.Component<{}, state> {
             for (let i = 0; i < papers.length; i++) {
                 p[r.start_at + i] = papers[i];
             }
-            this.setState({ papers: p, isLoading: false, isDone: papers.length < num_get, meta: r.meta });
+            this.setState({ papers: p, isLoading: false, isDone: papers.length < num_get});
         });
     }
     /**Replace activeQuery with nextQuery and fetch papers. */
     activateQuery() {
-        this.setState({ activeQuery: this.state.nextQuery, requestCount: 10, papers: [], isDone: false }, () => {
+        this.setState({ activeQuery: this.state.nextQuery, requestCount: 10, papers: [], isDone: false, meta : {} }, () => {
             this.getPapers();
-            let request = {query : this.state.activeQuery};
-            sendRequest("_getmeta", request, (meta : Partial<meta>) => this.setState({meta: {...this.state.meta, ...meta}}));
-            sendRequest("_getslowmeta", request, (meta : Partial<meta>) => this.setState({meta: {...this.state.meta, ...meta}}));
+            let request = { query: this.state.activeQuery };
+            sendRequest("_getmeta", request, (meta: Partial<meta>) =>
+                this.setState({ meta: { ...this.state.meta, ...meta } }));
+            sendRequest("_getslowmeta", request, (meta: Partial<meta>) =>
+                this.setState({ meta: { ...this.state.meta, ...meta } }));
         });
     }
-    setNextQuery(query : Partial<query>, callback?) {
-        this.setState({nextQuery : {...this.state.nextQuery, ...query}}, callback);
+    setNextQuery(query: Partial<query>, callback?) {
+        this.setState({ nextQuery: { ...this.state.nextQuery, ...query } }, callback);
     }
     handleQueryboxChange(event) {
-        this.setNextQuery({query:event.target.value});
+        this.setNextQuery({ query: event.target.value });
     }
     handleLoadMore() {
         if (this.state.isLoading || this.state.isDone) { return; }
         console.log("loadmore called");
         this.setState({ requestCount: this.state.requestCount + 10 }, () => this.getPapers());
     }
-    handleTime(tf: timeFilter) { this.setNextQuery({ time: tf }, () => this.activateQuery())}
+    handleTime(tf: timeFilter) { this.setNextQuery({ time: tf }, () => this.activateQuery()) }
     render() {
-        let { papers, isDone, isLoading, meta, nextQuery:query } = this.state;
-        const tf_data = (tf: timeFilter) => {let n = meta.time_filter_data && meta.time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n})`}
+        let { papers, isDone, isLoading, meta, nextQuery: query } = this.state;
+        const tf_data = (tf: timeFilter) => { let n = meta.time_filter_data && meta.time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n})` }
         return <div className="app-root">
             <h1 className="logo app-banner">ARXIV-SEARCH</h1>
             <div className="app-searchbar">
