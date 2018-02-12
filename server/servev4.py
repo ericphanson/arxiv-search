@@ -276,7 +276,7 @@ def lib_filter(only_lib):
       # filt_q = filt_q & Q('term', paperversion=1)
     return filt_q
 
-def build_query(query_info):
+def extract_query_params(query_info):
   query_info = sanitize_query_object(query_info)
   search = Search(using=es, index='arxiv')
   SORT_QUERY = 1
@@ -305,9 +305,7 @@ def build_query(query_info):
   Q_lib = Q()
   if 'only_libs' in query_info:
     Q_lib =  lib_filter(query_info['only_libs'])
-  
-  Q_lib_on =  lib_filter(True)
-  
+    
   Q_cat = Q()
   if 'category' in query_info:
     Q_cat = cat_filter(query_info['category'])
@@ -325,9 +323,6 @@ def build_query(query_info):
     Q_v1= ver_filter(query_info['v1'])
 
   
-  # add filters as post_filters so the aggregations don't get filtered
-  search = search.post_filter(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib)
-  
   # add sorting
   if sort == SORT_QUERY:
     q = query_info['query'].strip()
@@ -338,7 +333,19 @@ def build_query(query_info):
   elif sort == SORT_LIB:
     search = add_rec_query(search)
 
+  return search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib
 
+def build_query(query_info):
+  search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
+  # add filters
+  search = search.filter(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib)
+
+  return search
+
+def build_meta_query(query_info):
+  search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
+  Q_lib_on =  lib_filter(True)
+  
   # define and add the aggregations, each filtered by all the filters except
   # variables corresopnding to what the aggregation is binning over
   prim_agg = A('terms', field='arxiv_primary_category.term.raw')
@@ -367,19 +374,13 @@ def build_query(query_info):
   lib_agg = A('filters', filters= {"in_lib" : Q_lib_on, "out_lib": ~(Q_lib_on)})
   search.aggs.bucket('lib_filt', lib_filt).bucket('lib_agg', lib_agg)
 
-  async_search = Search(using=es, index='arxiv')  
-  if sort == SORT_QUERY:
-    q = query_info['query'].strip()
-    async_search = async_search.query(MultiMatch( query=q, type = 'most_fields', \
-      fields=['title','summary', 'fulltext', 'all_authors', '_id']))
-  async_search = async_search.filter(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib)
-  
+  sig_filt =  A('filter', filter=(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib))
   sampler_agg = A('sampler', shard_size=200)
   auth_agg = A('significant_terms', field='authors.name.keyword')
   # s2 = Search(index="arxiv",using=es)
-  async_search.aggs.bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
-  r =async_search.execute()
-  print(r.aggregations.sampler_agg.auth_agg.buckets)
+  search.aggs.bucket('sig_filt', sig_filt).bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
+  # r =async_search.execute()
+  # print(r.aggregations.sampler_agg.auth_agg.buckets)
   
   # print(r.aggregations.auth_filt.auth_agg.buckets)
 
@@ -389,19 +390,21 @@ def build_query(query_info):
 def get_meta_from_response(response):
   meta = dict(tot_num_papers=response.hits.total)
   if "aggregations" in response:
-    # if "auth_filt" in response.aggregations:
-    # print(response.aggregations.auth_filt.sampler_agg.auth_agg.buckets)
-    # count = 0
-    # for buck in response.aggregations.auth_filt.sampler_agg.auth_agg.buckets:
-    #   count=count+1
-    #   if count < 3:
-    #     print(buck)
-      # print(response.aggregations.auth_filt.sampler_agg.auth_agg.buckets)
-      # print(response.aggregations.auth_filt.top_hits.auth_agg.buckets)
+    if "sig_filt" in response.aggregations:
+      auth_data = {}      
+      for buck in response.aggregations.sig_filt.sampler_agg.auth_agg.buckets:
+        name = buck.key
+        score = buck.score
+        auth_data[name] = score
+      meta["auth_data"] = auth_data
+      print("sig authors:")
+      print(auth_data)
+ 
     if "lib_filt" in response.aggregations:
       bucks = response.aggregations.lib_filt.lib_agg.buckets
       lib_data = {"in_lib" : bucks.in_lib.doc_count, "out_lib" : bucks.out_lib.doc_count}
     meta["lib_data"] = lib_data
+
     if "year_filt" in response.aggregations:
       date_hist_data = {}
       for x in response.aggregations.year_filt.year_agg.buckets:
@@ -409,6 +412,7 @@ def get_meta_from_response(response):
         num_results = x.doc_count
         date_hist_data[timestamp] = num_results
       meta["date_hist_data"] = date_hist_data
+
     if "prim_filt" in response.aggregations:
       prim_data = {}
       for prim in response.aggregations.prim_filt.prim_agg.buckets:
@@ -424,6 +428,7 @@ def get_meta_from_response(response):
         num_results = buck.doc_count
         in_data[cat] = num_results
       meta["in_data"] = in_data
+
     if "time_filt" in response.aggregations:
       time_filter_data = {}
       for buck in response.aggregations.time_filt.time_agg.buckets:
@@ -435,8 +440,21 @@ def get_meta_from_response(response):
 
 @app.route('/_getmeta', methods=['POST'])
 def _getmeta():
-    meta = {}
+    data = request.get_json()
+    query_info = data['query']
+    search = build_meta_query(query_info)
+    search = search[0:0]
+    papers, meta = getResults(search)
     return jsonify(meta)
+
+def testmeta(query_info):
+  search = build_meta_query(query_info)
+  search = search[0:0]
+  papers, meta = getResults(search)
+  # print("meta-papers:")
+  # print(papers)
+  # print("meta-meta:")    
+  # print(meta)
 
 
 @app.route('/_getpapers', methods=['POST'])
@@ -464,7 +482,7 @@ def _getpapers():
   access_log.info("ES search request", extra=log_dict )
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
   papers, meta = getResults(search)
-
+  testmeta(query_info)
   return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number, meta=meta))
 
 
