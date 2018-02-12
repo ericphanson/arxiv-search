@@ -36,60 +36,11 @@ body {
 	background-color : #ECC;
 }
 
-.as {
-	font-size: 14px;
-	color: #900;
-}
-.cs {
-	color: #009;
-	font-size: 14px;
-}
-.ts {
-	font-weight: bold;
-	font-size: 16px;
-}
-.as a:link{ text-decoration: none; color: #900; }
-.as a:visited{ text-decoration: none; color: #900; }
-.as a:hover{ text-decoration: underline; color: #F00; }
-.as a:active{ text-decoration: none; color: #900; }
-
-.ts a:link{ text-decoration: none; color: #333; }
-.ts a:visited{ text-decoration: none; color: #333; }
-.ts a:hover{ text-decoration: underline; color: #000; }
-.ts a:active{ text-decoration: none; color: #333; }
-
-.cs a:link{ text-decoration: none; color: #009; }
-.cs a:visited{ text-decoration: none; color: #009; }
-.cs a:hover{ text-decoration: underline; color: #00F; }
-.cs a:active{ text-decoration: none; color: #009; }
-.ds {
-	margin-right: 10px;
-	color: #090;
-	font-size: 14px;
-}
-.ds2 {
-	margin-right: 10px;
-	color: #099;
-	font-size: 14px;
-}
 .ccs {
 	color: #000;
 	font-size: 12px;
 }
-.tt {
-	color: #000;
-	background-color: #EFE;
-	font-size: 14px;
-	display: block;
-	padding: 10px;
-	border-radius: 5px;
-	text-align: justify;
-}
-.spid {
-	font-size: 14px;
-	margin-right: 5px;
-	color: #555;
-}
+
 h1 {
 	font-size: 20px;
 	padding: 0;
@@ -123,36 +74,15 @@ h1 {
 	background-color: white;
 }
 
-.apaper {
-	margin-top: 25px;
-	/* min-height: 300px; */
-}
-.animg {
-	text-align: left;
-	height: 156px;
-}
-.animg img {
-	max-width: 100%;
-}
-.paperdesc {
-	float: left;
-	width: 750px;
-}
 
-.dllinks {
-	float: right;
-	text-align: right;
-}
+
+
 .w {
 	color: #050;
 	cursor: pointer;
 	text-decoration: underline;
 }
-.sim {
-	cursor: pointer;
-	text-decoration: underline;
-	display: inline-block;
-}
+
 .rev {
 	cursor: pointer;
 	text-decoration: underline;
@@ -240,12 +170,7 @@ vertical-align: middle;
 #titdiv a:hover{ text-decoration: none; color: #FFF;}
 #titdiv a:active{ text-decoration: none; color: #FFF;}
 
-.save-icon {
-	width: 24px;
-	height: 24px;
-	cursor: pointer;
-	margin-top: 5px;
-}
+
 
 #flashesdiv {
 	width: 1000px;
