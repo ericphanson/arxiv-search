@@ -5,6 +5,7 @@ export function notimpl() {
 declare global {
     interface Array<T> {
         interlace(sep: T): T[];
+        find(pred : (item : T, index : number) => boolean) : T | undefined;
     }
 }
 if (!Array.prototype.interlace) {
@@ -20,3 +21,9 @@ if (!Array.prototype.interlace) {
         return r;
     };
 }
+if(!Array.prototype.find) {Array.prototype.find = function (pred) {
+    for (let i = 0; i < this.length; i++) {
+       if (pred(this[i],i)) {return this[i];} 
+    }
+    return undefined;
+}}

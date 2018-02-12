@@ -1,5 +1,5 @@
 import { notimpl } from './basic';
-import { paper, request, response, query } from './types';
+import { paper, request, response, query, meta } from './types';
 import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
 import { SearchBox } from './SearchBox';
@@ -13,6 +13,7 @@ interface state {
     isLoading: boolean,
     error?: string,
     isDone : boolean
+    meta? : meta
 }
 declare const beta_results_url : string;
 export class App extends React.Component<{}, state> {
@@ -22,9 +23,11 @@ export class App extends React.Component<{}, state> {
             currentQuery: {
                 query: "",
                 category: [],
-                time: "all",
+                time: "alltime",
                 v1: false,
+                only_lib: false,
             },
+            meta : undefined,
             isDone : false,
             requestCount : 10,
             papers: [],
@@ -62,7 +65,7 @@ export class App extends React.Component<{}, state> {
                 for (let i = 0; i < papers.length; i++) {
                     p[r.start_at + i] = papers[i];
                 }
-                this.setState({ papers: p , isLoading : false, isDone : papers.length < num_get});
+                this.setState({ papers: p , isLoading : false, isDone : papers.length < num_get, meta:r.meta});
             })
     }
     onSearch(q: query) {
@@ -74,9 +77,10 @@ export class App extends React.Component<{}, state> {
         this.setState({requestCount : this.state.requestCount + 10}, () => this.getPapers());
     }
     render() {
-        let { papers, isDone, isLoading } = this.state;
+        let { papers, isDone, isLoading, meta } = this.state;
         return [
-            <SearchBox onSearch={(q) => this.onSearch(q)} />,
+            <SearchBox onSearch={(q) => this.onSearch(q)} meta={meta}/>,
+            meta && (<p><strong>{meta.tot_num_papers}</strong> results</p>),
             <Infinite
                 pageStart={0}
                 loadMore={() => this.onLoadMore()}
@@ -116,7 +120,7 @@ function Paper(props: { p: paper }) {
                 ? <span className="ds2">(v1: {p.originally_published_time})</span>
                 : undefined}
             <span className="cs">{
-                p.tags.map(c => <a key={c} className="link-to-update" href={`/?in=${c.replace(/ /g, "+")}`}>{c}</a>).interlace(" | ")
+                p.tags.map(c => <a key={c} className="link-to-update" href={`/?in=${c.replace(/ /g, "+")}`}>{c}</a>).interlace(" | " as any)
             }</span>
         </div>
         <div className="dllinks">
