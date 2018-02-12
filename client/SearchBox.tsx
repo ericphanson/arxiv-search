@@ -34,6 +34,34 @@ export class SearchEditor extends React.Component<{ tags: tag[] }, { focussed: b
     }
 }
 
+class CategoryOption extends React.PureComponent<{
+    onSelect,
+    onFocus,
+    isFocused,
+    option: {cat : category, count?: number}
+}> {
+    handleMouseDown(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.props.onSelect(this.props.option, event);
+    }
+    handleMouseEnter(event) { this.props.onFocus(this.props.option, event); }
+    handleMouseMove(event) { this.props.isFocused && this.props.onFocus(this.props.option, event) }
+    render() {
+        console.log(this.props.option)
+        let countRender = this.props.option.count && <span className="result-count">({this.props.option.count})</span>
+        return <div style={{  }}
+            onMouseDown={(e) => this.handleMouseDown(e)}
+            onMouseEnter={(e) => this.handleMouseEnter(e)}
+            onMouseMove={(e) => this.handleMouseMove(e)}
+        >
+            <span>{this.props.option.cat}</span>
+            {countRender}
+        </div>
+    }
+}
+
+
 interface state {
     searchString: string,
     sort: query["sort"],
@@ -42,7 +70,7 @@ interface state {
     cats: any[],
     tags: tag[]
 }
-let category_options = all_categories.map(x => ({ value: x, label: x }))
+let category_options = all_categories//.map(x => ({ value: x, label: x }))
 let timeFilters = ["day", "3days", "week", "month", "year", "alltime"] as timeFilter[]
 export class SearchBox extends React.Component<{ onSearch(q: query): void, meta?: meta }, state> {
     constructor(props) {
@@ -67,13 +95,18 @@ export class SearchBox extends React.Component<{ onSearch(q: query): void, meta?
             only_lib: false
         });
     }
-    handleTime(tf : timeFilter) {
-        this.setState({time : tf}, () => this.handleOnSearch())
+    handleTime(tf: timeFilter) {
+        this.setState({ time: tf }, () => this.handleOnSearch())
     }
     render() {
         let { onSearch, meta } = this.props;
         let { searchString, sort, prim } = this.state;
-        let options = category_options;
+        let options = category_options.map(cat => {
+            if (meta === undefined || meta.prim_data === undefined) {return {cat}}
+            let prim_data = meta.prim_data.find(cd => cd.category === cat);
+            if (prim_data === undefined) {return {cat}}
+            return {cat, count : prim_data.num_results} 
+        })
         const radio = (field, options) => options.map(o => <label><input type="radio" name={field} id={o} checked={this.state[field] === o} onChange={() => this.setState({ [field]: o }, () => this.handleOnSearch())} />{o}</label>)
 
         const tf_data = (tf: timeFilter) => {
@@ -89,19 +122,15 @@ export class SearchBox extends React.Component<{ onSearch(q: query): void, meta?
                     onChange={e => this.setState({ searchString: e.target.value })}
                     onKeyDown={e => e.keyCode === 13 && onSearch && this.handleOnSearch()} />
             </div>
-            <h3>Advanced Search</h3>
             <div>
                 <div>
-                    <h4>sort:</h4>
-                    {radio("sort", ["date", "relevance"])}
-                </div>
-                <div>
                     <h4>prim:</h4>
-                    <p>Filter by primary category.</p>
                     <Select
                         onBlurResetsInput={false}
                         onSelectResetsInput={false}
+                        placeholder="primary category"
                         options={options}
+                        optionComponent={CategoryOption}
                         simpleValue
                         clearable={true}
                         name="prim"
@@ -113,14 +142,16 @@ export class SearchBox extends React.Component<{ onSearch(q: query): void, meta?
                 <div>
                     <h4>time:</h4>
                     <table>
-                        {timeFilters.map(tf => <tr key={tf.toString()}>
-                            <td onClick={() => this.handleTime(tf)}>
-                                <input type="radio" name="time"
-                                    checked={this.state.time === tf} />
-                                {tf.toString()}
-                            </td>
-                            <td>{tf_data(tf)}</td>
-                        </tr>)}
+                        <tbody>
+                            {timeFilters.map(tf => <tr key={tf.toString()}>
+                                <td onClick={() => this.handleTime(tf)}>
+                                    <input type="radio" name="time"
+                                        checked={this.state.time === tf} />
+                                    {tf.toString()}
+                                </td>
+                                <td className="result-count">{tf_data(tf)}</td>
+                            </tr>)}
+                        </tbody>
                     </table>
                 </div>
                 <div>
