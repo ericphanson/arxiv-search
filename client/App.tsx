@@ -27,7 +27,8 @@ const defaultQuery: query = {
     time: "alltime"
 }
 declare const beta_results_url: string;
-
+declare const user : any;
+declare const username : string;
 function sendRequest(url: string, request, callback: (response: any) => void) {
     window.fetch(url, {
         method: "POST",
@@ -104,6 +105,23 @@ export class App extends React.Component<{}, state> {
         const tf_data = (tf: timeFilter) => { let n = meta.time_filter_data && meta.time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n})` }
         return <div className="app-root">
             <h1 className="logo app-banner">ARXIV-SEARCH</h1>
+            <div className="app-login">
+                <div id="userinfo">
+                    {
+                        user === "None" ? 
+                    (<form action="login" method="post">
+                        User:
+                        <input type="text" name="username" className="input-no-border"/>
+                        Pass:
+                        <input type="password" name="password" className="input-no-border"/>
+                        <input type="submit" value="Login or Create" className="btn-fancy"/>
+                    </form>)
+                    :
+                    [<span>{username}</span>,
+                    <a href="logout">log out</a>]
+                    }
+                </div>
+            </div>
             <div className="app-searchbar">
                 <input type="text" className="searchinput"
                     value={query.query}
