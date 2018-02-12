@@ -482,7 +482,7 @@ def _getpapers():
   access_log.info("ES search request", extra=log_dict )
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
   papers, meta = getResults(search)
-  testmeta(query_info)
+  # testmeta(query_info)
   return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number, meta=meta))
 
 
