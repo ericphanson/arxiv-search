@@ -4,40 +4,12 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Quant-ph frontend</title>
-
-  <!-- React Development version. -->
-  <!-- <script crossorigin src="https://unpkg.com/react@16/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script> -->
-
-  <!-- React production version -->
-  <!-- <script crossorigin src="https://unpkg.com/react@16/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js"></script>
- -->
-  <!-- MathJax -->
-  <script type="text/x-mathjax-config">
-  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
-</script>
-  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_CHTML">
-  </script>
-
-  <!-- CSS -->
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-
-  <!-- Favicon -->
   <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" />
-
-  <!-- JS -->
-  <!-- <script src="{{ url_for('static', filename='jquery-1.8.3.min.js') }}"></script>
-  <script src="{{ url_for('static', filename='d3.min.js') }}"></script> -->
-  <!-- <script src="{{ url_for('static', filename='as-common2.js') }}"></script>
- -->
- <script src="{{ url_for('static', filename='vendor.js')}}"></script>
+  <script src="{{ url_for('static', filename='vendor.js')}}"></script>
   <script src="{{ url_for('static', filename='bundle.js')}}"></script>
-
   <script>
-
     // passed in from flask as json
-
     var numresults = {{ numresults }};
     var pid_to_users = {{ pid_to_users | tojson }};
     var msg = ''
@@ -46,32 +18,25 @@
     
     var results_url = "{{ url_for('_getpapers') }}";
     var beta_results_url = "{{ url_for('_getpapers') }}";
-
-    if (get_param('sort') === 'rec') {
-      var msg = "Sorting by personalized relevance (" + numresults + '):'
-    } else {
-      var msg = "Most recent papers (" + (numresults) + '):';
-    }
-
+    // if (get_param('sort') === 'rec') {
+    //   var msg = "Sorting by personalized relevance (" + numresults + '):'
+    // } else {
+    //   var msg = "Most recent papers (" + (numresults) + '):';
+    // }
     var render_format = "{{ render_format }}";
     var username = "{{ g.user.username }}";
     var show_prompt = "{{ show_prompt }}";
     var pointer_ix = 0
     var wait_for_write = false;
     var first_papers = {{ first_papers | tojson }};
-
-
     var urlq = ''; // global will be read in to QueryString when load is done
-
- </script>
-
+  </script>
 </head>
 
 <body>
+
   <div id="titdiv">
-
     <!-- User account information on top right -->
-
     {% if user_features %}
     <div id="userinfo">
       {% if not g.user %}
@@ -87,7 +52,6 @@
       {% endif %}
     </div>
     {% endif %}
-
     <!-- Site information/banner on top left -->
     <a href="/">
       <div id="tittxt">
@@ -101,60 +65,8 @@
     </div>
     </a>
   </div>
-
-  <div id="flashesdiv">
-    {% with flashes = get_flashed_messages() %} {% if flashes %}
-    <ul class="flashes">
-      {% for message in flashes %}
-      <li>{{ message }} {% endfor %}
-    </ul>
-    {% endif %} {% endwith %}
-  </div>
-
-  <div id="pagebar">
-    <div class="pagelink" id="tabrecent">
-      <a id="recent_link" href="/">most recent</a>
-    </div>
-    {% if user_features %} {% if user_interactivity %}
-    <div class="pagelink" id="tabtop">
-      <a href="/top">top recent</a>
-    </div>
-    <div class="pagelink" id="tabfriends">
-      <a href="/friends">friends</a>
-    </div>
-    {% endif %}
-    <div class="pagelink" id="tabrec">
-      <a id="rec_link" href="/">recommended</a>
-    </div>
-    <div class="pagelink" id="tablib">
-      <a href="/library">library</a>
-    </div>
-    {% else %}
-    <div class="pagelink" id="tabmore">
-      <a href="/">more tabs coming eventually...</a>
-    </div>
-    {% endif %}
-  </div>
-
-  <script>
-    var reca = document.getElementById('rec_link'); //or grab it by tagname etc
-    reca.href = make_link('sort', 'rec', true, true)
-
-    var datea = document.getElementById('recent_link'); //or grab it by tagname etc
-    datea.href = make_link('sort', 'date', true, true)
-  </script>
-  <!-- this div will be rendered into dynamcially at init with JS -->
-  <div id="recommend-time-choice" class="centerdiv"></div>
-
   <!-- REACT ROOT -->
   <div id="root"></div>
-
-  <br>
-  <br>
-  <br>
-  <br>
-  <br>
-  <br>
 </body>
 
 </html>
