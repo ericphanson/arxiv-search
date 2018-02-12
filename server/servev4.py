@@ -339,11 +339,10 @@ def build_query(query_info):
   search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
   # add filters
   search = search.filter(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib)
-
+  
   return search
 
-def build_meta_query(query_info):
-  search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
+def add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib):
   Q_lib_on =  lib_filter(True)
   
   # define and add the aggregations, each filtered by all the filters except
@@ -374,36 +373,62 @@ def build_meta_query(query_info):
   lib_agg = A('filters', filters= {"in_lib" : Q_lib_on, "out_lib": ~(Q_lib_on)})
   search.aggs.bucket('lib_filt', lib_filt).bucket('lib_agg', lib_agg)
 
+  return search
+
+
+def build_slow_meta_query(query_info):
+  search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)  
   sig_filt =  A('filter', filter=(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib))
+
   sampler_agg = A('sampler', shard_size=200)
+
   auth_agg = A('significant_terms', field='authors.name.keyword')
-  # s2 = Search(index="arxiv",using=es)
+
   search.aggs.bucket('sig_filt', sig_filt).bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
-  # r =async_search.execute()
-  # print(r.aggregations.sampler_agg.auth_agg.buckets)
+
+  keywords_agg = A('significant_terms', field='summary')
   
-  # print(r.aggregations.auth_filt.auth_agg.buckets)
+  search.aggs['sig_filt']['sampler_agg'].bucket('keywords_agg', keywords_agg)
 
   return search
 
+def build_meta_query(query_info):
+  search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
+  search = add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib)
+  return search
+
+def parse_author_name(name_in):
+  name_out = re.sub('(\(.*$)|(\(.*?\))', '', name_in)
+  name_out = re.sub('^.*?\)', '', name_out)
+  name_out = name_out.strip()
+  # if name_out is not name_in:
+    # print(name_in)
+    # print(name_out)
+  return name_out
 
 def get_meta_from_response(response):
   meta = dict(tot_num_papers=response.hits.total)
   if "aggregations" in response:
     if "sig_filt" in response.aggregations:
-      auth_data = {}      
-      for buck in response.aggregations.sig_filt.sampler_agg.auth_agg.buckets:
-        name = buck.key
-        score = buck.score
-        auth_data[name] = score
-      meta["auth_data"] = auth_data
-      print("sig authors:")
-      print(auth_data)
- 
+      if "sampler_agg" in response.aggregations.sig_filt:
+        if "auth_agg" in response.aggregations.sig_filt.sampler_agg:
+          auth_data = {}      
+          for buck in response.aggregations.sig_filt.sampler_agg.auth_agg.buckets:
+            name = parse_author_name(buck.key)
+            score = buck.score
+            if name is not '':
+              auth_data[name] = score
+          meta["auth_data"] = auth_data
+        if "keywords_agg" in response.aggregations.sig_filt.sampler_agg:
+          keyword_data = {}
+          for buck in response.aggregations.sig_filt.sampler_agg.keywords_agg.buckets:
+            keyword = buck.key
+            keyword_data[keyword] = buck.score
+          meta["keyword_data"] = keyword_data
     if "lib_filt" in response.aggregations:
       bucks = response.aggregations.lib_filt.lib_agg.buckets
       lib_data = {"in_lib" : bucks.in_lib.doc_count, "out_lib" : bucks.out_lib.doc_count}
-    meta["lib_data"] = lib_data
+      meta["lib_data"] = lib_data
 
     if "year_filt" in response.aggregations:
       date_hist_data = {}
@@ -447,15 +472,32 @@ def _getmeta():
     papers, meta = getResults(search)
     return jsonify(meta)
 
+@app.route('/_getslowmeta', methods=['POST'])
+def _getslowmeta():
+    data = request.get_json()
+    query_info = data['query']
+    search = build_slow_meta_query(query_info)
+    search = search[0:0]
+    papers, meta = getResults(search)
+    return jsonify(meta)
+
 def testmeta(query_info):
   search = build_meta_query(query_info)
   search = search[0:0]
   papers, meta = getResults(search)
+  print("meta:")
+  print(meta)
   # print("meta-papers:")
   # print(papers)
   # print("meta-meta:")    
   # print(meta)
 
+def testslowmeta(query_info):
+  search = build_slow_meta_query(query_info)
+  search = search[0:0]
+  papers, meta = getResults(search)
+  print("slowmeta:")
+  print(meta)
 
 @app.route('/_getpapers', methods=['POST'])
 def _getpapers():
@@ -482,7 +524,9 @@ def _getpapers():
   access_log.info("ES search request", extra=log_dict )
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
   papers, meta = getResults(search)
+  print('done papers')
   # testmeta(query_info)
+  # testslowmeta(query_info)
   return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number, meta=meta))
 
 

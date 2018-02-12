@@ -70,4 +70,6 @@ export interface meta {
     time_filter_data? : {[time : string]:number}
     lib_data? : {in_lib : number, out_lib : number}
     auth_data? : {[name : string] : number}
+    keyword_data? : {[keyword : string] : number}
+    
 }
