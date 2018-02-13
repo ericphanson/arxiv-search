@@ -2,8 +2,10 @@ import { notimpl, sendRequest } from './basic';
 import { paper, request, response, query, meta, category, timeFilter } from './types';
 import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
+import Select from "react-select"
 import { SearchBox } from './SearchBox';
 import { Paper } from './Paper';
+import { all_categories } from './all_categories';
 interface state {
     papers: paper[],
     /**The number of papers that should be visible */
@@ -29,7 +31,7 @@ const defaultQuery: query = {
 declare const beta_results_url: string;
 declare const user: any;
 declare const username: string;
-
+let categories = all_categories.map(x => ({value : x, label: x}))
 
 export class App extends React.Component<{}, state> {
     constructor(props) {
@@ -123,7 +125,6 @@ export class App extends React.Component<{}, state> {
                 <button id="qbutton" onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
-                {loggedIn && (query.sort !== "relevance" ? <button onClick={() => this.setNextQuery({sort:"relevance", query:""}, () => this.activateQuery())}>Your ArXiV</button> : <p>Sorting by Your ArXiV.</p>)}
                 {this.state.tot_num_papers && (<p className="app-total"><strong>{this.state.tot_num_papers}</strong> results</p>)}
                 <h4>time:</h4>
                 <table>
@@ -138,7 +139,23 @@ export class App extends React.Component<{}, state> {
                         </tr>)}
                     </tbody>
                 </table>
+                <h4>primary category:</h4>
+                <Select
+                    onBlurResetsInput={false}
+                    onSelectResetsInput={false}
+                    placeholder="type a primary category"
+                    options={categories}
+                    simpleValue
+                    clearable={true}
+                    name="prim"
+                    value={query.primaryCategory || ""}
+                    searchable={true}
+                    onChange={(selected) => {console.log(selected); this.setNextQuery({primaryCategory : selected}, () => this.activateQuery())}}/>
+                <h4>Other options:</h4>
+                {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({sort:(e.target.checked ? "relevance" : "date")}, () => this.activateQuery())}/></label>}
                 {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({only_lib : event.target.checked}, () => this.activateQuery())}/></label>}
+                <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({v1:e.target.checked}, () => this.activateQuery())}/></label>
+
             </div>
             <Infinite
                 className="app-results"
