@@ -272,7 +272,7 @@ def lib_filter(only_lib):
       # filt_q = Q('ids', type="paper", values= papers_from_library())
       pids = ids_from_library()
       if pids:
-        filt_q = Q('bool', filter=[Q('terms', id=pids)])
+        filt_q = Q('bool', filter=[Q('terms', _id=pids)])
       # filt_q = filt_q & Q('term', paperversion=1)
     return filt_q
 
@@ -303,8 +303,8 @@ def extract_query_params(query_info):
 
   # add filters
   Q_lib = Q()
-  if 'only_libs' in query_info:
-    Q_lib =  lib_filter(query_info['only_libs'])
+  if 'only_lib' in query_info:
+    Q_lib =  lib_filter(query_info['only_lib'])
     
   Q_cat = Q()
   if 'category' in query_info:
@@ -880,6 +880,7 @@ def ids_from_library():
     out = g.libids
   else:
     out = None
+  # print(out) 
   return out
 
 def papers_from_library():
