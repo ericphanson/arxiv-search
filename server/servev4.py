@@ -986,14 +986,14 @@ def review():
   
   # make sure user is logged in
   if not g.user:
-    return 'NO' # fail... (not logged in). JS should prevent from us getting here.
+    return 'FAIL' # fail... (not logged in). JS should prevent from us getting here.
   data = request.get_json()
   idvv = data['pid'] # includes version
   if not isvalidid(idvv):
-    return 'NO' # fail, malformed id. weird.
+    return 'FAIL' # fail, malformed id. weird.
   pid = strip_version(idvv)
   if not isvalid(pid):
-    return 'NO' # we don't know this paper. wat
+    return 'FAIL' # we don't know this paper. wat
 
   uid = session['user_id'] # id of logged in user
 
@@ -1002,7 +1002,7 @@ def review():
           user_id = ? and paper_id = ?''', [uid, pid], one=True)
   # print(record)
 
-  ret = False
+  ret = "FAIL"
   if record:
     # record exists, erase it.
     g.db.execute('''delete from library where user_id = ? and paper_id = ?''', [uid, pid])
@@ -1020,7 +1020,8 @@ def review():
     ret = True
   
   with list_of_users_lock:
-    list_of_users_cached.remove(uid)
+    if uid in list_of_users_cached:
+      list_of_users_cached.remove(uid)
   update_libids()
   addUserSearchesToCache()
 
