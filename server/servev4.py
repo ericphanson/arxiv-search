@@ -625,9 +625,6 @@ def sanitize_query_object(query_info):
 
   query_info = san_dict_value(query_info, 'sort', str, ["relevance","date"])
 
-  if 'sort' in query_info:
-    # print("sort survived")
-    # print(query_info['sort'])
   query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
   
   query_info = san_dict_bool(query_info, 'only_lib')
