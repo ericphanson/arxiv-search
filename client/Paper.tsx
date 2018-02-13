@@ -38,7 +38,7 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void }) {
             </span>
             <br />
             <img src={p.in_library ? "static/saved.png" : "static/save.png"} className="save-icon" title="toggle save paper to library (requires login)" id={"lib" + p.pid} onClick={() => 
-                sendRequest("libtoggle", {pid:p.pid}, ({on}) => props.onToggle(on) )} />
+                sendRequest("libtoggle", {pid:p.pid}, ({on}) => (on !== "FAIL") && props.onToggle(on) )} />
         </div>
         {p.img && <div className="animg"><img src={p.img} /></div>}
         {p.abstract && <div className="abstract"><span className="tt">{p.abstract}</span></div>}
