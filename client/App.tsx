@@ -1,4 +1,4 @@
-import { notimpl } from './basic';
+import { notimpl , sendRequest} from './basic';
 import { paper, request, response, query, meta, category, timeFilter } from './types';
 import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
@@ -29,17 +29,7 @@ const defaultQuery: query = {
 declare const beta_results_url: string;
 declare const user : any;
 declare const username : string;
-function sendRequest(url: string, request, callback: (response: any) => void) {
-    window.fetch(url, {
-        method: "POST",
-        body: JSON.stringify(request),
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin"
-    }).then(
-        response => response.ok ? response.json() : console.log("couldn't connect to server."),
-        error => console.log(`Network error: ${error}`)
-        ).then(callback);
-}
+
 
 export class App extends React.Component<{}, state> {
     constructor(props) {
@@ -156,7 +146,7 @@ export class App extends React.Component<{}, state> {
                 threshold={500} >
                 <div id="maindiv">
                     <div id="rtable">
-                        {papers.map(p => <Paper p={p} key={p.pid} />)}
+                        {papers.map((p,i) => <Paper p={p} key={p.pid} onToggle={(on) =>{let p = [...this.state.papers]; p[i].in_library = on; this.setState({papers : p})}} />)}
                     </div>
                 </div>
             </Infinite>
