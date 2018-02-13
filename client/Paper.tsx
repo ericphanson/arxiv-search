@@ -1,8 +1,8 @@
-import { paper } from "./types";
+import { paper, category } from "./types";
 import { notimpl, sendRequest } from "./basic";
 import * as React from 'react'
 
-export function Paper(props: { p: paper, onToggle : (on : boolean) => void }) {
+export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCategoryClick : (cat : category) => void}) {
     let { p } = props
     let pdf_link = p.link.replace("abs", "pdf");
     let pdf_url = pdf_link === p.link ? pdf_link : pdf_link + ".pdf";
@@ -25,7 +25,7 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void }) {
                 ? <span className="ds2">(v1: {p.originally_published_time})</span>
                 : undefined}
             <span className="cs">{
-                p.tags.map(c => <a key={c} className="link-to-update" href={`/?in=${c.replace(/ /g, "+")}`}>{c}</a>).interlace(" | " as any)
+                p.tags.map(c => <a key={c} className="link-to-update" onClick={() => props.onCategoryClick(c)}>{c}</a>).interlace(" | " as any)
             }</span>
         </div>
         <div className="dllinks">

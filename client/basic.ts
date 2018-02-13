@@ -24,6 +24,8 @@ declare global {
         find(pred : (item : T, index : number) => boolean) : T | undefined;
         exists(pred : (item : T, index : number) => boolean) : number | undefined;
         drop(index : number) : T[];
+        /**Immutably add `item` unless it is already on the array. */
+        addUnique(item : T) : T[];
     }
 }
 if (!Array.prototype.interlace) {
@@ -53,6 +55,9 @@ if (!Array.prototype.exists) {Array.prototype.exists = function (pred) {
 }}
 if (!Array.prototype.drop) {Array.prototype.drop = function (i) {
     return [...this.slice(0,i),...this.slice(i+1)];
+}}
+if (!Array.prototype.addUnique) {Array.prototype.addUnique = function (item) {
+    return this.exists(x => x === item) ? this : [...this,item];
 }}
 if (!Object.prototype.toKeyValueArray) {Object.prototype.toKeyValueArray = function () {
     let a = []

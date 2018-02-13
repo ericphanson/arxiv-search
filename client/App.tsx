@@ -208,7 +208,9 @@ export class App extends React.Component<{}, state> {
                 threshold={500} >
                 <div id="maindiv" key="maindiv">
                     <div id="rtable" key="rtable">
-                        {papers.map((p, i) => <Paper p={p} key={p.pid} onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }} />)}
+                        {papers.map((p, i) => <Paper p={p} key={p.pid} 
+                            onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }} 
+                            onCategoryClick={(c) => this.handleCat(cats.addUnique(c))}/>)}
                     </div>
                 </div>
             </Infinite>
