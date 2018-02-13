@@ -987,8 +987,8 @@ def review():
   # make sure user is logged in
   if not g.user:
     return 'NO' # fail... (not logged in). JS should prevent from us getting here.
-
-  idvv = request.form['pid'] # includes version
+  data = request.get_json()
+  idvv = data['pid'] # includes version
   if not isvalidid(idvv):
     return 'NO' # fail, malformed id. weird.
   pid = strip_version(idvv)
@@ -1002,13 +1002,13 @@ def review():
           user_id = ? and paper_id = ?''', [uid, pid], one=True)
   # print(record)
 
-  ret = 'NO'
+  ret = False
   if record:
     # record exists, erase it.
     g.db.execute('''delete from library where user_id = ? and paper_id = ?''', [uid, pid])
     g.db.commit()
     #print('removed %s for %s' % (pid, uid))
-    ret = 'OFF'
+    ret = False
   else:
     # record does not exist, add it.
     rawpid = strip_version(pid)
@@ -1017,14 +1017,14 @@ def review():
     g.db.commit()
 
     #print('added %s for %s' % (pid, uid))
-    ret = 'ON'
+    ret = True
   
   with list_of_users_lock:
     list_of_users_cached.remove(uid)
   update_libids()
   addUserSearchesToCache()
 
-  return ret
+  return jsonify(dict(on=ret))
 
 
 @app.route('/account')
