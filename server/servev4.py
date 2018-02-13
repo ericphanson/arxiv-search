@@ -296,6 +296,8 @@ def extract_query_params(query_info):
       sort = SORT_LIB
     elif query_info['sort'] == "date":
       sort = SORT_DATE
+    elif query_info['sort'] == "query":
+      sort = SORT_DATE
   
   if 'author' in query_info:
     if query_info['author'].strip() is not '':
@@ -623,7 +625,7 @@ def sanitize_query_object(query_info):
 
   query_info = san_dict_str(query_info, 'author')
 
-  query_info = san_dict_value(query_info, 'sort', str, ["relevance","date"])
+  query_info = san_dict_value(query_info, 'sort', str, ["relevance","date", "query"])
 
   query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
   
@@ -676,6 +678,8 @@ def process_query_to_cache(query_hash, es_response, meta):
   list_of_ids = []
 
   for record in es_response:
+    
+    print(record.meta.score)
     _id = record.meta.id
 
     list_of_ids.append(_id)

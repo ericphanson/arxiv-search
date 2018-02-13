@@ -6,7 +6,7 @@ export type timeFilter = "3days" | "week" | "day" | "alltime" | "month" | "year"
 
 export interface query {
     query? : string,
-    sort? : "relevance" | "date",
+    sort : "relevance" | "date" | "query",
     /** Categories to filter; outer list is AND, inner list is OR. */
     category : category[][],
     /**The time span to filter results by. */
