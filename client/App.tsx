@@ -123,7 +123,7 @@ export class App extends React.Component<{}, state> {
                 <button id="qbutton" onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
-                {loggedIn && (query.sort !== "relevance" ? <button onClick={() => this.setNextQuery({sort:"relevance"}, () => this.activateQuery())}>Your ArXiV</button> : <p>Sorting by Your ArXiV.</p>)}
+                {loggedIn && (query.sort !== "relevance" ? <button onClick={() => this.setNextQuery({sort:"relevance", query:""}, () => this.activateQuery())}>Your ArXiV</button> : <p>Sorting by Your ArXiV.</p>)}
                 {this.state.tot_num_papers && (<p className="app-total"><strong>{this.state.tot_num_papers}</strong> results</p>)}
                 <h4>time:</h4>
                 <table>
@@ -131,7 +131,7 @@ export class App extends React.Component<{}, state> {
                         {timeFilters.map(tf => <tr key={tf.toString()}>
                             <td onClick={() => this.handleTime(tf)}>
                                 <input type="radio" name="time"
-                                    checked={query.time === tf} />
+                                    checked={query.time === tf} onChange={() => this.handleTime(tf)} />
                                 {tf.toString()}
                             </td>
                             <td className="result-count">{tf_data(tf)}</td>
@@ -145,10 +145,10 @@ export class App extends React.Component<{}, state> {
                 pageStart={0}
                 loadMore={() => this.handleLoadMore()}
                 hasMore={!isDone}
-                loader={<div>Loading...</div>}
+                loader={<div key="loading">Loading...</div>}
                 threshold={500} >
-                <div id="maindiv">
-                    <div id="rtable">
+                <div id="maindiv" key="maindiv">
+                    <div id="rtable" key="rtable">
                         {papers.map((p, i) => <Paper p={p} key={p.pid} onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }} />)}
                     </div>
                 </div>
