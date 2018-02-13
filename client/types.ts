@@ -28,6 +28,7 @@ export interface request {
 }
 
 export interface paper {
+    score? : number,
     title : string,
     /**ArXiv id. Eg `1802.02400v2` */
     pid : string

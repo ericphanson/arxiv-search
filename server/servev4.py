@@ -155,9 +155,14 @@ def render_date(timestr):
 
 
 def encode_hit(p, send_images=True, send_abstracts=True):
+  
   pid = str(p['_rawid'])
   idvv = '%sv%d' % (p['_rawid'], p['paperversion'])
   struct = {}
+  if "score" in p.meta:
+    if p.meta.score is not None:
+      struct['score'] = p.meta.score
+  
   struct['title'] = p['title']
   struct['pid'] = idvv
   struct['rawpid'] = p['_rawid']
@@ -296,8 +301,8 @@ def extract_query_params(query_info):
       sort = SORT_LIB
     elif query_info['sort'] == "date":
       sort = SORT_DATE
-    elif query_info['sort'] == "query":
-      sort = SORT_DATE
+    elif (query_info['sort'] == "query") and (query_info['query'].strip() is not ''):
+      sort = SORT_QUERY
   
   if 'author' in query_info:
     if query_info['author'].strip() is not '':
@@ -679,7 +684,6 @@ def process_query_to_cache(query_hash, es_response, meta):
 
   for record in es_response:
     
-    print(record.meta.score)
     _id = record.meta.id
 
     list_of_ids.append(_id)
