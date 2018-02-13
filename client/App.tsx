@@ -84,7 +84,7 @@ export class App extends React.Component<{}, state> {
         this.setState({ nextQuery: { ...this.state.nextQuery, ...query } }, callback);
     }
     handleQueryboxChange(event) {
-        this.setNextQuery({ query: event.target.value });
+        this.setNextQuery({ query: event.target.value, sort : "date" });
     }
     handleLoadMore() {
         if (this.state.isLoading || this.state.isDone) { return; }
@@ -94,6 +94,7 @@ export class App extends React.Component<{}, state> {
     handleTime(tf: timeFilter) { this.setNextQuery({ time: tf }, () => this.activateQuery()) }
     render() {
         let { papers, isDone, isLoading, meta, nextQuery: query } = this.state;
+        let loggedIn = user !== "None"
         const tf_data = (tf: timeFilter) => { let n = meta.time_filter_data && meta.time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n})` }
         return <div className="app-root">
             <h1 className="logo app-banner">ARXIV-SEARCH</h1>
@@ -122,6 +123,7 @@ export class App extends React.Component<{}, state> {
                 <button id="qbutton" onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
+                {loggedIn && (query.sort !== "relevance" ? <button onClick={() => this.setNextQuery({sort:"relevance"}, () => this.activateQuery())}>Your ArXiV</button> : <p>Sorting by Your ArXiV.</p>)}
                 {this.state.tot_num_papers && (<p className="app-total"><strong>{this.state.tot_num_papers}</strong> results</p>)}
                 <h4>time:</h4>
                 <table>
