@@ -2,8 +2,7 @@ import { notimpl, sendRequest } from './basic';
 import { paper, request, response, query, meta, category, timeFilter } from './types';
 import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
-import Select from "react-select"
-import { SearchBox } from './SearchBox';
+import Select from "react-select";
 import { Paper } from './Paper';
 import { all_categories } from './all_categories';
 interface state {
@@ -186,7 +185,7 @@ export class App extends React.Component<{}, state> {
                     <tbody>
                         {(() => {
                             let kvs = meta.prim_data.toKeyValueArray();
-                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr className={k === query.primaryCategory && "strong"} onClick={() => this.handlePrimCat(k)}>
+                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr className={k === query.primaryCategory && "strong"} onClick={() => this.handlePrimCat(k as any)}>
                                 <td>{k}</td>
                                 <td>({v})</td>
                             </tr>)
@@ -197,7 +196,6 @@ export class App extends React.Component<{}, state> {
                 {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ sort: (e.target.checked ? "relevance" : "date") }, () => this.activateQuery())} /></label>}
                 {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
                 <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
-
             </div>
             <Infinite
                 className="app-results"
