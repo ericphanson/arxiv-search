@@ -22,6 +22,7 @@ interface state {
 let timeFilters = ["day", "3days", "week", "month", "year", "alltime"] as timeFilter[]
 const defaultQuery: query = {
     query: "",
+    sort:"query",
     category: [],
     v1: false,
     only_lib: false,
@@ -85,7 +86,7 @@ export class App extends React.Component<{}, state> {
         this.setState({ nextQuery: { ...this.state.nextQuery, ...query } }, callback);
     }
     handleQueryboxChange(event) {
-        this.setNextQuery({ query: event.target.value, sort: "date" });
+        this.setNextQuery({ query: event.target.value, sort: "query" });
     }
     handleLoadMore() {
         if (this.state.isLoading || this.state.isDone) { return; }
@@ -193,7 +194,7 @@ export class App extends React.Component<{}, state> {
                     </tbody>
                 </table>}
                 <h4>Other options:</h4>
-                {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ sort: (e.target.checked ? "relevance" : "date") }, () => this.activateQuery())} /></label>}
+                {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ sort: (e.target.checked ? "relevance" : "query") }, () => this.activateQuery())} /></label>}
                 {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
                 <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
             </div>
