@@ -1,4 +1,4 @@
-import { notimpl , sendRequest} from './basic';
+import { notimpl, sendRequest } from './basic';
 import { paper, request, response, query, meta, category, timeFilter } from './types';
 import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
@@ -12,7 +12,7 @@ interface state {
     error?: string,
     isDone: boolean
     meta: meta,
-    tot_num_papers : number,
+    tot_num_papers: number,
     /**Query used to fetch results */
     activeQuery: query
     /**Query currently being edited. */
@@ -27,8 +27,8 @@ const defaultQuery: query = {
     time: "alltime"
 }
 declare const beta_results_url: string;
-declare const user : any;
-declare const username : string;
+declare const user: any;
+declare const username: string;
 
 
 export class App extends React.Component<{}, state> {
@@ -42,7 +42,7 @@ export class App extends React.Component<{}, state> {
             requestCount: 10,
             papers: [],
             isLoading: true,
-            tot_num_papers : undefined
+            tot_num_papers: undefined
         }
     }
     componentDidMount() {
@@ -64,12 +64,12 @@ export class App extends React.Component<{}, state> {
             for (let i = 0; i < papers.length; i++) {
                 p[r.start_at + i] = papers[i];
             }
-            this.setState({ papers: p, isLoading: false, isDone: papers.length < num_get, tot_num_papers : r.tot_num_papers});
+            this.setState({ papers: p, isLoading: false, isDone: papers.length < num_get, tot_num_papers: r.tot_num_papers });
         });
     }
     /**Replace activeQuery with nextQuery and fetch papers. */
     activateQuery() {
-        this.setState({ activeQuery: this.state.nextQuery, requestCount: 10, papers: [], isDone: false, meta : {} }, () => {
+        this.setState({ activeQuery: this.state.nextQuery, requestCount: 10, papers: [], isDone: false, meta: {} }, () => {
             this.getPapers();
             let request = { query: this.state.activeQuery };
             sendRequest("_getmeta", request, (meta: Partial<meta>) =>
@@ -98,17 +98,17 @@ export class App extends React.Component<{}, state> {
             <div className="app-login">
                 <div id="userinfo">
                     {
-                        user === "None" ? 
-                    (<form action="login" method="post">
-                        User:
-                        <input type="text" name="username" className="input-no-border"/>
-                        Pass:
-                        <input type="password" name="password" className="input-no-border"/>
-                        <input type="submit" value="Login or Create" className="btn-fancy"/>
-                    </form>)
-                    :
-                    [<span>{username}</span>,
-                    <a href="logout">log out</a>]
+                        user === "None" ?
+                            (<form action="login" method="post">
+                                User:
+                        <input type="text" name="username" className="input-no-border" />
+                                Pass:
+                        <input type="password" name="password" className="input-no-border" />
+                                <input type="submit" value="Login or Create" className="btn-fancy" />
+                            </form>)
+                            :
+                            [<span>{username}</span>,
+                            <a href="logout">log out</a>]
                     }
                 </div>
             </div>
@@ -120,22 +120,21 @@ export class App extends React.Component<{}, state> {
                 <button id="qbutton" onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
-                <div>
-                    {this.state.tot_num_papers && (<p className="app-total"><strong>{this.state.tot_num_papers}</strong> results</p>)}
-                    <h4>time:</h4>
-                    <table>
-                        <tbody>
-                            {timeFilters.map(tf => <tr key={tf.toString()}>
-                                <td onClick={() => this.handleTime(tf)}>
-                                    <input type="radio" name="time"
-                                        checked={query.time === tf} />
-                                    {tf.toString()}
-                                </td>
-                                <td className="result-count">{tf_data(tf)}</td>
-                            </tr>)}
-                        </tbody>
-                    </table>
-                </div>
+                {this.state.tot_num_papers && (<p className="app-total"><strong>{this.state.tot_num_papers}</strong> results</p>)}
+                <h4>time:</h4>
+                <table>
+                    <tbody>
+                        {timeFilters.map(tf => <tr key={tf.toString()}>
+                            <td onClick={() => this.handleTime(tf)}>
+                                <input type="radio" name="time"
+                                    checked={query.time === tf} />
+                                {tf.toString()}
+                            </td>
+                            <td className="result-count">{tf_data(tf)}</td>
+                        </tr>)}
+                    </tbody>
+                </table>
+                {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({only_lib : event.target.checked}, () => this.activateQuery())}/></label>}
             </div>
             <Infinite
                 className="app-results"
@@ -146,7 +145,7 @@ export class App extends React.Component<{}, state> {
                 threshold={500} >
                 <div id="maindiv">
                     <div id="rtable">
-                        {papers.map((p,i) => <Paper p={p} key={p.pid} onToggle={(on) =>{let p = [...this.state.papers]; p[i].in_library = on; this.setState({papers : p})}} />)}
+                        {papers.map((p, i) => <Paper p={p} key={p.pid} onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }} />)}
                     </div>
                 </div>
             </Infinite>
