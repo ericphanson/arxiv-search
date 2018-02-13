@@ -1,8 +1,8 @@
 import { paper } from "./types";
-import { notimpl } from "./basic";
+import { notimpl, sendRequest } from "./basic";
 import * as React from 'react'
 
-export function Paper(props: { p: paper }) {
+export function Paper(props: { p: paper, onToggle : (on : boolean) => void }) {
     let { p } = props
     let pdf_link = p.link.replace("abs", "pdf");
     let pdf_url = pdf_link === p.link ? pdf_link : pdf_link + ".pdf";
@@ -37,7 +37,8 @@ export function Paper(props: { p: paper }) {
                 <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }}>scirate</a>
             </span>
             <br />
-            <img src={p.in_library ? "static/save.png" : "static/saved.png"} className="save-icon" title="toggle save paper to library (requires login)" id={"lib" + p.pid} onClick={notimpl} />
+            <img src={p.in_library ? "static/saved.png" : "static/save.png"} className="save-icon" title="toggle save paper to library (requires login)" id={"lib" + p.pid} onClick={() => 
+                sendRequest("savetoggle", {pid:p.pid}, ({on}) =>  this.props.onToggle(on) )} />
         </div>
         {p.img && <div className="animg"><img src={p.img} /></div>}
         {p.abstract && <div className="abstract"><span className="tt">{p.abstract}</span></div>}

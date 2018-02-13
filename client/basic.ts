@@ -2,6 +2,18 @@ export function notimpl() {
     throw new Error("not implemented.")
 }
 
+export function sendRequest(url: string, request, callback: (response: any) => void) {
+    window.fetch(url, {
+        method: "POST",
+        body: JSON.stringify(request),
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin"
+    }).then(
+        response => response.ok ? response.json() : console.log("couldn't connect to server."),
+        error => console.log(`Network error: ${error}`)
+        ).then(callback);
+}
+
 declare global {
     interface Array<T> {
         interlace(sep: T): T[];
