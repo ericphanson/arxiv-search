@@ -13,7 +13,11 @@ export function sendRequest(url: string, request, callback: (response: any) => v
         error => console.log(`Network error: ${error}`)
         ).then(callback);
 }
-
+declare global {
+    interface Object {
+        toKeyValueArray() :{k:string, v : any}[];
+    }
+}
 declare global {
     interface Array<T> {
         interlace(sep: T): T[];
@@ -38,4 +42,12 @@ if(!Array.prototype.find) {Array.prototype.find = function (pred) {
        if (pred(this[i],i)) {return this[i];} 
     }
     return undefined;
+}}
+if (!Object.prototype.toKeyValueArray) {Object.prototype.toKeyValueArray = function () {
+    let a = []
+    let ks = Object.getOwnPropertyNames(this);
+    for (let k of ks) {
+        a.push({k,v:this[k]});
+    }
+    return a;
 }}

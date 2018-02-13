@@ -93,6 +93,7 @@ export class App extends React.Component<{}, state> {
         console.log("loadmore called");
         this.setState({ requestCount: this.state.requestCount + 10 }, () => this.getPapers());
     }
+    handlePrimCat(cat : category) {this.setNextQuery({primaryCategory : cat}, () => this.activateQuery())}
     handleTime(tf: timeFilter) { this.setNextQuery({ time: tf }, () => this.activateQuery()) }
     render() {
         let { papers, isDone, isLoading, meta, nextQuery: query } = this.state;
@@ -129,8 +130,8 @@ export class App extends React.Component<{}, state> {
                 <h4>time:</h4>
                 <table>
                     <tbody>
-                        {timeFilters.map(tf => <tr key={tf.toString()}>
-                            <td onClick={() => this.handleTime(tf)}>
+                        {timeFilters.map(tf => <tr key={tf.toString()} onClick={() => this.handleTime(tf)}>
+                            <td >
                                 <input type="radio" name="time"
                                     checked={query.time === tf} onChange={() => this.handleTime(tf)} />
                                 {tf.toString()}
@@ -150,7 +151,18 @@ export class App extends React.Component<{}, state> {
                     name="prim"
                     value={query.primaryCategory || ""}
                     searchable={true}
-                    onChange={(selected) => {console.log(selected); this.setNextQuery({primaryCategory : selected}, () => this.activateQuery())}}/>
+                    onChange={(selected) => this.handlePrimCat(selected)}/>
+                {meta.prim_data && <table>
+                    <tbody>
+                        {(() => {
+                            let kvs =meta.prim_data.toKeyValueArray();
+                            return kvs.sort((a,b) => b.v - a.v).slice(0,10).map(({k,v}) => <tr className={k === query.primaryCategory && "strong"} onClick={() => this.handlePrimCat(k)}>
+                                <td>{k}</td>
+                                <td>({v})</td>
+                            </tr>)
+                        })()}
+                    </tbody>
+                </table>}
                 <h4>Other options:</h4>
                 {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({sort:(e.target.checked ? "relevance" : "date")}, () => this.activateQuery())}/></label>}
                 {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({only_lib : event.target.checked}, () => this.activateQuery())}/></label>}
