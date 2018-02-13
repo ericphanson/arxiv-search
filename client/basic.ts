@@ -13,11 +13,17 @@ export function sendRequest(url: string, request, callback: (response: any) => v
         error => console.log(`Network error: ${error}`)
         ).then(callback);
 }
-
+declare global {
+    interface Object {
+        toKeyValueArray() :{k:string, v : any}[];
+    }
+}
 declare global {
     interface Array<T> {
         interlace(sep: T): T[];
         find(pred : (item : T, index : number) => boolean) : T | undefined;
+        exists(pred : (item : T, index : number) => boolean) : number | undefined;
+        drop(index : number) : T[];
     }
 }
 if (!Array.prototype.interlace) {
@@ -38,4 +44,21 @@ if(!Array.prototype.find) {Array.prototype.find = function (pred) {
        if (pred(this[i],i)) {return this[i];} 
     }
     return undefined;
+}}
+if (!Array.prototype.exists) {Array.prototype.exists = function (pred) {
+    for (let i = 0; i < this.length; i++) {
+        if (pred(this[i],i)) {return i;}
+    }
+    return undefined;
+}}
+if (!Array.prototype.drop) {Array.prototype.drop = function (i) {
+    return [...this.slice(0,i),...this.slice(i+1)];
+}}
+if (!Object.prototype.toKeyValueArray) {Object.prototype.toKeyValueArray = function () {
+    let a = []
+    let ks = Object.getOwnPropertyNames(this);
+    for (let k of ks) {
+        a.push({k,v:this[k]});
+    }
+    return a;
 }}

@@ -2,8 +2,10 @@ import { notimpl, sendRequest } from './basic';
 import { paper, request, response, query, meta, category, timeFilter } from './types';
 import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
+import Select from "react-select"
 import { SearchBox } from './SearchBox';
 import { Paper } from './Paper';
+import { all_categories } from './all_categories';
 interface state {
     papers: paper[],
     /**The number of papers that should be visible */
@@ -29,7 +31,7 @@ const defaultQuery: query = {
 declare const beta_results_url: string;
 declare const user: any;
 declare const username: string;
-
+let categories = all_categories.map(x => ({ value: x, label: x }))
 
 export class App extends React.Component<{}, state> {
     constructor(props) {
@@ -60,7 +62,7 @@ export class App extends React.Component<{}, state> {
         let url = beta_results_url;
         this.setState({ isLoading: true })
         sendRequest(url, request, (r: response) => {
-            if (this.state.activeQuery !== query) {return;}
+            if (this.state.activeQuery !== query) { return; }
             let { dynamic, start_at, papers } = r;
             let p = [...this.state.papers];
             for (let i = 0; i < papers.length; i++) {
@@ -84,17 +86,20 @@ export class App extends React.Component<{}, state> {
         this.setState({ nextQuery: { ...this.state.nextQuery, ...query } }, callback);
     }
     handleQueryboxChange(event) {
-        this.setNextQuery({ query: event.target.value, sort : "date" });
+        this.setNextQuery({ query: event.target.value, sort: "date" });
     }
     handleLoadMore() {
         if (this.state.isLoading || this.state.isDone) { return; }
         console.log("loadmore called");
         this.setState({ requestCount: this.state.requestCount + 10 }, () => this.getPapers());
     }
+    handlePrimCat(cat: category) { this.setNextQuery({ primaryCategory: cat }, () => this.activateQuery()) }
+    handleCat(andCats: category[]) { this.setNextQuery({ category: andCats.map(x => [x]) }, () => this.activateQuery()) }
     handleTime(tf: timeFilter) { this.setNextQuery({ time: tf }, () => this.activateQuery()) }
     render() {
         let { papers, isDone, isLoading, meta, nextQuery: query } = this.state;
         let loggedIn = user !== "None"
+        let cats = query.category.map(x => x[0]);
         const tf_data = (tf: timeFilter) => { let n = meta.time_filter_data && meta.time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n})` }
         return <div className="app-root">
             <h1 className="logo app-banner">ARXIV-SEARCH</h1>
@@ -123,13 +128,12 @@ export class App extends React.Component<{}, state> {
                 <button id="qbutton" onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
-                {loggedIn && (query.sort !== "relevance" ? <button onClick={() => this.setNextQuery({sort:"relevance", query:""}, () => this.activateQuery())}>Your ArXiV</button> : <p>Sorting by Your ArXiV.</p>)}
                 {this.state.tot_num_papers && (<p className="app-total"><strong>{this.state.tot_num_papers}</strong> results</p>)}
                 <h4>time:</h4>
                 <table>
                     <tbody>
-                        {timeFilters.map(tf => <tr key={tf.toString()}>
-                            <td onClick={() => this.handleTime(tf)}>
+                        {timeFilters.map(tf => <tr key={tf.toString()} onClick={() => this.handleTime(tf)}>
+                            <td >
                                 <input type="radio" name="time"
                                     checked={query.time === tf} onChange={() => this.handleTime(tf)} />
                                 {tf.toString()}
@@ -138,7 +142,62 @@ export class App extends React.Component<{}, state> {
                         </tr>)}
                     </tbody>
                 </table>
-                {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({only_lib : event.target.checked}, () => this.activateQuery())}/></label>}
+                <h4>category:</h4>
+                <Select
+                    onBlurResetsInput={false}
+                    onSelectResetsInput={false}
+                    placeholder="type categories"
+                    options={categories}
+                    simpleValue
+                    clearable={true}
+                    name="categories"
+                    value={cats}
+                    searchable={true}
+                    multi
+                    onChange={(selected) => this.handleCat(selected.split(","))} />
+                {meta.in_data && <table>
+                    <tbody>
+                        {(() => {
+                            let kvs = meta.in_data.toKeyValueArray();
+                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr onClick={() => {
+                                let i = cats.exists(k2 => k2 === k);
+                                if (i === undefined) { this.handleCat([...cats, k as any]) }
+                                else { this.handleCat(cats.drop(i)) }
+                            }}>
+                                <td>{k}</td>
+                                <td>({v})</td>
+                            </tr>)
+                        })()}
+                    </tbody>
+                </table>}
+                <h4>primary category:</h4>
+                <Select
+                    onBlurResetsInput={false}
+                    onSelectResetsInput={false}
+                    placeholder="type a primary category"
+                    options={categories}
+                    simpleValue
+                    clearable={true}
+                    name="prim"
+                    value={query.primaryCategory || ""}
+                    searchable={true}
+                    onChange={(selected) => this.handlePrimCat(selected)} />
+                {meta.prim_data && <table>
+                    <tbody>
+                        {(() => {
+                            let kvs = meta.prim_data.toKeyValueArray();
+                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr className={k === query.primaryCategory && "strong"} onClick={() => this.handlePrimCat(k)}>
+                                <td>{k}</td>
+                                <td>({v})</td>
+                            </tr>)
+                        })()}
+                    </tbody>
+                </table>}
+                <h4>Other options:</h4>
+                {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ sort: (e.target.checked ? "relevance" : "date") }, () => this.activateQuery())} /></label>}
+                {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
+                <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
+
             </div>
             <Infinite
                 className="app-results"
