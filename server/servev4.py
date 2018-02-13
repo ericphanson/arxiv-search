@@ -356,7 +356,7 @@ def add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib):
   year_agg = A('date_histogram', field='published', interval="year")
   search.aggs.bucket('year_filt', year_filt).bucket('year_agg', year_agg)
 
-  in_filt = A('filter', filter=(Q_prim & Q_time & Q_v1 & Q_lib))
+  in_filt = A('filter', filter=(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib))
   in_agg = A('terms', field='tags.term.raw')
   search.aggs.bucket('in_filt', in_filt).bucket('in_agg',in_agg)
 
