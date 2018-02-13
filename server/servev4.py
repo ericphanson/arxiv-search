@@ -291,7 +291,7 @@ def extract_query_params(query_info):
   if 'query' in query_info:
     if query_info['query'].strip() is not '':
       sort = SORT_QUERY
-  elif 'sort' in query_info:
+  if 'sort' in query_info:
     if query_info['sort'] == "relevance":
       sort = SORT_LIB
     elif query_info['sort'] == "date":
@@ -332,6 +332,7 @@ def extract_query_params(query_info):
     search = search.sort('-updated')
   elif sort == SORT_LIB:
     search = add_rec_query(search)
+    print("sorting by relevance")
 
   return search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib
 
@@ -560,8 +561,12 @@ def san_dict_value(dictionary, key, typ, valid_options):
       value = dictionary[key]
       if not isinstance(value, typ):
         dictionary.pop(key, None)
+        # print("popped value")
+        # print(value)
       elif not (value in valid_options):
-          dictionary.pop(key,None)
+        dictionary.pop(key,None)
+        # print("popped value")
+        # print(value)
     return dictionary
 
 def san_dict_bool(dictionary, key):
@@ -620,6 +625,9 @@ def sanitize_query_object(query_info):
 
   query_info = san_dict_value(query_info, 'sort', str, ["relevance","date"])
 
+  if 'sort' in query_info:
+    # print("sort survived")
+    # print(query_info['sort'])
   query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
   
   query_info = san_dict_bool(query_info, 'only_lib')
