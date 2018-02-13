@@ -534,6 +534,21 @@ def _getpapers():
   access_log.info("ES search request", extra=log_dict )
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
   papers, meta = getResults(search)
+  scored_papers = 0
+  tot_score = 0
+  max_score = 0
+  for p in papers:
+    if "score" in p:
+      scored_papers +=1
+      tot_score += p["score"]
+      if p["score"] > max_score:
+        max_score = p["score"]
+  if scored_papers > 0:
+    avg_score = tot_score/scored_papers
+    print("avg_score")
+    print(avg_score)
+    print("max_score")
+    print(max_score)
   print('done papers')
   # testmeta(query_info)
   # testslowmeta(query_info)
