@@ -49,6 +49,7 @@ export class App extends React.Component<{}, state> {
         this.activateQuery();
     }
     getPapers() {
+        let query = this.state.activeQuery;
         let num_get = this.state.requestCount - this.state.papers.length
         let request: request = {
             query: this.state.activeQuery,
@@ -59,6 +60,7 @@ export class App extends React.Component<{}, state> {
         let url = beta_results_url;
         this.setState({ isLoading: true })
         sendRequest(url, request, (r: response) => {
+            if (this.state.activeQuery !== query) {return;}
             let { dynamic, start_at, papers } = r;
             let p = [...this.state.papers];
             for (let i = 0; i < papers.length; i++) {
