@@ -1,0 +1,57 @@
+
+// close index
+curl -XPOST 'https://search-arxiv-esd-ahgls3q7eb5236pj2u5qxptdtq.us-east-1.es.amazonaws.com/arxiv/_close'
+
+// get mapping:
+curl -XGET 'https://search-arxiv-esd-ahgls3q7eb5236pj2u5qxptdtq.us-east-1.es.amazonaws.com/arxiv/_mapping'
+
+// tentative code to add new analyzer for authors
+curl -XPUT 'https://search-arxiv-esd-ahgls3q7eb5236pj2u5qxptdtq.us-east-1.es.amazonaws.com/arxiv/_settings' -H 'Content-Type: application/json' -d'
+"settings": {
+  "analysis": {
+    "filter": {
+      "parens_remove": {
+        "type": "pattern_replace",
+        "pattern": "/\(.*?\)/g",
+        "replacement": ""
+      }
+    },
+    "analyzer": {
+      "auth_analyzer": {
+        "filter": [
+          "parens_remove",
+          "trim"
+        ],
+        "type": "custom",
+        "tokenizer": "keyword"
+      }
+    }
+  }'
+
+curl -XGET 'https://search-arxiv-esd-ahgls3q7eb5236pj2u5qxptdtq.us-east-1.es.amazonaws.com/_cluster/state?pretty&filter_nodes=true&filter_routing_table=true&filter_indices=myindex'
+
+
+curl -XPOST 'https://search-arxiv-esd-ahgls3q7eb5236pj2u5qxptdtq.us-east-1.es.amazonaws.com/arxiv/_open'
+
+
+
+curl -XPUT 'https://search-arxiv-esd-ahgls3q7eb5236pj2u5qxptdtq.us-east-1.es.amazonaws.com/arxiv/_mapping/paper?pretty' -H 'Content-Type: application/json' -d'
+{
+  "properties": {
+    "authors": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "fields": {
+            "cust": {
+              "type": "string",
+              "analyzer": "auth_analyzer"
+            }
+          }
+        }
+      }
+    }
+}
+}
+'
+curl -XPOST 'https://search-arxiv-esd-ahgls3q7eb5236pj2u5qxptdtq.us-east-1.es.amazonaws.com/arxiv/_update_by_query?pretty&conflicts=proceed&refresh'

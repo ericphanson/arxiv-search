@@ -1,0 +1,210 @@
+{
+    "arxiv": {
+        "mappings": {
+            "paper": {
+                "properties": {
+                    "_rawid": {
+                        "type": "string"
+                    },
+                    "all_authors": {
+                        "type": "string"
+                    },
+                    "all_cats": {
+                        "type": "string"
+                    },
+                    "arxiv_affiliation": {
+                        "type": "string"
+                    },
+                    "arxiv_comment": {
+                        "type": "string"
+                    },
+                    "arxiv_doi": {
+                        "type": "string"
+                    },
+                    "arxiv_journal_ref": {
+                        "type": "string"
+                    },
+                    "arxiv_primary_category": {
+                        "properties": {
+                            "scheme": {
+                                "type": "string"
+                            },
+                            "term": {
+                                "type": "string",
+                                "fields": {
+                                    "raw": {
+                                        "type": "string",
+                                        "index": "not_analyzed"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "author": {
+                        "type": "string"
+                    },
+                    "author_detail": {
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "authors": {
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "fields": {
+                                    "keyword": {
+                                        "type": "string",
+                                        "analyzer": "keyword"
+                                    },
+                                    "raw": {
+                                        "type": "string",
+                                        "index": "not_analyzed"
+                                    },
+                                    "simple": {
+                                        "type": "string",
+                                        "analyzer": "simple"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "fulltext": {
+                        "type": "string",
+                    },
+                    "guidislink": {
+                        "type": "boolean"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "link": {
+                        "type": "string"
+                    },
+                    "links": {
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "rel": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "paperversion": {
+                        "type": "long"
+                    },
+                    "published": {
+                        "type": "date",
+                        "format": "strict_date_optional_time||epoch_millis"
+                    },
+                    "published_parsed": {
+                        "type": "long"
+                    },
+                    "summary": {
+                        "type": "string"
+                    },
+                    "summary_detail": {
+                        "properties": {
+                            "base": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "tags": {
+                        "properties": {
+                            "scheme": {
+                                "type": "string"
+                            },
+                            "term": {
+                                "type": "string",
+                                "fields": {
+                                    "raw": {
+                                        "type": "string",
+                                        "index": "not_analyzed"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "time_published": {
+                        "type": "long"
+                    },
+                    "time_updated": {
+                        "type": "long"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "title_detail": {
+                        "properties": {
+                            "base": {
+                                "type": "string"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "tscore": {
+                        "type": "double"
+                    },
+                    "updated": {
+                        "type": "date",
+                        "format": "strict_date_optional_time||epoch_millis"
+                    },
+                    "updated_parsed": {
+                        "type": "long"
+                    }
+                }
+            },
+            "papers": {
+                "properties": {
+                    "arxiv_primary_category": {
+                        "properties": {
+                            "term": {
+                                "type": "string",
+                                "fields": {
+                                    "raw": {
+                                        "type": "string",
+                                        "index": "not_analyzed"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "tags": {
+                        "properties": {
+                            "term": {
+                                "type": "string",
+                                "fields": {
+                                    "raw": {
+                                        "type": "string",
+                                        "index": "not_analyzed"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
