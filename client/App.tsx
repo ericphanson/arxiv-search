@@ -158,7 +158,7 @@ export class App extends React.Component<{}, state> {
                     <tbody>
                         {(() => {
                             let kvs = meta.in_data.toKeyValueArray().filter(({k}) => is_ams(k))
-                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr >
+                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr key={k}>
                                 <td> <CatBadge onClick={() => {
                                 let i = cats.exists(k2 => k2 === k);
                                 if (i === undefined) { this.handleCat([...cats, k as any]) }
@@ -181,17 +181,17 @@ export class App extends React.Component<{}, state> {
                     value={query.primaryCategory || ""}
                     searchable={true}
                     onChange={(selected) => this.handlePrimCat(selected)} />
-                {meta.prim_data && <table>
+                {/* {meta.prim_data && <table>
                     <tbody>
                         {(() => {
                             let kvs = meta.prim_data.toKeyValueArray();
-                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr className={k === query.primaryCategory && "strong"} >
+                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr key={k} className={k === query.primaryCategory ? "strong" : ""} >
                                 <td><CatBadge cat={k} onClick={() => this.handlePrimCat(k as any)}/></td>
                                 <td>({v})</td>
                             </tr>)
                         })()}
                     </tbody>
-                </table>}
+                </table>} */}
                 <h4>Other options:</h4>
                 {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ sort: (e.target.checked ? "relevance" : "query") }, () => this.activateQuery())} /></label>}
                 {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
