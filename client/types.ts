@@ -1,5 +1,5 @@
-/** ArXiv categories. Full list is in `all_categories.txt`. Eg  "quant-ph" | "cond-mat" | "hep-th" */
-export type category = string
+/** ArXiv categories. Full list is in `all_categories.txt`. */
+export type category = "quant-ph" | "cond-mat" | "hep-th" //...and so on
 /** As implemented now, start and end should be a timestamp in milliseconds since the epoch see https://www.epochconverter.com/. For example `1517425200000` is Wednesday, January 31, 2018 7:00:00 PM. */
 export type timestamp = number
 export type timeFilter = "3days" | "week" | "day" | "alltime" | "month" | "year" | {start : timestamp, end : timestamp}
@@ -28,8 +28,10 @@ export interface request {
 }
 
 export interface paper {
-    score? : number,
-    title : string,
+    /** Extra comments about the paper; truncated to 100 characters + ... */
+    arxiv_comment? : string
+    score? : number
+    title : string
     /**ArXiv id. Eg `1802.02400v2` */
     pid : string
     /**`pid` without version. Eg `"1802.02400"`*/
@@ -40,7 +42,7 @@ export interface paper {
     link : string
     authors : string[]
     /** Some text with math delimited with `$`. */
-    abstract : string
+    abstract? : string
     /**URL to imagemagic image of paper */
     img : string
     /**Cross-posting categories  */
@@ -51,6 +53,8 @@ export interface paper {
     originally_published_time : string
     /**In the user's library of papers. */
     in_library : boolean
+    /** is there a thumbnail picture? */
+    havethumb? : boolean
 }
 
 export interface response {
