@@ -157,11 +157,11 @@ export class App extends React.Component<{}, state> {
                 {meta.in_data && <table>
                     <tbody>
                         {(() => {
-                            let kvs = meta.in_data.toKeyValueArray().filter(({k}) => is_ams(k))
+                            let kvs = meta.in_data.toKeyValueArray().filter(({k}) => !is_ams(k) && !cats.exists(c => c === k));
                             return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr key={k}>
                                 <td> <CatBadge onClick={() => {
-                                let i = cats.exists(k2 => k2 === k);
-                                if (i === undefined) { this.handleCat([...cats, k as any]) }
+                                let i = cats.findIndex(k2 => k2 === k);
+                                if (i === -1) { this.handleCat([...cats, k as any]) }
                                 else { this.handleCat(cats.drop(i)) }
                             }} cat={k}/></td>
                                 <td>({v})</td>

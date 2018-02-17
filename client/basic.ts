@@ -22,7 +22,8 @@ declare global {
     interface Array<T> {
         interlace(sep: T): T[];
         find(pred : (item : T, index : number) => boolean) : T | undefined;
-        exists(pred : (item : T, index : number) => boolean) : number | undefined;
+        exists(pred : (item : T, index : number) => boolean) : boolean;
+        findIndex(pred : (item : T, index : number) => boolean) : number;
         drop(index : number) : T[];
         /**Immutably add `item` unless it is already on the array. */
         addUnique(item : T) : T[];
@@ -49,9 +50,15 @@ if(!Array.prototype.find) {Array.prototype.find = function (pred) {
 }}
 if (!Array.prototype.exists) {Array.prototype.exists = function (pred) {
     for (let i = 0; i < this.length; i++) {
+        if (pred(this[i],i)) {return true;}
+    }
+    return false;
+}}
+if (!Array.prototype.findIndex) {Array.prototype.findIndex = function (pred) {
+    for (let i = 0; i < this.length; i++) {
         if (pred(this[i],i)) {return i;}
     }
-    return undefined;
+    return -1;
 }}
 if (!Array.prototype.drop) {Array.prototype.drop = function (i) {
     return [...this.slice(0,i),...this.slice(i+1)];
