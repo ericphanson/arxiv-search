@@ -54,6 +54,12 @@ else:
 AWS_ACCESS_KEY = open(key_dir('AWS_ACCESS_KEY.txt'), 'r').read().strip()
 AWS_SECRET_KEY = open(key_dir('AWS_SECRET_KEY.txt'), 'r').read().strip()
 
+ES_USER = open(key_dir('ES_USER.txt'), 'r').read().strip()
+ES_PASS = open(key_dir('ES_PASS.txt'), 'r').read().strip()
+es_host = es_host = '0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io'
+
+
+
 log_AWS_ACCESS_KEY = open(key_dir('log_AWS_ACCESS_KEY.txt'), 'r').read().strip()
 log_AWS_SECRET_KEY = open(key_dir('log_AWS_SECRET_KEY.txt'), 'r').read().strip()
 CLOUDFRONT_URL = 'https://d3dq07j9ipgft2.cloudfront.net/'
@@ -156,8 +162,8 @@ def render_date(timestr):
 
 def encode_hit(p, send_images=True, send_abstracts=True):
   
-  pid = str(p['_rawid'])
-  idvv = '%sv%d' % (p['_rawid'], p['paperversion'])
+  pid = str(p['rawid'])
+  idvv = '%sv%d' % (p['rawid'], p['paper_version'])
   struct = {}
   if "score" in p.meta:
     if p.meta.score is not None:
@@ -165,8 +171,8 @@ def encode_hit(p, send_images=True, send_abstracts=True):
   
   struct['title'] = p['title']
   struct['pid'] = idvv
-  struct['rawpid'] = p['_rawid']
-  struct['category'] = p['arxiv_primary_category']['term']
+  struct['rawpid'] = p['rawid']
+  struct['category'] = p['arxiv_primary_category']['cat']
   struct['authors'] = [a['name'] for a in p['authors']]
   struct['link'] = p['link']
   if send_abstracts:
@@ -174,7 +180,14 @@ def encode_hit(p, send_images=True, send_abstracts=True):
   if send_images:
     # struct['img'] = '/static/thumbs/' + idvv.replace('/','') + '.pdf.jpg'
     struct['img'] = CLOUDFRONT_URL + 'thumbs/' + pid.replace('/','') + '.pdf.jpg'
-  struct['tags'] = [t['term'] for t in p['tags']]
+  
+  # if 'cats' in p:
+  try:
+    struct['tags'] = [t['cat'] for t in p['cats']]
+  except Exception as e:
+    print(e)
+    print(p.to_dict())
+    exit()
   # struct['tags'] = [t['term'] for t in p['tags']]
   
   # render time information nicely
@@ -241,17 +254,17 @@ def cat_filter(groups_of_cats):
     filt_q = Q()
     for group in groups_of_cats:
       if len(group)==1:
-        filt_q = filt_q & Q('term', tags__term__raw=group[0])
+        filt_q = filt_q & Q('term', cats__cat=group[0])
       elif len(group) > 1:
         # perform an OR filter among the different categories in this group                
-        filt_q = filt_q & Q('terms', tags__term__raw=group)
+        filt_q = filt_q & Q('terms', cats__cat=group)
 
     return filt_q
 
 def prim_filter(prim_cat):
     filt_q = Q()
     if prim_cat is not "any":
-      filt_q = Q('term', arxiv_primary_category__term__raw=prim_cat)
+      filt_q = Q('term', arxiv_primary_category__cat=prim_cat)
     return filt_q
 
 def time_filter(time):
@@ -268,7 +281,7 @@ def time_filter(time):
 def ver_filter(v1):
     filt_q = Q()
     if v1:
-      filt_q = filt_q & Q('term', paperversion=1)
+      filt_q = filt_q & Q('term', paper_version=1)
     return filt_q
 
 def lib_filter(only_lib):
@@ -278,7 +291,7 @@ def lib_filter(only_lib):
       pids = ids_from_library()
       if pids:
         filt_q = Q('bool', filter=[Q('terms', _id=pids)])
-      # filt_q = filt_q & Q('term', paperversion=1)
+      # filt_q = filt_q & Q('term', paper_version=1)
     return filt_q
 
 def extract_query_params(query_info):
@@ -356,7 +369,7 @@ def add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib):
   
   # define and add the aggregations, each filtered by all the filters except
   # variables corresopnding to what the aggregation is binning over
-  prim_agg = A('terms', field='arxiv_primary_category.term.raw')
+  prim_agg = A('terms', field='arxiv_primary_category.cat')
   prim_filt = A('filter', filter=(Q_cat & Q_time & Q_v1 & Q_lib) )
   search.aggs.bucket("prim_filt",prim_filt).bucket("prim_agg", prim_agg)
 
@@ -365,7 +378,7 @@ def add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib):
   search.aggs.bucket('year_filt', year_filt).bucket('year_agg', year_agg)
 
   in_filt = A('filter', filter=(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib))
-  in_agg = A('terms', field='tags.term.raw')
+  in_agg = A('terms', field='cats.cat')
   search.aggs.bucket('in_filt', in_filt).bucket('in_agg',in_agg)
 
   time_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1 & Q_lib))
@@ -391,7 +404,7 @@ def build_slow_meta_query(query_info):
 
   sampler_agg = A('sampler', shard_size=200)
 
-  auth_agg = A('significant_terms', field='authors.name.keyword')
+  auth_agg = A('significant_terms', field='authors.name')
 
   search.aggs.bucket('sig_filt', sig_filt).bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
 
@@ -483,11 +496,13 @@ def _getmeta():
 
 @app.route('/_getslowmeta', methods=['POST'])
 def _getslowmeta():
-    data = request.get_json()
-    query_info = data['query']
-    search = build_slow_meta_query(query_info)
-    search = search[0:0]
-    papers, meta = getResults(search)
+    # data = request.get_json()
+    # query_info = data['query']
+    # search = build_slow_meta_query(query_info)
+    # search = search[0:0]
+    # papers, meta = getResults(search)
+    meta = {'abc' : 'def'}
+    
     return jsonify(meta)
 
 def testmeta(query_info):
@@ -520,7 +535,7 @@ def _getpapers():
   #need to build the query from the info given here
   search = build_query(query_info)
 
-  search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+  search = search.source(includes=['rawid','paper_version','title','arxiv_primary_category.cat', 'authors.name', 'link', 'summary', 'cats.cat', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
 
   tot_num_papers = search.count()
@@ -743,13 +758,13 @@ def addUserSearchesToCache():
 
     svm = papers_from_svm()
     if svm:
-      searches = [svm, svm.filter('term', paperversion=1)]
+      searches = [svm, svm.filter('term', paper_version=1)]
       pages = [(0,10)]
       for s in searches:
         for p in pages:
             for ttstr in ttstrs:
               s2 = applyTimeFilter(s,ttstr)
-              s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+              s2 = s2.source(includes=['rawid','paper_version','title','arxiv_primary_category.cat', 'authors.name', 'link', 'summary', 'cats.cat', 'updated', 'published','arxiv_comment'])
               s2 = s2[p[0]:p[1]]
               async_add_to_cache(s2)
 
@@ -759,7 +774,7 @@ def addUserSearchesToCache():
       pages = [(0,10),(10,15),(15,20),(20,25)]
       for s in searches:
         for p in pages:
-          s2 = s.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+          s2 = s.source(includes=['rawid','paper_version','title','arxiv_primary_category.cat', 'authors.name', 'link', 'summary', 'cats.cat', 'updated', 'published','arxiv_comment'])
           s2 = s2[p[0]:p[1]]
           async_add_to_cache(s2)
   return AUTO_CACHE
@@ -768,13 +783,13 @@ def addDefaultSearchesToCache():
   if AUTO_CACHE:
     search = Search(using=es, index="arxiv")
     ttstrs = {'day', '3days', 'week', 'month', 'year', 'alltime', 'none'}
-    searches = [search.sort('-updated'), search.filter('term', paperversion=1).sort('-published')]
+    searches = [search.sort('-updated'), search.filter('term', paper_version=1).sort('-published')]
     pages = [(0,10),(10,15),(15,20),(20,25),(25,30),(35,40),(45,50)]
     for s in searches:
       for p in pages:
         for ttstr in ttstrs:
           s2 = applyTimeFilter(s,ttstr)
-          s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+          s2 = s2.source(includes=['rawid','paper_version','title','arxiv_primary_category.cat', 'authors.name', 'link', 'summary', 'cats.cat', 'updated', 'published','arxiv_comment'])
           s2 = s2[p[0]:p[1]]
           async_add_to_cache(s2)
   return AUTO_CACHE
@@ -1009,7 +1024,7 @@ def recommend():
 def library():
   """ render user's library """
   papers = papers_from_library()
-  # papers = papers.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+  # papers = papers.source(includes=['rawid','paper_version','title','arxiv_primary_category.cat', 'authors.name', 'link', 'summary', 'cats.cat', 'updated', 'published','arxiv_comment'])
 
   num_papers = papers.count()
   if g.user:
@@ -1307,18 +1322,9 @@ if __name__ == "__main__":
 
 
   print('connecting to elasticsearch...')
-  es_host = 'search-arxiv-esd-ahgls3q7eb5236pj2u5qxptdtq.us-east-1.es.amazonaws.com'
-  auth = AWSRequestsAuth(aws_access_key=AWS_ACCESS_KEY,
-                       aws_secret_access_key=AWS_SECRET_KEY,
-                       aws_host=es_host,
-                       aws_region='us-east-1',
-                       aws_service='es')
-
-
-  es = Elasticsearch(host=es_host,
-                          port=80,
-                          connection_class=RequestsHttpConnection,
-                          http_auth=auth)
+  es = Elasticsearch(
+   ["https://%s:%s@%s:9243" % (ES_USER,ES_PASS,es_host)], scheme="https", verify_certs=False) 
+  # print(es.info())
   # m = Mapping.from_es('arxiv', 'paper', using=es)
   # print(m.authors)
 
@@ -1342,7 +1348,6 @@ if __name__ == "__main__":
 
   addDefaultSearchesToCache()
   
-  TAGS = ['insightful!', 'thank you', 'agree', 'disagree', 'not constructive', 'troll', 'spam']
 
   # start
   # if args.prod:
