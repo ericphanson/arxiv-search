@@ -169,6 +169,8 @@ def encode_hit(p, send_images=True, send_abstracts=True):
     if p.meta.score is not None:
       struct['score'] = p.meta.score
   
+  if 'havethumb' in p:
+    struct['havethumb'] = p['havethumb']
   struct['title'] = p['title']
   struct['pid'] = idvv
   struct['rawpid'] = p['rawid']
@@ -533,7 +535,7 @@ def _getpapers():
   #need to build the query from the info given here
   search = build_query(query_info)
 
-  search = search.source(includes=['rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
+  search = search.source(includes=['havethumb','rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
 
   tot_num_papers = search.count()
@@ -762,7 +764,7 @@ def addUserSearchesToCache():
         for p in pages:
             for ttstr in ttstrs:
               s2 = applyTimeFilter(s,ttstr)
-              s2 = s2.source(includes=['rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
+              s2 = s2.source(includes=['havethumb','rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
               s2 = s2[p[0]:p[1]]
               async_add_to_cache(s2)
 
@@ -772,7 +774,7 @@ def addUserSearchesToCache():
       pages = [(0,10),(10,15),(15,20),(20,25)]
       for s in searches:
         for p in pages:
-          s2 = s.source(includes=['rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
+          s2 = s.source(includes=['havethumb','rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
           s2 = s2[p[0]:p[1]]
           async_add_to_cache(s2)
   return AUTO_CACHE
@@ -787,7 +789,7 @@ def addDefaultSearchesToCache():
       for p in pages:
         for ttstr in ttstrs:
           s2 = applyTimeFilter(s,ttstr)
-          s2 = s2.source(includes=['rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
+          s2 = s2.source(includes=['havethumb','rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
           s2 = s2[p[0]:p[1]]
           async_add_to_cache(s2)
   return AUTO_CACHE
