@@ -172,22 +172,20 @@ def encode_hit(p, send_images=True, send_abstracts=True):
   struct['title'] = p['title']
   struct['pid'] = idvv
   struct['rawpid'] = p['rawid']
-  struct['category'] = p['arxiv_primary_category']['cat']
-  struct['authors'] = [a['name'] for a in p['authors']]
+  struct['category'] = p['primary_cat']
+  struct['authors'] = [a for a in p['authors']]
   struct['link'] = p['link']
-  if send_abstracts:
-    struct['abstract'] = p['summary']
+  if 'abstract' in p:
+    struct['abstract'] = p['abstract']
+  # print(p.to_dict())
+  # exit()
   if send_images:
     # struct['img'] = '/static/thumbs/' + idvv.replace('/','') + '.pdf.jpg'
     struct['img'] = CLOUDFRONT_URL + 'thumbs/' + pid.replace('/','') + '.pdf.jpg'
   
-  # if 'cats' in p:
-  try:
-    struct['tags'] = [t['cat'] for t in p['cats']]
-  except Exception as e:
-    print(e)
-    print(p.to_dict())
-    exit()
+
+  struct['tags'] = [t for t in p['cats']]
+
   # struct['tags'] = [t['term'] for t in p['tags']]
   
   # render time information nicely
@@ -254,17 +252,17 @@ def cat_filter(groups_of_cats):
     filt_q = Q()
     for group in groups_of_cats:
       if len(group)==1:
-        filt_q = filt_q & Q('term', cats__cat=group[0])
+        filt_q = filt_q & Q('term', cats=group[0])
       elif len(group) > 1:
         # perform an OR filter among the different categories in this group                
-        filt_q = filt_q & Q('terms', cats__cat=group)
+        filt_q = filt_q & Q('terms', cats=group)
 
     return filt_q
 
 def prim_filter(prim_cat):
     filt_q = Q()
     if prim_cat is not "any":
-      filt_q = Q('term', arxiv_primary_category__cat=prim_cat)
+      filt_q = Q('term', primary_cat=prim_cat)
     return filt_q
 
 def time_filter(time):
@@ -347,7 +345,7 @@ def extract_query_params(query_info):
   if sort == SORT_QUERY:
     q = query_info['query'].strip()
     search = search.query("simple_query_string", query=q, default_operator = "AND", \
-      fields=['title','summary', 'fulltext', 'all_authors', '_id'])
+      fields=['title','abstract', 'fulltext', 'all_authors', '_id'])
     print(search.to_dict())
   elif sort == SORT_DATE:
     search = search.sort('-updated')
@@ -369,7 +367,7 @@ def add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib):
   
   # define and add the aggregations, each filtered by all the filters except
   # variables corresopnding to what the aggregation is binning over
-  prim_agg = A('terms', field='arxiv_primary_category.cat')
+  prim_agg = A('terms', field='primary_cat')
   prim_filt = A('filter', filter=(Q_cat & Q_time & Q_v1 & Q_lib) )
   search.aggs.bucket("prim_filt",prim_filt).bucket("prim_agg", prim_agg)
 
@@ -378,7 +376,7 @@ def add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib):
   search.aggs.bucket('year_filt', year_filt).bucket('year_agg', year_agg)
 
   in_filt = A('filter', filter=(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib))
-  in_agg = A('terms', field='cats.cat')
+  in_agg = A('terms', field='cats')
   search.aggs.bucket('in_filt', in_filt).bucket('in_agg',in_agg)
 
   time_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1 & Q_lib))
@@ -404,11 +402,11 @@ def build_slow_meta_query(query_info):
 
   sampler_agg = A('sampler', shard_size=200)
 
-  auth_agg = A('significant_terms', field='authors.name')
+  auth_agg = A('significant_terms', field='authors')
 
   search.aggs.bucket('sig_filt', sig_filt).bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
 
-  keywords_agg = A('significant_terms', field='summary')
+  keywords_agg = A('significant_terms', field='abstract')
   
   search.aggs['sig_filt']['sampler_agg'].bucket('keywords_agg', keywords_agg)
 
@@ -535,7 +533,7 @@ def _getpapers():
   #need to build the query from the info given here
   search = build_query(query_info)
 
-  search = search.source(includes=['rawid','paper_version','title','arxiv_primary_category.cat', 'authors.name', 'link', 'summary', 'cats.cat', 'updated', 'published','arxiv_comment'])
+  search = search.source(includes=['rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
 
   tot_num_papers = search.count()
@@ -764,7 +762,7 @@ def addUserSearchesToCache():
         for p in pages:
             for ttstr in ttstrs:
               s2 = applyTimeFilter(s,ttstr)
-              s2 = s2.source(includes=['rawid','paper_version','title','arxiv_primary_category.cat', 'authors.name', 'link', 'summary', 'cats.cat', 'updated', 'published','arxiv_comment'])
+              s2 = s2.source(includes=['rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
               s2 = s2[p[0]:p[1]]
               async_add_to_cache(s2)
 
@@ -774,7 +772,7 @@ def addUserSearchesToCache():
       pages = [(0,10),(10,15),(15,20),(20,25)]
       for s in searches:
         for p in pages:
-          s2 = s.source(includes=['rawid','paper_version','title','arxiv_primary_category.cat', 'authors.name', 'link', 'summary', 'cats.cat', 'updated', 'published','arxiv_comment'])
+          s2 = s.source(includes=['rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
           s2 = s2[p[0]:p[1]]
           async_add_to_cache(s2)
   return AUTO_CACHE
@@ -789,7 +787,7 @@ def addDefaultSearchesToCache():
       for p in pages:
         for ttstr in ttstrs:
           s2 = applyTimeFilter(s,ttstr)
-          s2 = s2.source(includes=['rawid','paper_version','title','arxiv_primary_category.cat', 'authors.name', 'link', 'summary', 'cats.cat', 'updated', 'published','arxiv_comment'])
+          s2 = s2.source(includes=['rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
           s2 = s2[p[0]:p[1]]
           async_add_to_cache(s2)
   return AUTO_CACHE
@@ -882,11 +880,11 @@ def add_papers_similar_query(search, pidlist):
   session['recent_sort'] = False
   dlist = [ makepaperdict(strip_version(v)) for v in pidlist ]
   if pidlist:
-    q = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'summary', 'all_authors'], include=False)
+    q = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False)
     mlts=search.query(q)
     # mlts = search.update_from_dict({'query': {
     # "more_like_this" : {
-    # "fields" : ['fulltext', 'title', 'summary', 'all_authors'],
+    # "fields" : ['fulltext', 'title', 'abstract', 'all_authors'],
     # "include" : False,
     # "like" : dlist,
     #  }
@@ -903,7 +901,7 @@ def papers_similar_to_list_query(pidlist):
   if pidlist:
     mlts = Search(using = es, index='arxiv').update_from_dict({'query': {
     "more_like_this" : {
-    "fields" : ['fulltext', 'title', 'summary', 'all_authors'],
+    "fields" : ['fulltext', 'title', 'abstract', 'all_authors'],
     "include" : False,
     "like" : dlist,
      }
@@ -918,7 +916,7 @@ def papers_similar(vpid):
   pid = strip_version(vpid)
   mlts = Search(using = es, index='arxiv').update_from_dict({'query': {
     "more_like_this" : {
-    "fields" : ['fulltext', 'title', 'summary', 'all_authors'],
+    "fields" : ['fulltext', 'title', 'abstract', 'all_authors'],
     "include" : True,
     "like" : [makepaperdict(pid)],
      }
@@ -1024,7 +1022,7 @@ def recommend():
 def library():
   """ render user's library """
   papers = papers_from_library()
-  # papers = papers.source(includes=['rawid','paper_version','title','arxiv_primary_category.cat', 'authors.name', 'link', 'summary', 'cats.cat', 'updated', 'published','arxiv_comment'])
+  # papers = papers.source(includes=['rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
 
   num_papers = papers.count()
   if g.user:

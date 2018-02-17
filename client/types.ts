@@ -28,8 +28,10 @@ export interface request {
 }
 
 export interface paper {
-    score? : number,
-    title : string,
+    /** Extra comments about the paper; truncated to 100 characters + ... */
+    arxiv_comment? : string
+    score? : number
+    title : string
     /**ArXiv id. Eg `1802.02400v2` */
     pid : string
     /**`pid` without version. Eg `"1802.02400"`*/
@@ -40,7 +42,7 @@ export interface paper {
     link : string
     authors : string[]
     /** Some text with math delimited with `$`. */
-    abstract : string
+    abstract? : string
     /**URL to imagemagic image of paper */
     img : string
     /**Cross-posting categories  */
@@ -51,6 +53,8 @@ export interface paper {
     originally_published_time : string
     /**In the user's library of papers. */
     in_library : boolean
+    /** is there a thumbnail picture? */
+    havethumb? : boolean
 }
 
 export interface response {
