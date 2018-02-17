@@ -39,7 +39,6 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCa
             <span className="spid">{p.pid}</span>
             <a href={pdf_url} target="_blank">pdf</a>
             <br />
-            <span className="sim" id={'sim' + p.pid} onClick={notimpl}>show similar</span>
             <span className="sim" style={{ marginLeft: "5px", paddingLeft: "5px", borderLeft: "1px solid black" }}>
                 <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }} >scirate</a>
             </span>
