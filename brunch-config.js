@@ -7,7 +7,10 @@ module.exports = {
         styles : {
             "react-select" : ["dist/react-select.css"],
             "katex" : ["dist/katex.min.css", "dist/fonts"]
-        }
+        },
+        static : [
+            "./node_modules/katex/dist/fonts/"
+        ]
     },
     files: {
         javascripts: {
@@ -21,7 +24,13 @@ module.exports = {
         }
     },
     plugins : {
-        brunchTypescript : {ignoreErrors:true}
+        brunchTypescript : {ignoreErrors:true},
+        copycat : {
+            onlyChanged:true,
+            fonts : [
+                "node_modules/katex/dist/fonts"
+            ]
+        }
     },
     modules: {
 		autoRequire: {

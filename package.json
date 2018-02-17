@@ -13,6 +13,7 @@
     "@types/react-dom": "^16.0.3",
     "brunch": "^2.10.12",
     "brunch-typescript": "^2.1.0",
+    "copycat-brunch": "^1.1.0",
     "typescript": "^2.7.1"
   },
   "dependencies": {
