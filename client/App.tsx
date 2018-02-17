@@ -146,14 +146,14 @@ export class App extends React.Component<{}, state> {
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
                     placeholder="type categories"
-                    options={categories}
+                    options={categories as any}
                     simpleValue
                     clearable={true}
                     name="categories"
                     value={cats}
                     searchable={true}
                     multi
-                    onChange={(selected) => this.handleCat(selected.split(","))} />
+                    onChange={(selected : any) => this.handleCat(selected.split(","))} />
                 {meta.in_data && <table>
                     <tbody>
                         {(() => {
@@ -174,13 +174,13 @@ export class App extends React.Component<{}, state> {
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
                     placeholder="type a primary category"
-                    options={categories}
+                    options={categories as any}
                     simpleValue
                     clearable={true}
                     name="prim"
                     value={query.primaryCategory || ""}
                     searchable={true}
-                    onChange={(selected) => this.handlePrimCat(selected)} />
+                    onChange={(selected : any) => this.handlePrimCat(selected)} />
                 {/* {meta.prim_data && <table>
                     <tbody>
                         {(() => {

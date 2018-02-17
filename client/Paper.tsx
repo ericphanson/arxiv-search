@@ -1,7 +1,12 @@
 import { paper, category } from "./types";
 import { notimpl, sendRequest } from "./basic";
-import * as React from 'react'
+import * as React from 'react';
 import { cat_col, cat_desc } from "./all_categories";
+import {Math} from './Math';
+export function WithMaths(props : {text : string}) {
+    let {text} = props;
+    return  <span>{text.split("$").map((s:string,i) => (i % 2 === 0) ? s : <Math latex={s} key={i}/>)}</span>
+}
 
 export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCategoryClick : (cat : category) => void}) {
     let { p } = props
@@ -12,7 +17,7 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCa
         {/* <span className="Z3988" title={build_ocoins_str(p)}></span> */}
         <div className="paperdesc">
             <span className="ts">
-                <a href={p.link} target="_blank"> {p.title} </a>
+                <a href={p.link} target="_blank"> <WithMaths text={p.title}/></a>
             </span>
             {p.score && [<span className="ds2">Relevance: {p.score.toPrecision(3)}</span>]}
             <br/>
@@ -43,6 +48,6 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCa
                 sendRequest("libtoggle", {pid:p.pid}, ({on}) => (on !== "FAIL") && props.onToggle(on) )} />
         </div>
         {p.img && <div className="animg"><img src={p.img} /></div>}
-        {p.abstract && <div className="abstract"><span className="tt">{p.abstract}</span></div>}
+        {p.abstract && <div className="abstract"><WithMaths text={p.abstract}/></div>}
     </div>
 }

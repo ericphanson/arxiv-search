@@ -5,7 +5,8 @@ module.exports = {
     },
     npm : {
         styles : {
-            "react-select" : ["dist/react-select.css"]
+            "react-select" : ["dist/react-select.css"],
+            "katex" : ["dist/katex.min.css", "dist/fonts"]
         }
     },
     files: {
