@@ -105,17 +105,17 @@ export class App extends React.Component<{}, state> {
         return <div className="app-root">
             <div className="header-bg"></div>
             <nav className="header">
-                <h1 className="header-logo nav-item">ARXIV-SEARCH</h1>
+                <h1 className="header-logo nav-item">ARXIV-SEARCH.COM</h1>
                 {
                     user === "None" ?
                         (<form action="login" method="post">
                             <input className="form-control" type="text" name="username" placeholder="Username"/>
                             <input className="form-control" type="password" name="password" placeholder="Password"/>
-                            <input type="submit" value="Login or Create" className="btn btn-secondary" />
+                            <input type="submit" value="Login or Create" className="btn btn-primary" />
                         </form>)
                         :
                         [<span>{username}</span>,
-                        <a href="logout" className="btn btn-secondary">log out</a>]
+                        <a href="logout" className="btn btn-primary">log out</a>]
                 }
             </nav>
 
@@ -123,11 +123,11 @@ export class App extends React.Component<{}, state> {
                 <input type="text" className="searchinput"
                     value={query.query}
                     onChange={e => this.handleQueryboxChange(e)}
-                    onKeyDown={e => e.keyCode === 13 && this.activateQuery()} />
+                    onKeyDown={e => e.keyCode === 13 && this.activateQuery()} 
+                    placeholder="Search"/>
                 <button id="qbutton" className="btn" onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
-                {this.state.tot_num_papers && (<p className="app-total"><strong>{this.state.tot_num_papers}</strong> results</p>)}
                 <h4>time:</h4>
                 <table>
                     <tbody>
@@ -204,15 +204,14 @@ export class App extends React.Component<{}, state> {
                 hasMore={!isDone}
                 loader={<div key="loading">Loading...</div>}
                 threshold={500} >
-                <div id="maindiv" key="maindiv">
+                    {[this.state.tot_num_papers && (<p><strong>{this.state.tot_num_papers}</strong> results</p>),
                     <div id="rtable" key="rtable">
                         {papers.map((p, i) => <Paper p={p} key={p.pid}
                             onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
                             onCategoryClick={(c) => this.handleCat(cats.addUnique(c))} />)}
-                    </div>
-                </div>
+                    </div>,
+                    this.state.isDone && <h2 className="app-done">Done</h2>]}
             </Infinite>
-            {this.state.isDone && <h2 className="app-done">Done</h2>}
         </div>
     }
 }
