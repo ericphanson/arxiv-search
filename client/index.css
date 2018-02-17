@@ -1,46 +1,124 @@
 .app-root {
     display: grid;
-    grid-template-columns: 40px [side] 200px [content] auto 40px;
-    grid-template-rows: 40px auto auto;
+    grid-template-columns: 40px 200px auto 40px;
+    grid-template-rows: auto auto auto;
+    grid-gap: 8px;
+    grid-template-areas:
+        ".      header header  .     "
+        ".      search search  .     "
+        ".      side   results .     "
+        ".      footer footer  .     ";
 }
 
-.app-banner {
-    grid-column-start: side;
-    grid-column-end: span content;
-    align-self: end;
-    margin: 8px;
+.header-bg {
+    background-color: #9e2a3f;
+    grid-row: 1;
+    grid-column: 1 / span 4;
 }
 
-.app-searchbar {
-    grid-column: content;
-    grid-row:2;
+.header-logo {
+    margin: 4px;
+    color: white;
 }
 
-.app-filters {
-    grid-column-start: side;
-    grid-row-start: 3;
-    margin: 8px;
+nav {
+    grid-area: header;
     display: flex;
-    flex-flow: column nowrap;
-    font-size: 0.8em;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 4px;
 }
 
-.app-done {
-    grid-column: content;
-    grid-row: 4;
-    align-content: center;
+nav form {
+    display: flex;
 }
 
-.app-results {
-    grid-column-start: content;
-    grid-row-start: 3
+nav input {
+    margin: 4px;
 }
 
+.form-control {
+    padding: 0.375rem 1rem;
+    font-size: 1em;
+    /* line-height: 1.5; */
+    color: #495057;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #999;
+    border-radius: 4px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
 
+.form-control:focus {
+    color: #495057;
+    background-color: #fff;
+    border-color: #ffffff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.75);
+}
+
+.btn {
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    user-select: none;
+    border: 1px solid #999;
+    padding: 0.375rem 1rem;
+    font-size: 1rem;
+    /* line-height: 1.5; */
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.strong {
+    font-weight: 800;
+}
+
+.btn:hover, .btn:focus {
+    text-decoration: none;
+}
+
+.btn:focus, .btn.focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.75);
+}
+
+.btn.disabled, .btn:disabled {
+opacity: 0.65;
+}
+  
+.btn-primary {
+    color: #fff;
+    background-color: #EB6864;
+    border-color: #EB6864;
+}
+  
+.btn-primary:hover {
+    color: #fff;
+    background-color: #e74742;
+    border-color: #e53c37;
+}
+  
+.btn-secondary {
+    color: #222;
+    background-color: #aaa;
+    border-color: #aaa;
+}
+  
+.btn-secondary:hover {
+    color: #222;
+    background-color: #979797;
+    border-color: #919090;
+}
 .app-searchbar {
+    grid-area : search;
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
+    
 }
 
 .searchinput {
@@ -49,26 +127,69 @@
     color: "#333";
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
-    padding: 4px;
+    padding: 0.2em 0.5em;
     outline: 0;
     font-size: 32px;
     width:100%;
-    
     box-sizing: border-box;
 }
-
 #qbutton {
-    border: solid 1px #999;
     border-left-width: 0px;
-    background: rgb(194, 194, 194);
     background-image: url('./search.png');
     background-repeat: no-repeat;
-    background-position: center center;      
-    flex : 0 0 40px;
+    background-position: 40% 65%;      
+    flex : 0 0 50px;
     border-top-right-radius: 4px;
     border-bottom-right-radius: 4px;
-    align-self: stretch;
-    height: 47.3px;
-    box-sizing: border-box;
-    margin:0;
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+}
+#qbutton:hover {
+    background-color: rgb(219, 219, 219)
+}
+
+.app-filters {
+    grid-area: side;
+    display: flex;
+    flex-flow: column nowrap;
+    font-size: 0.8em;
+}
+
+.app-done {
+    grid-area: results;
+    align-content: center;
+}
+
+.app-results {
+    grid-area: results;
+    padding: 15px;
+    border: solid 1px #D6D3C5;
+    border-radius: 4px;
+	background-color: white;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.3em 0.7em;
+    font-size: 75%;
+    line-height: 1;
+    text-align: center;
+    font-weight: 700;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 4px;
+    color: white;
+    background-color: grey;
+    border: 1px solid transparent;
+    margin: 0px 4px;
+}
+
+a.badge {
+    cursor: pointer;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+a.badge:hover {
+    text-decoration: underline;
+    color: white;
 }

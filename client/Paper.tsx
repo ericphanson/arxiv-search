@@ -1,6 +1,12 @@
 import { paper, category } from "./types";
 import { notimpl, sendRequest } from "./basic";
-import * as React from 'react'
+import * as React from 'react';
+import { cat_col, cat_desc } from "./all_categories";
+import {Math} from './Math';
+export function WithMaths(props : {text : string}) {
+    let {text} = props;
+    return  <span>{text.split("$").map((s:string,i) => (i % 2 === 0) ? s : <Math latex={s} key={i}/>)}</span>
+}
 
 export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCategoryClick : (cat : category) => void}) {
     let { p } = props
@@ -11,7 +17,7 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCa
         {/* <span className="Z3988" title={build_ocoins_str(p)}></span> */}
         <div className="paperdesc">
             <span className="ts">
-                <a href={p.link} target="_blank"> {p.title} </a>
+                <a href={p.link} target="_blank"> <WithMaths text={p.title}/></a>
             </span>
             {p.score && [<span className="ds2">Relevance: {p.score.toPrecision(3)}</span>]}
             <br/>
@@ -26,7 +32,7 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCa
                 ? <span className="ds2">(v1: {p.originally_published_time})</span>
                 : undefined}
             <span className="cs">{
-                p.tags.map(c => <a key={c} className="link-to-update" onClick={() => props.onCategoryClick(c)}>{c}</a>).interlace(" | " as any)
+                p.tags.map(c => <a key={c} title={cat_desc(c)} className="badge" style={{backgroundColor:cat_col(c)}} onClick={() => props.onCategoryClick(c)}>{c}</a>)
             }</span>
         </div>
         <div className="dllinks">
@@ -35,13 +41,13 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCa
             <br />
             <span className="sim" id={'sim' + p.pid} onClick={notimpl}>show similar</span>
             <span className="sim" style={{ marginLeft: "5px", paddingLeft: "5px", borderLeft: "1px solid black" }}>
-                <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }}>scirate</a>
+                <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }} >scirate</a>
             </span>
             <br />
             <img src={p.in_library ? "static/saved.png" : "static/save.png"} className="save-icon" title="toggle save paper to library (requires login)" id={"lib" + p.pid} onClick={() => 
                 sendRequest("libtoggle", {pid:p.pid}, ({on}) => (on !== "FAIL") && props.onToggle(on) )} />
         </div>
         {p.img && <div className="animg"><img src={p.img} /></div>}
-        {p.abstract && <div className="abstract"><span className="tt">{p.abstract}</span></div>}
+        {p.abstract && <div className="abstract"><WithMaths text={p.abstract}/></div>}
     </div>
 }
