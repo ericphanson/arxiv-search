@@ -13,6 +13,7 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCa
             <span className="ts">
                 <a href={p.link} target="_blank"> {p.title} </a>
             </span>
+            {p.score && [<span className="ds2">Relevance: {p.score.toPrecision(3)}</span>]}
             <br/>
             <span className="as">
                 {p.authors.map((a: string) =>

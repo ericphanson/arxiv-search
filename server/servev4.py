@@ -333,8 +333,9 @@ def extract_query_params(query_info):
   # add sorting
   if sort == SORT_QUERY:
     q = query_info['query'].strip()
-    search = search.query(MultiMatch( query=q, type = 'most_fields', \
-      fields=['title','summary', 'fulltext', 'all_authors', '_id']))
+    search = search.query("simple_query_string", query=q, default_operator = "AND", \
+      fields=['title','summary', 'fulltext', 'all_authors', '_id'])
+    print(search.to_dict())
   elif sort == SORT_DATE:
     search = search.sort('-updated')
   elif sort == SORT_LIB:
@@ -564,14 +565,23 @@ def _getpapers():
 def sanitize_string(text):
   # Escape special characters
   # http://lucene.apache.org/core/old_versioned_docs/versions/2_9_1/queryparsersyntax.html#Escaping Special Characters
-  text = re.sub('([{}])'.format(re.escape('\\+\-&|!(){}\[\]^~*?:\/')), r"\\\1", text)
+  text = re.sub('([{}])'.format(re.escape('\\+\-&|!(){}\[\]^~*?:\/')), r"\1", text)
 
   # AND, OR and NOT are used by lucene as logical operators. We need
   # to escape them
   for word in ['AND', 'OR', 'NOT']:
-      escaped_word = "".join(["\\" + letter for letter in word])
+      if word is 'AND':
+        escaped_word = "+"
+      elif word is "OR":
+        escaped_word = "|"
+      elif word is "NOT":
+        escaped_word = "-"
+      # escaped_word = "".join(["\\" + letter for letter in word])
       text = re.sub(r'\s*\b({})\b\s*'.format(word), r" {} ".format(escaped_word), text)
 
+  # text = re.sub( r"\-(?=\w)", r"+-", text)
+
+  
   # Escape odd quotes
   quote_count = text.count('"')
   return re.sub(r'(.*)"(.*)', r'\1\"\2', text) if quote_count % 2 == 1 else text
