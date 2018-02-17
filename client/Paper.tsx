@@ -1,6 +1,7 @@
 import { paper, category } from "./types";
 import { notimpl, sendRequest } from "./basic";
 import * as React from 'react'
+import { cat_col, cat_desc } from "./all_categories";
 
 export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCategoryClick : (cat : category) => void}) {
     let { p } = props
@@ -26,7 +27,7 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCa
                 ? <span className="ds2">(v1: {p.originally_published_time})</span>
                 : undefined}
             <span className="cs">{
-                p.tags.map(c => <a key={c} className="link-to-update" onClick={() => props.onCategoryClick(c)}>{c}</a>).interlace(" | " as any)
+                p.tags.map(c => <a key={c} title={cat_desc(c)} className="badge" style={{backgroundColor:cat_col(c)}} onClick={() => props.onCategoryClick(c)}>{c}</a>)
             }</span>
         </div>
         <div className="dllinks">
@@ -35,7 +36,7 @@ export function Paper(props: { p: paper, onToggle : (on : boolean) => void, onCa
             <br />
             <span className="sim" id={'sim' + p.pid} onClick={notimpl}>show similar</span>
             <span className="sim" style={{ marginLeft: "5px", paddingLeft: "5px", borderLeft: "1px solid black" }}>
-                <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }}>scirate</a>
+                <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }} >scirate</a>
             </span>
             <br />
             <img src={p.in_library ? "static/saved.png" : "static/save.png"} className="save-icon" title="toggle save paper to library (requires login)" id={"lib" + p.pid} onClick={() => 

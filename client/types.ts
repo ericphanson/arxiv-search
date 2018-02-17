@@ -1,5 +1,5 @@
-/** ArXiv categories. Full list is in `all_categories.txt`. */
-export type category = "quant-ph" | "cond-mat" | "hep-th" //...and so on
+/** ArXiv categories. Full list is in `all_categories.txt`. Eg  "quant-ph" | "cond-mat" | "hep-th" */
+export type category = string
 /** As implemented now, start and end should be a timestamp in milliseconds since the epoch see https://www.epochconverter.com/. For example `1517425200000` is Wednesday, January 31, 2018 7:00:00 PM. */
 export type timestamp = number
 export type timeFilter = "3days" | "week" | "day" | "alltime" | "month" | "year" | {start : timestamp, end : timestamp}
