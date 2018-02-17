@@ -1,10 +1,11 @@
 import { notimpl, sendRequest } from './basic';
-import { paper, request, response, query, meta, category, timeFilter } from './types';
+import { paper, request, response, query, meta, timeFilter, category } from './types';
 import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
 import Select from "react-select";
 import { Paper } from './Paper';
-import { all_categories } from './all_categories';
+import { all_categories, cat_desc, cat_col, is_ams } from './all_categories';
+import { CatBadge } from './CatBadge';
 interface state {
     papers: paper[],
     /**The number of papers that should be visible */
@@ -22,7 +23,7 @@ interface state {
 let timeFilters = ["day", "3days", "week", "month", "year", "alltime"] as timeFilter[]
 const defaultQuery: query = {
     query: "",
-    sort:"query",
+    sort: "query",
     category: [],
     v1: false,
     only_lib: false,
@@ -31,7 +32,7 @@ const defaultQuery: query = {
 declare const beta_results_url: string;
 declare const user: any;
 declare const username: string;
-let categories = all_categories.map(x => ({ value: x, label: x }))
+let categories = all_categories.map(x => ({ value: x.c, label: x.c, desc : x.d }))
 
 export class App extends React.Component<{}, state> {
     constructor(props) {
@@ -102,33 +103,31 @@ export class App extends React.Component<{}, state> {
         let cats = query.category.map(x => x[0]);
         const tf_data = (tf: timeFilter) => { let n = meta.time_filter_data && meta.time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n})` }
         return <div className="app-root">
-            <h1 className="logo app-banner">ARXIV-SEARCH</h1>
-            <div className="app-login">
-                <div id="userinfo">
-                    {
-                        user === "None" ?
-                            (<form action="login" method="post">
-                                User:
-                        <input type="text" name="username" className="input-no-border" />
-                                Pass:
-                        <input type="password" name="password" className="input-no-border" />
-                                <input type="submit" value="Login or Create" className="btn-fancy" />
-                            </form>)
-                            :
-                            [<span>{username}</span>,
-                            <a href="logout">log out</a>]
-                    }
-                </div>
-            </div>
+            <div className="header-bg"></div>
+            <nav className="header">
+                <h1 className="header-logo nav-item">ARXIV-SEARCH.COM</h1>
+                {
+                    user === "None" ?
+                        (<form action="login" method="post">
+                            <input className="form-control" type="text" name="username" placeholder="Username"/>
+                            <input className="form-control" type="password" name="password" placeholder="Password"/>
+                            <input type="submit" value="Login or Create" className="btn btn-primary" />
+                        </form>)
+                        :
+                        [<span>{username}</span>,
+                        <a href="logout" className="btn btn-primary">log out</a>]
+                }
+            </nav>
+
             <div className="app-searchbar">
                 <input type="text" className="searchinput"
                     value={query.query}
                     onChange={e => this.handleQueryboxChange(e)}
-                    onKeyDown={e => e.keyCode === 13 && this.activateQuery()} />
-                <button id="qbutton" onClick={e => this.activateQuery()}></button>
+                    onKeyDown={e => e.keyCode === 13 && this.activateQuery()} 
+                    placeholder="Search"/>
+                <button id="qbutton" className="btn" onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
-                {this.state.tot_num_papers && (<p className="app-total"><strong>{this.state.tot_num_papers}</strong> results</p>)}
                 <h4>time:</h4>
                 <table>
                     <tbody>
@@ -147,24 +146,24 @@ export class App extends React.Component<{}, state> {
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
                     placeholder="type categories"
-                    options={categories}
+                    options={categories as any}
                     simpleValue
                     clearable={true}
                     name="categories"
                     value={cats}
                     searchable={true}
                     multi
-                    onChange={(selected) => this.handleCat(selected.split(","))} />
+                    onChange={(selected : any) => this.handleCat(selected.split(","))} />
                 {meta.in_data && <table>
                     <tbody>
                         {(() => {
-                            let kvs = meta.in_data.toKeyValueArray();
-                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr onClick={() => {
+                            let kvs = meta.in_data.toKeyValueArray().filter(({k}) => is_ams(k))
+                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr key={k}>
+                                <td> <CatBadge onClick={() => {
                                 let i = cats.exists(k2 => k2 === k);
                                 if (i === undefined) { this.handleCat([...cats, k as any]) }
                                 else { this.handleCat(cats.drop(i)) }
-                            }}>
-                                <td>{k}</td>
+                            }} cat={k}/></td>
                                 <td>({v})</td>
                             </tr>)
                         })()}
@@ -175,24 +174,24 @@ export class App extends React.Component<{}, state> {
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
                     placeholder="type a primary category"
-                    options={categories}
+                    options={categories as any}
                     simpleValue
                     clearable={true}
                     name="prim"
                     value={query.primaryCategory || ""}
                     searchable={true}
-                    onChange={(selected) => this.handlePrimCat(selected)} />
-                {meta.prim_data && <table>
+                    onChange={(selected : any) => this.handlePrimCat(selected)} />
+                {/* {meta.prim_data && <table>
                     <tbody>
                         {(() => {
                             let kvs = meta.prim_data.toKeyValueArray();
-                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr className={k === query.primaryCategory && "strong"} onClick={() => this.handlePrimCat(k as any)}>
-                                <td>{k}</td>
+                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr key={k} className={k === query.primaryCategory ? "strong" : ""} >
+                                <td><CatBadge cat={k} onClick={() => this.handlePrimCat(k as any)}/></td>
                                 <td>({v})</td>
                             </tr>)
                         })()}
                     </tbody>
-                </table>}
+                </table>} */}
                 <h4>Other options:</h4>
                 {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ sort: (e.target.checked ? "relevance" : "query") }, () => this.activateQuery())} /></label>}
                 {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
@@ -205,15 +204,14 @@ export class App extends React.Component<{}, state> {
                 hasMore={!isDone}
                 loader={<div key="loading">Loading...</div>}
                 threshold={500} >
-                <div id="maindiv" key="maindiv">
+                    {[this.state.tot_num_papers && (<p><strong>{this.state.tot_num_papers}</strong> results</p>),
                     <div id="rtable" key="rtable">
-                        {papers.map((p, i) => <Paper p={p} key={p.pid} 
-                            onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }} 
-                            onCategoryClick={(c) => this.handleCat(cats.addUnique(c))}/>)}
-                    </div>
-                </div>
+                        {papers.map((p, i) => <Paper p={p} key={p.pid}
+                            onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
+                            onCategoryClick={(c) => this.handleCat(cats.addUnique(c))} />)}
+                    </div>,
+                    this.state.isDone && <h2 className="app-done">Done</h2>]}
             </Infinite>
-            {this.state.isDone && <h2 className="app-done">Done</h2>}
         </div>
     }
 }
