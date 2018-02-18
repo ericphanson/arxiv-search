@@ -114,8 +114,8 @@ export class App extends React.Component<{}, state> {
                             <input type="submit" value="Login or Create" className="btn btn-primary" />
                         </form>)
                         :
-                        [<span>{username}</span>,
-                        <a href="logout" className="btn btn-primary">log out</a>]
+                        <span><span style={{fontWeight : 700, color:"white"}}>Hello, {username}</span>
+                        <a href="logout" className="btn btn-primary" style={{marginLeft : "16px"}}>log out</a></span>
                 }
             </nav>
 
