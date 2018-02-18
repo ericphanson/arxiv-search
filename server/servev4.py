@@ -810,7 +810,12 @@ def intmain():
   ctx = default_context()
   return render_template('main.html', **ctx)
 
+def getpaper(pid):
+  return Search(using=es, index="arxiv").query("match", _id=pid)
 
+def isvalid(pid):
+  return not (getpaper(pid).count() == 0)
+  
 @app.route('/libtoggle', methods=['POST'])
 def review():
   """ user wants to toggle a paper in his library """
@@ -909,17 +914,6 @@ def send_static(path):
 
 
 
-
-# @app.route('/goaway', methods=['POST'])
-# def goaway():
-#   if not g.user: return # weird
-#   uid = session['user_id']
-#   entry = goaway_collection.find_one({ 'uid':uid })
-#   if not entry: # ok record this user wanting it to stop
-#     username = get_username(session['user_id'])
-#     print('adding', uid, username, 'to goaway.')
-#     goaway_collection.insert_one({ 'uid':uid, 'time':int(time.time()) })
-#   return 'OK'
 
 #--------------------------------
 # Times and time filters
