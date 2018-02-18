@@ -128,24 +128,25 @@ export class App extends React.Component<{}, state> {
                 <button id="qbutton" className="btn" onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
-                <h4>time:</h4>
-                <table>
-                    <tbody>
-                        {timeFilters.map(tf => <tr key={tf.toString()} onClick={() => this.handleTime(tf)}>
-                            <td >
-                                <input type="radio" name="time"
-                                    checked={query.time === tf} onChange={() => this.handleTime(tf)} />
-                                {tf.toString()}
-                            </td>
-                            <td className="result-count">{tf_data(tf)}</td>
-                        </tr>)}
-                    </tbody>
-                </table>
-                <h4>category:</h4>
+                <TimeGrid handleTime={(t) => this.handleTime(t)} current={query.time} tf_data={tf_data}/>
+                <hr/>
+                
                 <Select
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
-                    placeholder="type categories"
+                    placeholder="primary category"
+                    options={categories as any}
+                    simpleValue
+                    clearable={true}
+                    name="prim"
+                    value={query.primaryCategory || ""}
+                    searchable={true}
+                    onChange={(selected : any) => this.handlePrimCat(selected)} />
+                <hr/>
+                <Select
+                    onBlurResetsInput={false}
+                    onSelectResetsInput={false}
+                    placeholder="categories"
                     options={categories as any}
                     simpleValue
                     clearable={true}
@@ -155,30 +156,8 @@ export class App extends React.Component<{}, state> {
                     multi
                     onChange={(selected : any) => this.handleCat(selected.split(","))} />
                 <LeaderBoard cats={cats} in_data={meta.in_data} primaryCategory={query.primaryCategory} handleCat={x => this.handleCat(x)}/>
-                <h4>primary category:</h4>
-                <Select
-                    onBlurResetsInput={false}
-                    onSelectResetsInput={false}
-                    placeholder="type a primary category"
-                    options={categories as any}
-                    simpleValue
-                    clearable={true}
-                    name="prim"
-                    value={query.primaryCategory || ""}
-                    searchable={true}
-                    onChange={(selected : any) => this.handlePrimCat(selected)} />
-                {/* {meta.prim_data && <table>
-                    <tbody>
-                        {(() => {
-                            let kvs = meta.prim_data.toKeyValueArray();
-                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr key={k} className={k === query.primaryCategory ? "strong" : ""} >
-                                <td><CatBadge cat={k} onClick={() => this.handlePrimCat(k as any)}/></td>
-                                <td>({v})</td>
-                            </tr>)
-                        })()}
-                    </tbody>
-                </table>} */}
-                <h4>Other options:</h4>
+
+                <hr/>
                 {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ sort: (e.target.checked ? "relevance" : "query") }, () => this.activateQuery())} /></label>}
                 {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
                 <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
@@ -200,6 +179,29 @@ export class App extends React.Component<{}, state> {
             </Infinite>
         </div>
     }
+}
+
+function TimeGrid({handleTime, tf_data, current}) {
+    let cl = t => t === current ? "timeButton btn-primary checked" : "timeButton btn-primary"
+    return <div className="timeGrid">
+    <div key="day"     onClick={() => handleTime("day")} style={{borderTopLeftRadius:"4px", gridColumn:"1", gridRow:"1", }} className={cl("day")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>day</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("day")}</div></div>
+    <div key="3days"   onClick={() => handleTime("3days")} style={{gridColumn:"2", gridRow:"1", }} className={cl("3days")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>3 days</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("3days")}</div></div>
+    <div key="week"    onClick={() => handleTime("week")} style={{borderTopRightRadius:"4px", gridColumn:"3", gridRow:"1"}} className={cl("week")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>week</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("week")}</div></div>
+    <div key="month"   onClick={() => handleTime("month")} style={{borderBottomLeftRadius:"4px", gridColumn:"1", gridRow:"2", }} className={cl("month")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>month</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("month")}</div></div>
+    <div key="year"    onClick={() => handleTime("year")} style={{ gridColumn:"2", gridRow:"2", }} className={cl("year")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>year</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("year")}</div></div>
+    <div key="alltime" onClick={() => handleTime("alltime")} style={{borderBottomRightRadius:"4px", gridColumn:"3", gridRow:"2"}} className={cl("alltime")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>all time</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("alltime")}</div></div>
+        {/* {timeFilters.map(tf => <li 
+        key={tf.toString()} 
+        onClick={() => this.handleTime(tf)}
+        style={{}}>
+            <div>
+                <input type="radio" name="time"
+                    checked={query.time === tf} onChange={() => this.handleTime(tf)} />
+                {tf.toString()}
+            </div>
+            <div className="result-count">{tf_data(tf)}</div>
+        </li>)} */}
+</div>
 }
 
 class LeaderBoard extends React.PureComponent<{in_data?, primaryCategory, cats, handleCat}, {kvs:{k:string,v:number}[]}> {

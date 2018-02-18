@@ -98,7 +98,7 @@ opacity: 0.65;
   
 .btn-primary:hover {
     color: #fff;
-    background-color: #e74742;
+    background-color: #ca3d38;
     border-color: #e53c37;
 }
   
@@ -196,4 +196,35 @@ a.badge:hover {
 
 .anim-item {
     transition: all 0.2s ease-out;
+}
+.timeGrid {
+    display: grid;
+    grid-gap: 1px;
+    grid-template-rows: 2.7em 2.7em;
+    border : 1px solid transparent;
+    border-radius: 4px;
+}
+.timeButton {
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    user-select: none;
+    padding: 0.3em 0rem;
+    border-radius: 0px;
+    cursor: pointer;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;    
+    color: #fff;
+    background-color: rgb(173, 173, 173);
+}
+.timeName {
+    font-size: 1em;
+}
+.timeScore {
+    font-size: 0.75em;
+}
+.checked {
+    cursor: default;
+    pointer-events: none;
+    background-color: #EB6864;
 }
