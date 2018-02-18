@@ -193,3 +193,7 @@ a.badge:hover {
     text-decoration: underline;
     color: white;
 }
+
+.anim-item {
+    transition: all 0.2s ease-out;
+}
