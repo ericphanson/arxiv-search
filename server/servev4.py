@@ -287,6 +287,8 @@ def extract_query_params(query_info):
   SORT_QUERY = 1
   SORT_LIB = 2
   SORT_DATE = 3
+  SORT_SIM_TO = 4
+  SORT_CODES = {1 : "SORT_QUERY", 2: "SORT_LIB", 3: "SORT_DATE", 4: "SORT_SIM_TO"}
 
   # author stuff not implemented yet
   sort_auth = False
@@ -303,10 +305,13 @@ def extract_query_params(query_info):
       sort = SORT_DATE
     elif (query_info['sort'] == "query") and (query_info['query'].strip() is not ''):
       sort = SORT_QUERY
-  
+  if 'sim_to' in query_info:
+    if not (query_info['sim_to'] == []):
+      sort = SORT_SIM_TO
   if 'author' in query_info:
     if query_info['author'].strip() is not '':
       sort_auth = True
+  print('sort = %s' % SORT_CODES[sort])
 
   # add filters
   Q_lib = Q()
@@ -340,7 +345,8 @@ def extract_query_params(query_info):
     search = search.sort('-updated')
   elif sort == SORT_LIB:
     search = add_rec_query(search)
-    print("sorting by relevance")
+  elif sort == SORT_SIM_TO:
+    search = add_papers_similar_query(search, query_info['sim_to'])
 
   return search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib
 
@@ -621,8 +627,24 @@ def valid_list_of_cats(group):
     valid_list = all( [g in ALL_CATEGORIES for g in group])
   return valid_list
 
+def sanitize_pid_list(list_of_pids):
+  list_of_pids = [ p for p in list_of_pids if isinstance(p,str)]
+  list_of_pids = [ p for p in list_of_pids if isvalid(p)]
+  return list_of_pids
+  
+def san_dict_list_pids(dictionary, key):
+  if key in dictionary:
+      value = dictionary[key]
+      if not isinstance(value, list):
+        dictionary.pop(key, None)
+      else:
+        dictionary[key] = sanitize_pid_list(value)
+  return dictionary
+
+
+
 def sanitize_query_object(query_info):
-  valid_keys = ['query', 'sort', 'category', 'time', 'primaryCategory', 'author','v1', 'only_lib']
+  valid_keys = ['query', 'sort', 'category', 'time', 'primaryCategory', 'author','v1', 'only_lib', 'sim_to']
   query_info = san_dict_keys(query_info, valid_keys)
 
   if 'category' in query_info:
@@ -639,6 +661,8 @@ def sanitize_query_object(query_info):
   query_info = san_dict_str(query_info, 'query')
 
   query_info = san_dict_str(query_info, 'author')
+
+  query_info = san_dict_list_pids(query_info, 'sim_to')
 
   query_info = san_dict_value(query_info, 'sort', str, ["relevance","date", "query"])
 
@@ -815,7 +839,7 @@ def getpaper(pid):
 
 def isvalid(pid):
   return not (getpaper(pid).count() == 0)
-  
+
 @app.route('/libtoggle', methods=['POST'])
 def review():
   """ user wants to toggle a paper in his library """
