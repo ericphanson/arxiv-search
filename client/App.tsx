@@ -154,21 +154,7 @@ export class App extends React.Component<{}, state> {
                     searchable={true}
                     multi
                     onChange={(selected : any) => this.handleCat(selected.split(","))} />
-                {meta.in_data && <table>
-                    <tbody>
-                        {(() => {
-                            let kvs = meta.in_data.toKeyValueArray().filter(({k}) => is_ams(k))
-                            return kvs.sort((a, b) => b.v - a.v).slice(0, 10).map(({ k, v }) => <tr key={k}>
-                                <td> <CatBadge onClick={() => {
-                                let i = cats.exists(k2 => k2 === k);
-                                if (i === undefined) { this.handleCat([...cats, k as any]) }
-                                else { this.handleCat(cats.drop(i)) }
-                            }} cat={k}/></td>
-                                <td>({v})</td>
-                            </tr>)
-                        })()}
-                    </tbody>
-                </table>}
+                <LeaderBoard cats={cats} in_data={meta.in_data} primaryCategory={query.primaryCategory} handleCat={x => this.handleCat(x)}/>
                 <h4>primary category:</h4>
                 <Select
                     onBlurResetsInput={false}
@@ -214,4 +200,40 @@ export class App extends React.Component<{}, state> {
             </Infinite>
         </div>
     }
+}
+
+class LeaderBoard extends React.PureComponent<{in_data?, primaryCategory, cats, handleCat}, {kvs:{k:string,v:number}[]}> {
+    constructor(props) {
+        super(props);
+        this.state ={kvs: []};
+    }
+    componentWillReceiveProps(newProps) {
+        if (newProps.in_data !== undefined) {
+            let kvs = newProps.in_data
+                .toKeyValueArray()
+                .filter(({k}) => !is_ams(k) && k !== newProps.primaryCategory && !newProps.cats.exists(c => c === k))
+                .sort((a, b) => b.v - a.v)
+                .slice(0, 10)
+            this.setState({kvs});
+        }
+    }
+    render() {
+        let {in_data, primaryCategory, cats, handleCat} = this.props
+        let {kvs} = this.state;
+        return <table>
+        <tbody>
+            {(() => {
+                return kvs.map(({ k, v }) => <tr className="anim-item" key={k}>
+                    <td> <CatBadge onClick={() => {
+                    let i = cats.findIndex(k2 => k2 === k);
+                    if (i === -1) { handleCat([...cats, k as any]) }
+                    else { handleCat(cats.drop(i)) }
+                }} cat={k}/></td>
+                    <td>{in_data && `(${v})`}</td>
+                </tr>)
+            })()}
+        </tbody>
+    </table>
+    }
+
 }

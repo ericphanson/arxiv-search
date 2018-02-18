@@ -9,7 +9,7 @@ const col_table = {
   "nucl" : "purple",
   "quant" : "maroon"
 }
-export const is_ams = (cat : category) => cat.search(/,/) === -1;
+export const is_ams = (cat : category) => cat.search(/,/) !== -1;
 export const cat_col = (cat : category) => col_table[cat.split(".")[0].split("-")[0]] || "grey";
 export const all_categories : {c : category, d : string}[] = [
   {
