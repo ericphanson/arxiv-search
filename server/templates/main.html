@@ -9,12 +9,8 @@
   <script src="{{ url_for('static', filename='vendor.js')}}"></script>
   <script src="{{ url_for('static', filename='bundle.js')}}"></script>
   <script>
-    // passed in from flask as json
-    var numresults = {{ numresults }};
-    var pid_to_users = {{ pid_to_users | tojson }};
-    var msg = ''
-    //passed in from flask as json
-    var tweets = {{ tweets | tojson }};
+   
+   
     
     var results_url = "{{ url_for('_getpapers') }}";
     var beta_results_url = "{{ url_for('_getpapers') }}";
@@ -23,14 +19,11 @@
     // } else {
     //   var msg = "Most recent papers (" + (numresults) + '):';
     // }
-    var render_format = "{{ render_format }}";
     var user = "{{g.user}}";
     console.log(user);
     var username = "{{ g.user.username }}";
-    var show_prompt = "{{ show_prompt }}";
     var pointer_ix = 0
     var wait_for_write = false;
-    var first_papers = {{ first_papers | tojson }};
     var urlq = ''; // global will be read in to QueryString when load is done
   </script>
 </head>

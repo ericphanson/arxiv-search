@@ -708,63 +708,6 @@ def process_query_to_cache(query_hash, es_response, meta):
   return list_of_ids
 
 
-
-def addUserSearchesToCache():
-  if AUTO_CACHE:
-    # if 'user_id' not in session:
-      # return False
-    if not g.user:
-      return False
-    
-    uid = session['user_id']
-    with list_of_users_lock:
-      if uid in list_of_users_cached:
-        return False
-      print('adding user %d to cache' % uid)
-      list_of_users_cached.append(uid)
-    ttstrs = {'day', '3days', 'week', 'month', 'alltime','none'}
-
-    # search = Search(using=es, index="arxiv")
-
-    svm = papers_from_svm()
-    if svm:
-      searches = [svm, svm.filter('term', paperversion=1)]
-      pages = [(0,10)]
-      for s in searches:
-        for p in pages:
-            for ttstr in ttstrs:
-              s2 = applyTimeFilter(s,ttstr)
-              s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-              s2 = s2[p[0]:p[1]]
-              async_add_to_cache(s2)
-
-    lib = papers_from_library()
-    if lib:
-      searches = [lib.sort('-updated')]
-      pages = [(0,10),(10,15),(15,20),(20,25)]
-      for s in searches:
-        for p in pages:
-          s2 = s.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-          s2 = s2[p[0]:p[1]]
-          async_add_to_cache(s2)
-  return AUTO_CACHE
-
-def addDefaultSearchesToCache():
-  if AUTO_CACHE:
-    search = Search(using=es, index="arxiv")
-    ttstrs = {'day', '3days', 'week', 'month', 'year', 'alltime', 'none'}
-    searches = [search.sort('-updated'), search.filter('term', paperversion=1).sort('-published')]
-    pages = [(0,10),(10,15),(15,20),(20,25),(25,30),(35,40),(45,50)]
-    for s in searches:
-      for p in pages:
-        for ttstr in ttstrs:
-          s2 = applyTimeFilter(s,ttstr)
-          s2 = s2.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-          s2 = s2[p[0]:p[1]]
-          async_add_to_cache(s2)
-  return AUTO_CACHE
- 
-
 def async_add_to_cache(search):
   search_dict = search.to_dict()
   query_hash = make_hash(search_dict)
@@ -775,14 +718,19 @@ def async_add_to_cache(search):
     t.start()
 
 
-
-
 def add_to_cache(query_hash, search):
   with es_query_semaphore:
     es_response = search.execute()
   meta = get_meta_from_response(es_response)
   process_query_to_cache(query_hash, es_response, meta)
 
+
+def addDefaultSearchesToCache():
+   return False
+  
+
+def addUserSearchesToCache():
+   return False
 
 @app.route('/_invalidate_cache')
 def _invalidate_cache():
@@ -805,40 +753,12 @@ def _invalidate_cache():
   return redirect(url_for('intmain'))
 
 #-------------------------------------------------
-# Old search functions
+# Search functions
 #-------------------------------------------------
 
 def countpapers():
   s = Search(using=es, index="arxiv")
   return s.count()
-
-# def getrecentpapers():
-#   session['recent_sort'] = True
-#   s = Search(using=es, index="arxiv")
-#   return s
-
-
-
-
-def getpapers(pidlist):
-  search = Search(using = es, index='arxiv').update_from_dict({'query': {
-      "ids" : {
-        "type" : "paper",
-        "values" : pidlist
-    }
-    }
-  })
-  session['recent_sort'] = True
-  # print(pidlist)
-  return search
-
-
-def getpaper(pid):
-  return Search(using=es, index="arxiv").query("match", _id=pid)
-
-def isvalid(pid):
-  return not (getpaper(pid).count() == 0)
-
 
 def makepaperdict(pid):
     d = {
@@ -854,64 +774,16 @@ def add_papers_similar_query(search, pidlist):
   if pidlist:
     q = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'summary', 'all_authors'], include=False)
     mlts=search.query(q)
-    # mlts = search.update_from_dict({'query': {
-    # "more_like_this" : {
-    # "fields" : ['fulltext', 'title', 'summary', 'all_authors'],
-    # "include" : False,
-    # "like" : dlist,
-    #  }
-    #  }
-    # })
   else:
     mlts = search
   return mlts
 
-
-def papers_similar_to_list_query(pidlist):
-  session['recent_sort'] = False
-  dlist = [ makepaperdict(strip_version(v)) for v in pidlist ]
-  if pidlist:
-    mlts = Search(using = es, index='arxiv').update_from_dict({'query': {
-    "more_like_this" : {
-    "fields" : ['fulltext', 'title', 'summary', 'all_authors'],
-    "include" : False,
-    "like" : dlist,
-     }
-     }
-    })
-  else:
-    mlts = []
-  return mlts
-
-
-def papers_similar(vpid):
-  pid = strip_version(vpid)
-  mlts = Search(using = es, index='arxiv').update_from_dict({'query': {
-    "more_like_this" : {
-    "fields" : ['fulltext', 'title', 'summary', 'all_authors'],
-    "include" : True,
-    "like" : [makepaperdict(pid)],
-     }
-   }
-  })
-  session['recent_sort'] = False
-
-  return mlts
 
 def ids_from_library():
   if g.libids:
     out = g.libids
   else:
     out = None
-  # print(out) 
-  return out
-
-def papers_from_library():
-  if g.libids:
-    out = getpapers(g.libids)
-  else:
-    out = None
-    # out = sorted(out, key=lambda k: k['updated'], reverse=True)
   return out
 
 
@@ -924,85 +796,20 @@ def add_rec_query(search):
   return out
 
 
-def papers_from_svm():
-  # libids = []
-  if g.libids:
-    out = papers_similar_to_list_query(g.libids)
-  else:
-    out = None
-  return out
-
 
 #---------------------------------------------
-# Old pages and endpoints
+# Endpoints
 #----------------------------------------
 
 
 def default_context(**kws):
-  
-  num_hits = 0
-  session['search_obj'] = {}
-  first_papers = dict(papers={},dynamic=False)
-  
-  tot_papers = countpapers()
-  if 'msg' in kws:
-    if kws['msg'] == 'Most recent papers:':
-      kws['msg'] = 'Most recent papers (%d):' % num_hits
-    if kws['msg'] == 'Sorting by personalized relevance:':
-      kws['msg'] = 'Sorting by personalized relevance (%d):' % num_hits
-  ans = dict(first_papers=first_papers,numresults=num_hits, totpapers=tot_papers, tweets=[], msg='', show_prompt=False, pid_to_users={}, user_features = user_features, user_interactivity = user_interactivity)
-  ans.update(kws)
-  return ans
+  return kws
 
 @app.route("/")
 def intmain():
-  ctx = default_context(render_format='recent',
-                        msg='Most recent papers:')
+  ctx = default_context()
   return render_template('main.html', **ctx)
 
-
-@app.route("/<request_cat>/<request_pid>")
-def rankold(request_cat,request_pid):
-  request_pid =  request_cat+"/"+request_pid
-  if not isvalidid(request_pid):
-    return '' # these are requests for icons, things like robots.txt, etc
-  search = papers_similar(request_pid)
-  ctx = default_context(render_format='paper')
-  return render_template('main.html', **ctx)
-
-@app.route("/<request_pid>")
-def rank(request_pid=None):
-  if not isvalidid(request_pid):
-    return '' # these are requests for icons, things like robots.txt, etc
-  search = papers_similar(request_pid)
-  ctx = default_context(render_format='paper')
-  return render_template('main.html', **ctx)
-
-
-
-
-#------------------------------------------------- 
-# Recs and account
-#------------------------------------------------- 
-@app.route('/recommend', methods=['GET'])
-def recommend():
-  ctx = default_context(render_format='recommend',
-                        msg='Sorting by personalized relevance:' if g.user else 'You must be logged in and have some papers saved in your library.')
-  return render_template('main.html', **ctx)
-
-@app.route('/library')
-def library():
-  """ render user's library """
-  papers = papers_from_library()
-  # papers = papers.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
-
-  num_papers = papers.count()
-  if g.user:
-    msg = '%d papers in your library:' % (num_papers, )
-  else:
-    msg = 'You must be logged in. Once you are, you can save papers to your library (with the save icon on the right of each paper) and they will show up here.'
-  ctx = default_context(render_format='library', msg=msg)
-  return render_template('main.html', **ctx)
 
 @app.route('/libtoggle', methods=['POST'])
 def review():
@@ -1051,29 +858,6 @@ def review():
 
   return jsonify(dict(on=ret))
 
-
-@app.route('/account')
-def account():
-  return library()
-  # library()
-    # ctx = { 'totpapers': countpapers() }
-#     followers = []
-#     following = []
-#     # fetch all followers/following of the logged in user
-#     if g.user:
-#         username = get_username(session['user_id'])
-        
-#         # following_db = list(follow_collection.find({ 'who':username }))
-#         # for e in following_db:
-#             # following.append({ 'user':e['whom'], 'active':e['active'] })
-# # 
-#         # followers_db = list(follow_collection.find({ 'whom':username }))
-#         # for e in followers_db:
-#             # followers.append({ 'user':e['who'], 'active':e['active'] })
-# # 
-#     ctx['followers'] = followers
-#     ctx['following'] = following
-#     return render_template('account.html', **ctx)
 
 
 @app.route('/login', methods=['POST'])
@@ -1126,16 +910,16 @@ def send_static(path):
 
 
 
-@app.route('/goaway', methods=['POST'])
-def goaway():
-  if not g.user: return # weird
-  uid = session['user_id']
-  entry = goaway_collection.find_one({ 'uid':uid })
-  if not entry: # ok record this user wanting it to stop
-    username = get_username(session['user_id'])
-    print('adding', uid, username, 'to goaway.')
-    goaway_collection.insert_one({ 'uid':uid, 'time':int(time.time()) })
-  return 'OK'
+# @app.route('/goaway', methods=['POST'])
+# def goaway():
+#   if not g.user: return # weird
+#   uid = session['user_id']
+#   entry = goaway_collection.find_one({ 'uid':uid })
+#   if not entry: # ok record this user wanting it to stop
+#     username = get_username(session['user_id'])
+#     print('adding', uid, username, 'to goaway.')
+#     goaway_collection.insert_one({ 'uid':uid, 'time':int(time.time()) })
+#   return 'OK'
 
 #--------------------------------
 # Times and time filters
