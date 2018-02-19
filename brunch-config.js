@@ -15,7 +15,7 @@ module.exports = {
     files: {
         javascripts: {
             entryPoints: {'client/main.tsx' : {
-                "bundle.js" : /^client/,
+                "bundle.js" : [/^client/],
                 "vendor.js" : /^(?!client)/
             }}
         },

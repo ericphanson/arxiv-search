@@ -18,6 +18,7 @@ export interface query {
     /**Only search for the first iteration of the papers. */
     v1 : boolean
     only_lib : boolean
+    sim_to? : string[]
 }
 /**JSON object sent to _get_results() */
 export interface request {
