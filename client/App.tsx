@@ -23,7 +23,7 @@ interface state {
 let timeFilters = ["day", "3days", "week", "month", "year", "alltime"] as timeFilter[]
 const defaultQuery: query = {
     query: "",
-    sort: "query",
+    rec_lib : false,
     category: [],
     v1: false,
     only_lib: false,
@@ -87,7 +87,7 @@ export class App extends React.Component<{}, state> {
         this.setState({ nextQuery: { ...this.state.nextQuery, ...query } }, callback);
     }
     handleQueryboxChange(event) {
-        this.setNextQuery({ query: event.target.value, sort: "query" });
+        this.setNextQuery({ query: event.target.value});
     }
     handleLoadMore() {
         if (this.state.isLoading || this.state.isDone) { return; }
@@ -156,8 +156,8 @@ export class App extends React.Component<{}, state> {
                 <LeaderBoard cats={cats} in_data={meta.in_data} primaryCategory={query.primaryCategory} handleCat={x => this.handleCat(x)}/>
 
                 <hr/>
-                {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ sort: (e.target.checked ? "relevance" : "query"), only_lib : false }, () => this.activateQuery())} /></label>}
-                {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked, sort: "query" }, () => this.activateQuery())} /></label>}
+                {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.rec_lib} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ rec_lib: e.target.checked}, () => this.activateQuery())} /></label>}
+                {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
                 <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
             </div>
             <Infinite
