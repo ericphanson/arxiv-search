@@ -325,8 +325,8 @@ def extract_query_params(query_info):
   
   queries = []
 
-  if query_text:
-      queries.append(get_simple_search_query(query_text))
+  # if query_text:
+      # queries.append(get_simple_search_query(query_text))
   
   if rec_lib:
       lib_ids = ids_from_library()
@@ -336,16 +336,35 @@ def extract_query_params(query_info):
   if sim_to_ids:
     queries.append(get_sim_to_query(sim_to_ids))
 
-  print('%s queries' % len(queries))
-  if not (queries):
-    search = search.sort('-updated')
-  elif len(queries)==1:
-    print(queries)
-    q = queries[0]
-    search = search.query(q)
-  elif len(queries)>1:
-    q = Q("bool", should = queries, disable_coord =True)
-    search = search.query(q)
+  if query_text:
+    if len(queries) > 0:
+      q = Q("bool", must=get_simple_search_query(query_text), should = queries)
+      search = search.query(q)
+    else:
+      q = get_simple_search_query(query_text)
+      search = search.query(q)
+      
+  else:
+    if len(queries) > 0:
+      q = Q("bool", should = queries)
+      search = search.query(q)
+    else:
+      search = search.sort('-updated')
+      
+      
+      
+  # print('%s queries' % len(queries))
+  # if not (queries):
+  #   search = search.sort('-updated')
+  # elif len(queries)==1:
+  #   print(queries)
+  #   q = queries[0]
+  #   search = search.query(q)
+  # elif len(queries)>1:
+  #   if query_text:
+
+  #   q = Q("bool", must=get_simple_search_query(query_text), should = queries, disable_coord =True)
+  #   search = search.query(q)
     print(search.to_dict())
 
   # get filters
@@ -373,12 +392,12 @@ def extract_query_params(query_info):
 
 def get_simple_search_query(string):
   return Q("simple_query_string", query=string, default_operator = "AND", \
-      fields=['title','abstract', 'fulltext', 'all_authors', '_id'], boost=10)
+      fields=['title','abstract', 'fulltext', 'all_authors', '_id'])
 
 
 def get_sim_to_query(pids):
   dlist = [ makepaperdict(strip_version(v)) for v in pids ]
-  return Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False)
+  return Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors^1.5'], include=False,minimum_should_match="3")
 
 
 
