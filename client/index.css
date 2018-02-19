@@ -1,6 +1,7 @@
 .app-root {
     display: grid;
-    grid-template-columns: 40px 200px auto 40px;
+    justify-content: center;
+    grid-template-columns: 40px minmax(auto, min-content) 1fr 40px;
     grid-template-rows: auto auto auto;
     grid-gap: 8px;
     grid-template-areas:
@@ -150,6 +151,7 @@ opacity: 0.65;
 
 .app-filters {
     grid-area: side;
+    width : 200px;
     display: flex;
     flex-flow: column nowrap;
     font-size: 0.8em;
@@ -227,4 +229,8 @@ a.badge:hover {
     cursor: default;
     pointer-events: none;
     background-color: #EB6864;
+}
+
+#rtable {
+    max-width: 968px;
 }
