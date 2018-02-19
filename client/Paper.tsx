@@ -1,7 +1,7 @@
 import { paper, category } from "./types";
 import { notimpl, sendRequest } from "./basic";
 import * as React from 'react';
-import { cat_col, cat_desc } from "./all_categories";
+import { cat_col, cat_desc } from "./categories";
 import { Math } from './Math';
 export function WithMaths(props: { text: string }) {
     let { text } = props;

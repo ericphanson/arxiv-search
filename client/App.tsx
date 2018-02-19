@@ -4,7 +4,7 @@ import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
 import Select from "react-select";
 import { Paper } from './Paper';
-import { all_categories, cat_desc, cat_col, is_ams } from './all_categories';
+import { all_categories, cat_desc, cat_col, is_ams } from './categories';
 import { CatBadge } from './CatBadge';
 interface state {
     papers: paper[],
