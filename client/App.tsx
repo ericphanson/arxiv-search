@@ -96,6 +96,7 @@ export class App extends React.Component<{}, state> {
     }
     handlePrimCat(cat: category) { this.setNextQuery({ primaryCategory: cat }, () => this.activateQuery()) }
     handleCat(andCats: category[]) { this.setNextQuery({ category: andCats.map(x => [x]) }, () => this.activateQuery()) }
+    handleAuthor(a : string) {this.setNextQuery({query : a}, () => this.activateQuery())}
     handleTime(tf: timeFilter) { this.setNextQuery({ time: tf }, () => this.activateQuery()) }
     render() {
         let { papers, isDone, isLoading, meta, nextQuery: query } = this.state;
@@ -171,7 +172,9 @@ export class App extends React.Component<{}, state> {
                     <div id="rtable" key="rtable">
                         {papers.map((p, i) => <Paper p={p} key={p.pid}
                             onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
-                            onCategoryClick={(c) => this.handleCat(cats.addUnique(c))} />)}
+                            onCategoryClick={(c) => this.handleCat(cats.addUnique(c))}
+                            onAuthorClick={a => this.handleAuthor(a)}
+                            />)}
                     </div>,
                     this.state.isDone && <h2 className="app-done">Done</h2>]}
             </Infinite>
