@@ -199,7 +199,7 @@ a.badge:hover {
 .anim-item {
     transition: all 0.2s ease-out;
 }
-.timeGrid {
+.radioGrid {
     display: grid;
     grid-gap: 1px;
     grid-template-rows: 2.7em 2.7em;

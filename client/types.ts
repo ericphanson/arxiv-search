@@ -6,7 +6,8 @@ export type timeFilter = "3days" | "week" | "day" | "alltime" | "month" | "year"
 
 export interface query {
     query? : string,
-    sort : "relevance" | "date" | "query",
+    /**Score higher if related to papers in the library. */
+    rec_lib : boolean,
     /** Categories to filter; outer list is AND, inner list is OR. */
     category : category[][],
     /**The time span to filter results by. */
@@ -30,7 +31,7 @@ export interface request {
 
 export interface paper {
     /** Extra comments about the paper; truncated to 100 characters + ... */
-    arxiv_comment? : string
+    comment? : string
     score? : number
     title : string
     /**ArXiv id. Eg `1802.02400v2` */

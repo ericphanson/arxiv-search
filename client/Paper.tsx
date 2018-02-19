@@ -27,9 +27,9 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
                     .interlace(", " as any)}
             </span>
             <br />
-            <span className="ds">{p.published_time}</span>
+            <span title="publication date of latest version on arxiv.org" className="ds">{p.published_time}</span>
             {p.originally_published_time !== p.published_time
-                ? <span className="ds2">(v1: {p.originally_published_time})</span>
+                ? <span title="original publication date on arxiv.org" className="ds2">(v1: {p.originally_published_time})</span>
                 : undefined}
             <span className="cs">{
                 p.tags.map(c =>
@@ -41,14 +41,14 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
                         {c}
                     </a>)
             }</span>
+            <br/>
+            {p.comment && <span title="comments from arxiv.org" className="paper-comment">{p.comment}</span>}
         </div>
         <div className="dllinks">
             <span className="spid">{p.pid}</span>
             <a href={pdf_url} target="_blank">pdf</a>
             <br />
-            <span className="sim" style={{ marginLeft: "5px", paddingLeft: "5px", borderLeft: "1px solid black" }}>
-                <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }} >scirate</a>
-            </span>
+            <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }} >scirate</a>
             <br />
             <img
                 src={p.in_library ? "static/saved.png" : "static/save.png"}
