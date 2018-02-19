@@ -129,7 +129,7 @@ export class App extends React.Component<{}, state> {
             </div>
             <div className="app-filters">
                 <TimeGrid handleTime={(t) => this.handleTime(t)} current={query.time} time_filter_data={meta.time_filter_data}/>
-                <hr/>
+                <br/>
                 <Select
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
@@ -141,7 +141,7 @@ export class App extends React.Component<{}, state> {
                     value={query.primaryCategory || ""}
                     searchable={true}
                     onChange={(selected : any) => this.handlePrimCat(selected)} />
-                <hr/>
+                <br/>
                 <Select
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
@@ -155,8 +155,7 @@ export class App extends React.Component<{}, state> {
                     multi
                     onChange={(selected : any) => this.handleCat(selected.split(","))} />
                 <LeaderBoard cats={cats} in_data={meta.in_data} primaryCategory={query.primaryCategory} handleCat={x => this.handleCat(x)}/>
-
-                <hr/>
+                <br/>
                 {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.sort === "relevance"} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ sort: (e.target.checked ? "relevance" : "query"), only_lib : false }, () => this.activateQuery())} /></label>}
                 {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked, sort: "query" }, () => this.activateQuery())} /></label>}
                 <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
