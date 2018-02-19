@@ -344,9 +344,9 @@ def extract_query_params(query_info):
     q = queries[0]
     search = search.query(q)
   elif len(queries)>1:
-    print(queries)
     q = Q("bool", should = queries, disable_coord =True)
     search = search.query(q)
+    print(search.to_dict())
 
   # get filters
   Q_lib = Q()
@@ -373,7 +373,7 @@ def extract_query_params(query_info):
 
 def get_simple_search_query(string):
   return Q("simple_query_string", query=string, default_operator = "AND", \
-      fields=['title','abstract', 'fulltext', 'all_authors', '_id'])
+      fields=['title','abstract', 'fulltext', 'all_authors', '_id'], boost=10)
 
 
 def get_sim_to_query(pids):
