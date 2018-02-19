@@ -39,6 +39,8 @@ from requests_aws4auth import AWS4Auth
 from pyparsing import Word, alphas, Literal, Group, Suppress, OneOrMore, oneOf
 import threading
 
+
+
 # -----------------------------------------------------------------------------
 
 root_dir = os.path.join(".")
@@ -308,11 +310,12 @@ def extract_query_params(query_info):
 
   # author stuff not implemented yet
   sort_auth = False
-
+  query_text = None
   #step 1: determine sorting
   sort = SORT_DATE  
   if 'query' in query_info:
     if query_info['query'].strip() is not '':
+      query_text = query_info['query'].strip() 
       sort = SORT_QUERY
   if 'sort' in query_info:
     if query_info['sort'] == "relevance":
@@ -354,17 +357,17 @@ def extract_query_params(query_info):
   # add sorting
   if sort == SORT_QUERY:
     q = query_info['query'].strip()
-    search = search.query("simple_query_string", query=q, default_operator = "AND", \
-      fields=['title','abstract', 'fulltext', 'all_authors', '_id'])
-    print(search.to_dict())
+    search = search.query(get_simple_search_query(q))
   elif sort == SORT_DATE:
     search = search.sort('-updated')
   elif sort == SORT_LIB:
-    search = add_rec_query(search)
+    search = add_rec_query(search,query_text)
   elif sort == SORT_SIM_TO:
-    search = add_papers_similar_query(search, query_info['sim_to'])
+    search = add_papers_similar_query(search, query_info['sim_to'], query_text)
 
   return search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib
+
+
 
 def build_query(query_info):
   search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
@@ -825,16 +828,27 @@ def makepaperdict(pid):
     }
     return d
 
-def add_papers_similar_query(search, pidlist):
+def add_papers_similar_query(search, pidlist, extra_text = None):
   session['recent_sort'] = False
   dlist = [ makepaperdict(strip_version(v)) for v in pidlist ]
-  if pidlist:
-    q = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False)
-    mlts=search.query(q)
-  else:
-    mlts = search
-  return mlts
+  option = 1
 
+  if option == 1:
+    if extra_text:
+      dlist.append(extra_text)
+    q = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False)
+  else:
+    q1 = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False, boost=.5)
+    if extra_text:
+      q2 = get_simple_search_query(extra_text)
+      q = Q("bool", should = [q1,q2], disable_coord =True)
+  # else:
+    # mlts = search
+  return search.query(q)
+
+def get_simple_search_query(string):
+  return Q("simple_query_string", query=string, default_operator = "AND", \
+      fields=['title','abstract', 'fulltext', 'all_authors', '_id'])
 
 def ids_from_library():
   if g.libids:
@@ -844,12 +858,12 @@ def ids_from_library():
   return out
 
 
-def add_rec_query(search):
+def add_rec_query(search, extra_text = None):
   # libids = []
   if g.libids:
-    out = add_papers_similar_query(search, g.libids)
+    out = add_papers_similar_query(search, g.libids, extra_text)
   else:
-    out = search
+    out = add_papers_similar_query(search, [], extra_text)
   return out
 
 
@@ -1128,15 +1142,28 @@ if __name__ == "__main__":
 
   print('connecting to elasticsearch...')
   es = Elasticsearch(
-   ["https://%s:%s@%s:9243" % (ES_USER,ES_PASS,es_host)], scheme="https", verify_certs=False) 
+   ["https://%s:%s@%s:9243" % (ES_USER,ES_PASS,es_host)], scheme="https", verify_certs=True) 
   # print(es.info())
   # m = Mapping.from_es('arxiv', 'paper', using=es)
   # print(m.authors)
 
-  ES_log_handler = CMRESHandler(hosts=[{'host': es_host, 'port': 80}],
-                           auth_type=CMRESHandler.AuthType.AWS_SIGNED_AUTH, aws_access_key= log_AWS_ACCESS_KEY,
-                           aws_secret_key=log_AWS_SECRET_KEY,aws_region='us-east-1',index_name_frequency=CMRESHandler.IndexNameFrequency.MONTHLY,
-                           es_index_name="logs")
+
+  APP_NAME = 'Python Server'
+
+  ES_LOG_USER = open(key_dir('ES_LOG_USER.txt'), 'r').read().strip()
+  ES_LOG_PASS = open(key_dir('ES_LOG_PASS.txt'), 'r').read().strip()
+  es_host = '0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io'
+  ES_log_handler = CMRESHandler(hosts=[{'host': es_host, 'port': 9243}],
+                            auth_type=CMRESHandler.AuthType.BASIC_AUTH,
+                            auth_details=(ES_LOG_USER,ES_LOG_PASS),
+                            es_index_name="python_logger",
+                            es_additional_fields={'App': APP_NAME},
+                            use_ssl=True)
+
+  # ES_log_handler = CMRESHandler(hosts=[{'host': es_host, 'port': 80}],
+                          #  auth_type=CMRESHandler.AuthType.AWS_SIGNED_AUTH, aws_access_key= log_AWS_ACCESS_KEY,
+                          #  aws_secret_key=log_AWS_SECRET_KEY,aws_region='us-east-1',index_name_frequency=CMRESHandler.IndexNameFrequency.MONTHLY,
+                          #  es_index_name="logs")
   comments = []
   tags_collection = []
   goaway_collection = []
@@ -1185,7 +1212,6 @@ if __name__ == "__main__":
   access_log.setLevel(logging.INFO)
 
   access_log.addHandler(ES_log_handler)
-  access_log.info("test log")
   # watchtower_request_handler.setFormatter(formatter)
 
   app_log = logging.getLogger("tornado.application")
