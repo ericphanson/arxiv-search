@@ -4,7 +4,7 @@ import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
 import Select from "react-select";
 import { Paper } from './Paper';
-import { all_categories, cat_desc, cat_col, is_ams } from './all_categories';
+import { all_categories, cat_desc, cat_col, is_ams } from './categories';
 import { CatBadge } from './CatBadge';
 interface state {
     papers: paper[],
@@ -101,7 +101,6 @@ export class App extends React.Component<{}, state> {
         let { papers, isDone, isLoading, meta, nextQuery: query } = this.state;
         let loggedIn = user !== "None"
         let cats = query.category.map(x => x[0]);
-        const tf_data = (tf: timeFilter) => { let n = meta.time_filter_data && meta.time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n})` }
         return <div className="app-root">
             <div className="header-bg"></div>
             <nav className="header">
@@ -114,8 +113,8 @@ export class App extends React.Component<{}, state> {
                             <input type="submit" value="Login or Create" className="btn btn-primary" />
                         </form>)
                         :
-                        [<span>{username}</span>,
-                        <a href="logout" className="btn btn-primary">log out</a>]
+                        <span><span style={{fontWeight : 700, color:"white"}}>Hello, {username}</span>
+                        <a href="logout" className="btn btn-primary" style={{marginLeft : "16px"}}>log out</a></span>
                 }
             </nav>
 
@@ -128,9 +127,8 @@ export class App extends React.Component<{}, state> {
                 <button id="qbutton" className="btn" onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
-                <TimeGrid handleTime={(t) => this.handleTime(t)} current={query.time} tf_data={tf_data}/>
+                <TimeGrid handleTime={(t) => this.handleTime(t)} current={query.time} time_filter_data={meta.time_filter_data}/>
                 <hr/>
-                
                 <Select
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
@@ -169,7 +167,7 @@ export class App extends React.Component<{}, state> {
                 hasMore={!isDone}
                 loader={<div key="loading">Loading...</div>}
                 threshold={500} >
-                    {[this.state.tot_num_papers && (<p><strong>{this.state.tot_num_papers}</strong> results</p>),
+                    {[this.state.tot_num_papers && (<p><strong>{this.state.tot_num_papers.toLocaleString()}</strong> results</p>),
                     <div id="rtable" key="rtable">
                         {papers.map((p, i) => <Paper p={p} key={p.pid}
                             onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
@@ -181,15 +179,16 @@ export class App extends React.Component<{}, state> {
     }
 }
 
-function TimeGrid({handleTime, tf_data, current}) {
+function TimeGrid({handleTime, time_filter_data, current}) {
     let cl = t => t === current ? "timeButton btn-primary checked" : "timeButton btn-primary"
+    const tf_data = (tf: timeFilter) => { let n = time_filter_data && time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n.toLocaleString()})` }
     return <div className="timeGrid">
-    <div key="day"     onClick={() => handleTime("day")} style={{borderTopLeftRadius:"4px", gridColumn:"1", gridRow:"1", }} className={cl("day")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>day</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("day")}</div></div>
-    <div key="3days"   onClick={() => handleTime("3days")} style={{gridColumn:"2", gridRow:"1", }} className={cl("3days")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>3 days</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("3days")}</div></div>
-    <div key="week"    onClick={() => handleTime("week")} style={{borderTopRightRadius:"4px", gridColumn:"3", gridRow:"1"}} className={cl("week")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>week</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("week")}</div></div>
-    <div key="month"   onClick={() => handleTime("month")} style={{borderBottomLeftRadius:"4px", gridColumn:"1", gridRow:"2", }} className={cl("month")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>month</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("month")}</div></div>
-    <div key="year"    onClick={() => handleTime("year")} style={{ gridColumn:"2", gridRow:"2", }} className={cl("year")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>year</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("year")}</div></div>
-    <div key="alltime" onClick={() => handleTime("alltime")} style={{borderBottomRightRadius:"4px", gridColumn:"3", gridRow:"2"}} className={cl("alltime")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>all time</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("alltime")}</div></div>
+    <div key="day"   title="Only show papers from the last day."   onClick={() => handleTime("day")} style={{borderTopLeftRadius:"4px", gridColumn:"1", gridRow:"1", }} className={cl("day")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>day</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("day")}</div></div>
+    <div key="3days" title="Only show papers from the last 3 days."   onClick={() => handleTime("3days")} style={{gridColumn:"2", gridRow:"1", }} className={cl("3days")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>3 days</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("3days")}</div></div>
+    <div key="week"  title="Only show papers from the last week."   onClick={() => handleTime("week")} style={{borderTopRightRadius:"4px", gridColumn:"3", gridRow:"1"}} className={cl("week")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>week</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("week")}</div></div>
+    <div key="month"  title="Only show papers from the last month."  onClick={() => handleTime("month")} style={{borderBottomLeftRadius:"4px", gridColumn:"1", gridRow:"2", }} className={cl("month")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>month</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("month")}</div></div>
+    <div key="year"   title="Only show papers from the last year."  onClick={() => handleTime("year")} style={{ gridColumn:"2", gridRow:"2", }} className={cl("year")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>year</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("year")}</div></div>
+    <div key="alltime" title="Show papers from any time"  onClick={() => handleTime("alltime")} style={{borderBottomRightRadius:"4px", gridColumn:"3", gridRow:"2"}} className={cl("alltime")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>all time</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("alltime")}</div></div>
         {/* {timeFilters.map(tf => <li 
         key={tf.toString()} 
         onClick={() => this.handleTime(tf)}
@@ -231,7 +230,7 @@ class LeaderBoard extends React.PureComponent<{in_data?, primaryCategory, cats, 
                     if (i === -1) { handleCat([...cats, k as any]) }
                     else { handleCat(cats.drop(i)) }
                 }} cat={k}/></td>
-                    <td>{in_data && `(${v})`}</td>
+                    <td>{in_data && `(${v.toLocaleString()})`}</td>
                 </tr>)
             })()}
         </tbody>
