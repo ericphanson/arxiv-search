@@ -287,36 +287,53 @@ def lib_filter(only_lib):
 def extract_query_params(query_info):
   query_info = sanitize_query_object(query_info)
   search = Search(using=es, index='arxiv')
-  SORT_QUERY = 1
-  SORT_LIB = 2
-  SORT_DATE = 3
-  SORT_SIM_TO = 4
-  SORT_CODES = {1 : "SORT_QUERY", 2: "SORT_LIB", 3: "SORT_DATE", 4: "SORT_SIM_TO"}
 
-  # author stuff not implemented yet
-  sort_auth = False
+  # add query
+  auth_query = None
+  query_text = None
+  sim_to_ids = None
+  rec_lib = False
 
-  #step 1: determine sorting
-  sort = SORT_DATE  
-  if 'query' in query_info:
-    if query_info['query'].strip() is not '':
-      sort = SORT_QUERY
-  if 'sort' in query_info:
-    if query_info['sort'] == "relevance":
-      sort = SORT_LIB
-    elif query_info['sort'] == "date":
-      sort = SORT_DATE
-    elif (query_info['sort'] == "query") and (query_info['query'].strip() is not ''):
-      sort = SORT_QUERY
-  if 'sim_to' in query_info:
-    if not (query_info['sim_to'] == []):
-      sort = SORT_SIM_TO
+  if 'rec_lib' in query_info:
+    rec_lib = query_info['rec_lib']
+  
+  if query_info['query'].strip() is not '':
+      query_text = query_info['query'].strip() 
+  
   if 'author' in query_info:
     if query_info['author'].strip() is not '':
-      sort_auth = True
-  print('sort = %s' % SORT_CODES[sort])
+      auth_query = query_info['author'].strip()
+  
+  if 'sim_to' in query_info:
+    sim_to_ids = query_info['sim_to']
 
-  # add filters
+  
+  queries = []
+
+  if query_text:
+      queries.append(get_simple_search_query(query_text))
+  
+  if rec_lib:
+      lib_ids = ids_from_library()
+      if lib_ids:
+        queries.append(get_sim_to_query(lib_ids))
+  
+  if sim_to_ids:
+    queries.append(get_sim_to_query(sim_to_ids))
+
+  print('%s queries' % len(queries))
+  if not (queries):
+    search = search.sort('-updated')
+  elif len(queries)==1:
+    print(queries)
+    q = queries[0]
+    search = search.query(q)
+  elif len(queries)>1:
+    print(queries)
+    q = Q("bool", should = queries, disable_coord =True)
+    search = search.query(q)
+
+  # get filters
   Q_lib = Q()
   if 'only_lib' in query_info:
     Q_lib =  lib_filter(query_info['only_lib'])
@@ -337,21 +354,19 @@ def extract_query_params(query_info):
   if 'v1' in query_info:
     Q_v1= ver_filter(query_info['v1'])
 
-  
-  # add sorting
-  if sort == SORT_QUERY:
-    q = query_info['query'].strip()
-    search = search.query("simple_query_string", query=q, default_operator = "AND", \
-      fields=['title','summary', 'fulltext', 'all_authors', '_id'])
-    print(search.to_dict())
-  elif sort == SORT_DATE:
-    search = search.sort('-updated')
-  elif sort == SORT_LIB:
-    search = add_rec_query(search)
-  elif sort == SORT_SIM_TO:
-    search = add_papers_similar_query(search, query_info['sim_to'])
-
   return search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib
+
+def get_simple_search_query(string):
+  return Q("simple_query_string", query=string, default_operator = "AND", \
+      fields=['title','abstract', 'fulltext', 'all_authors', '_id'])
+
+
+def get_sim_to_query(pids):
+  dlist = [ makepaperdict(strip_version(v)) for v in pids ]
+  return Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False)
+
+
+
 
 def build_query(query_info):
   search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
@@ -647,7 +662,7 @@ def san_dict_list_pids(dictionary, key):
 
 
 def sanitize_query_object(query_info):
-  valid_keys = ['query', 'sort', 'category', 'time', 'primaryCategory', 'author','v1', 'only_lib', 'sim_to']
+  valid_keys = ['query', 'rec_lib', 'category', 'time', 'primaryCategory', 'author','v1', 'only_lib', 'sim_to']
   query_info = san_dict_keys(query_info, valid_keys)
 
   if 'category' in query_info:
@@ -667,7 +682,7 @@ def sanitize_query_object(query_info):
 
   query_info = san_dict_list_pids(query_info, 'sim_to')
 
-  query_info = san_dict_value(query_info, 'sort', str, ["relevance","date", "query"])
+  query_info = san_dict_bool(query_info, 'rec_lib')
 
   query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
   
@@ -795,15 +810,25 @@ def makepaperdict(pid):
     }
     return d
 
-def add_papers_similar_query(search, pidlist):
+def add_papers_similar_query(search, pidlist, extra_text = None):
   session['recent_sort'] = False
   dlist = [ makepaperdict(strip_version(v)) for v in pidlist ]
-  if pidlist:
-    q = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'summary', 'all_authors'], include=False)
-    mlts=search.query(q)
+  option = 1
+
+  if option == 1:
+    if extra_text:
+      dlist.append(extra_text)
+    q = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False)
   else:
-    mlts = search
-  return mlts
+    q1 = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False, boost=.5)
+    if extra_text:
+      q2 = get_simple_search_query(extra_text)
+      q = Q("bool", should = [q1,q2], disable_coord =True)
+  # else:
+    # mlts = search
+  return search.query(q)
+
+
 
 
 def ids_from_library():
@@ -814,14 +839,13 @@ def ids_from_library():
   return out
 
 
-def add_rec_query(search):
+def add_rec_query(search, extra_text = None):
   # libids = []
   if g.libids:
-    out = add_papers_similar_query(search, g.libids)
+    out = add_papers_similar_query(search, g.libids, extra_text)
   else:
-    out = search
+    out = add_papers_similar_query(search, [], extra_text)
   return out
-
 
 
 #---------------------------------------------
