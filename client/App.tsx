@@ -101,7 +101,6 @@ export class App extends React.Component<{}, state> {
         let { papers, isDone, isLoading, meta, nextQuery: query } = this.state;
         let loggedIn = user !== "None"
         let cats = query.category.map(x => x[0]);
-        const tf_data = (tf: timeFilter) => { let n = meta.time_filter_data && meta.time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n})` }
         return <div className="app-root">
             <div className="header-bg"></div>
             <nav className="header">
@@ -128,9 +127,8 @@ export class App extends React.Component<{}, state> {
                 <button id="qbutton" className="btn" onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
-                <TimeGrid handleTime={(t) => this.handleTime(t)} current={query.time} tf_data={tf_data}/>
+                <TimeGrid handleTime={(t) => this.handleTime(t)} current={query.time} time_filter_data={meta.time_filter_data}/>
                 <hr/>
-                
                 <Select
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
@@ -169,7 +167,7 @@ export class App extends React.Component<{}, state> {
                 hasMore={!isDone}
                 loader={<div key="loading">Loading...</div>}
                 threshold={500} >
-                    {[this.state.tot_num_papers && (<p><strong>{this.state.tot_num_papers}</strong> results</p>),
+                    {[this.state.tot_num_papers && (<p><strong>{this.state.tot_num_papers.toLocaleString()}</strong> results</p>),
                     <div id="rtable" key="rtable">
                         {papers.map((p, i) => <Paper p={p} key={p.pid}
                             onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
@@ -181,8 +179,9 @@ export class App extends React.Component<{}, state> {
     }
 }
 
-function TimeGrid({handleTime, tf_data, current}) {
+function TimeGrid({handleTime, time_filter_data, current}) {
     let cl = t => t === current ? "timeButton btn-primary checked" : "timeButton btn-primary"
+    const tf_data = (tf: timeFilter) => { let n = time_filter_data && time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n.toLocaleString()})` }
     return <div className="timeGrid">
     <div key="day"   title="Only show papers from the last day."   onClick={() => handleTime("day")} style={{borderTopLeftRadius:"4px", gridColumn:"1", gridRow:"1", }} className={cl("day")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>day</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("day")}</div></div>
     <div key="3days" title="Only show papers from the last 3 days."   onClick={() => handleTime("3days")} style={{gridColumn:"2", gridRow:"1", }} className={cl("3days")}><div className="timeName" style={{gridRow:"1", gridColumn : "1"}}>3 days</div><div className="timeScore" style={{gridRow : "2", gridColumn:"1"}}>{tf_data("3days")}</div></div>
@@ -231,7 +230,7 @@ class LeaderBoard extends React.PureComponent<{in_data?, primaryCategory, cats, 
                     if (i === -1) { handleCat([...cats, k as any]) }
                     else { handleCat(cats.drop(i)) }
                 }} cat={k}/></td>
-                    <td>{in_data && `(${v})`}</td>
+                    <td>{in_data && `(${v.toLocaleString()})`}</td>
                 </tr>)
             })()}
         </tbody>
