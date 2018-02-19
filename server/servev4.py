@@ -253,7 +253,7 @@ def cat_filter(groups_of_cats):
 
 def prim_filter(prim_cat):
     filt_q = Q()
-    if prim_cat is not "any":
+    if prim_cat != "any":
       filt_q = Q('term', arxiv_primary_category__term__raw=prim_cat)
     return filt_q
 
@@ -287,6 +287,15 @@ def lib_filter(only_lib):
 def extract_query_params(query_info):
   query_info = sanitize_query_object(query_info)
   search = Search(using=es, index='arxiv')
+  tune_dict = None
+  weights = None
+  pair_fields = None
+  if 'rec_tuning' in query_info:
+    rec_tuning = query_info['rec_tuning']
+    weights = rec_tuning.pop('rec_tuning', None)
+    pair_fields= rec_tuning.pop('pair_fields', None)
+    tune_dict = rec_tuning
+    
 
   # add query
   auth_query = None
@@ -297,29 +306,30 @@ def extract_query_params(query_info):
   if 'rec_lib' in query_info:
     rec_lib = query_info['rec_lib']
   
-  if query_info['query'].strip() is not '':
+  if query_info['query'].strip() != '':
       query_text = query_info['query'].strip() 
   
   if 'author' in query_info:
-    if query_info['author'].strip() is not '':
+    if query_info['author'].strip() != '':
       auth_query = query_info['author'].strip()
   
   if 'sim_to' in query_info:
     sim_to_ids = query_info['sim_to']
 
-  
+ 
+
   queries = []
 
   if query_text:
-      queries.append(get_simple_search_query(query_text))
+      queries.append(get_simple_search_query(query_text, weights))
   
   if rec_lib:
       lib_ids = ids_from_library()
       if lib_ids:
-        queries.append(get_sim_to_query(lib_ids))
+        queries.append(get_sim_to_query(lib_ids, tune_dict, weights))
   
   if sim_to_ids:
-    queries.append(get_sim_to_query(sim_to_ids))
+    queries.append(get_sim_to_query(sim_to_ids, tune_dict, weights))
 
   print('%s queries' % len(queries))
   if not (queries):
@@ -356,14 +366,27 @@ def extract_query_params(query_info):
 
   return search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib
 
-def get_simple_search_query(string):
+def get_weighted_list_of_fields(weights):
+  fields = ['fulltext', 'title', 'abstract', 'all_authors']
+  if weights == None:
+    return fields
+  else:
+    weighted_list = [f + '^' + str(weights[f]) for f in weights]
+    leftover_fields = [f for f in fields if f not in weights]
+    full_list = weighted_list + leftover_fields
+    return full_list
+def get_simple_search_query(string, weights = None):
   return Q("simple_query_string", query=string, default_operator = "AND", \
-      fields=['title','abstract', 'fulltext', 'all_authors', '_id'])
+      fields=get_weighted_list_of_fields(weights).append('_id'))
 
 
-def get_sim_to_query(pids):
+def get_sim_to_query(pids, tune_dict = None, weights = None):
   dlist = [ makepaperdict(strip_version(v)) for v in pids ]
-  return Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False)
+  if tune_dict:
+    q = Q("more_like_this", **tune_dict, like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
+  else:
+    q = Q("more_like_this", like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
+  return q 
 
 
 
@@ -449,7 +472,7 @@ def get_meta_from_response(response):
           for buck in response.aggregations.sig_filt.sampler_agg.auth_agg.buckets:
             name = parse_author_name(buck.key)
             score = buck.score
-            if name is not '':
+            if name != '':
               auth_data[name] = score
           meta["auth_data"] = auth_data
         if "keywords_agg" in response.aggregations.sig_filt.sampler_agg:
@@ -579,11 +602,11 @@ def sanitize_string(text):
   # AND, OR and NOT are used by lucene as logical operators. We need
   # to escape them
   for word in ['AND', 'OR', 'NOT']:
-      if word is 'AND':
+      if word == 'AND':
         escaped_word = "+"
-      elif word is "OR":
+      elif word == "OR":
         escaped_word = "|"
-      elif word is "NOT":
+      elif word == "NOT":
         escaped_word = "-"
       # escaped_word = "".join(["\\" + letter for letter in word])
       text = re.sub(r'\s*\b({})\b\s*'.format(word), r" {} ".format(escaped_word), text)
@@ -595,6 +618,11 @@ def sanitize_string(text):
   quote_count = text.count('"')
   return re.sub(r'(.*)"(.*)', r'\1\"\2', text) if quote_count % 2 == 1 else text
 
+def san_dict(d):
+  if isinstance(d,dict):
+    return d
+  else:
+    return {}
 
 
 def san_dict_value(dictionary, key, typ, valid_options):
@@ -626,6 +654,13 @@ def san_dict_str(dictionary, key):
         dictionary[key] = sanitize_string(value)
     return dictionary
 
+def san_dict_num(dictionary, key):
+    if key in dictionary:
+      value = dictionary[key]
+      if not (isinstance(value, int) or isinstance(value,float)):
+        dictionary.pop(key, None)
+    return dictionary
+
 def san_dict_int(dictionary, key):
     if key in dictionary:
       value = dictionary[key]
@@ -634,6 +669,7 @@ def san_dict_int(dictionary, key):
     return dictionary
 
 def san_dict_keys(dictionary, valid_keys):
+  dictionary = san_dict(dictionary)
   dictionary = { key: dictionary[key] for key in valid_keys if key in dictionary}
   return dictionary
 
@@ -660,10 +696,47 @@ def san_dict_list_pids(dictionary, key):
   return dictionary
 
 
+def sanitize_rec_tuning_object(rec_tuning):
+  valid_keys = ['weights', 'max_query_terms', 'min_doc_freq', 'max_doc_freq', 'minimum_should_match', 'boost_terms','pair_fields']
+  rec_tuning = san_dict_keys(rec_tuning, valid_keys)
+
+  if 'weights' in rec_tuning:
+    w = rec_tuning['weights']
+    w_valid_keys = ['fulltext', 'title', 'abstract', 'all_authors']
+    w = san_dict_keys(w, valid_keys)
+    for key in w_valid_keys:
+      w = san_dict_str(w,key)
+    rec_tuning['weights'] = w
+
+  rec_tuning = san_dict_int(rec_tuning, 'max_query_terms' )
+  rec_tuning = san_dict_int(rec_tuning, 'min_doc_freq' )
+  rec_tuning = san_dict_int(rec_tuning, 'max_doc_freq' )
+
+  # min should match
+  if 'minimum_should_match' in rec_tuning:
+    m = rec_tuning['minimum_should_match']
+    if isinstance(m, int):
+        rec_tuning = san_dict_int(rec_tuning,'minimum_should_match' )
+    elif isinstance(m,str):
+      m = re.fullmatch('-?\d{1,2}?%',m)
+      if m:
+        rec_tuning['minimum_should_match'] = m
+      else:
+        rec_tuning.pop('minimum_should_match', None)
+    else:
+      rec_tuning.pop('minimum_should_match', None)
+  
+  rec_tuning = san_dict_num(rec_tuning, 'boost_terms' )
+  
+  rec_tuning = san_dict_bool(rec_tuning, 'pair_fields' )
+
 
 def sanitize_query_object(query_info):
-  valid_keys = ['query', 'rec_lib', 'category', 'time', 'primaryCategory', 'author','v1', 'only_lib', 'sim_to']
+  valid_keys = ['query', 'rec_lib', 'category', 'time', 'primaryCategory', 'author','v1', 'only_lib', 'sim_to', 'rec_tuning']
   query_info = san_dict_keys(query_info, valid_keys)
+
+  if 'rec_tuning' in query_info:
+    query_info['rec_tuning'] = sanitize_rec_tuning_object(query_info['rec_tuning'])
 
   if 'category' in query_info:
     cats = query_info['category']
