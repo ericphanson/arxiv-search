@@ -96,3 +96,8 @@
 	border-radius: 5px;
 	text-align: justify;
 }
+
+.paper-comment {
+	font-size: 0.7em;
+	color: grey;
+}

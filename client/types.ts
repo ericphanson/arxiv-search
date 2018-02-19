@@ -30,7 +30,7 @@ export interface request {
 
 export interface paper {
     /** Extra comments about the paper; truncated to 100 characters + ... */
-    arxiv_comment? : string
+    comment? : string
     score? : number
     title : string
     /**ArXiv id. Eg `1802.02400v2` */
