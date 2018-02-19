@@ -43,7 +43,9 @@ import threading
 
 root_dir = os.path.join(".")
 def key_dir(file): return os.path.join(root_dir,"keys",file)
-def server_dir(file): return os.path.join(root_dir,"server", file);
+def server_dir(file): return os.path.join(root_dir,"server", file)
+def shared_dir(file): return os.path.join(root_dir,"shared", file)
+  
 
 # database configuration
 if os.path.isfile(key_dir('secret_key.txt')):
@@ -58,8 +60,9 @@ log_AWS_ACCESS_KEY = open(key_dir('log_AWS_ACCESS_KEY.txt'), 'r').read().strip()
 log_AWS_SECRET_KEY = open(key_dir('log_AWS_SECRET_KEY.txt'), 'r').read().strip()
 CLOUDFRONT_URL = 'https://d3dq07j9ipgft2.cloudfront.net/'
 
-with open(server_dir("all_categories.txt"), 'r') as cats:
-  ALL_CATEGORIES =  cats.read().splitlines()
+with open(shared_dir("all_categories.json"), 'r') as cats:
+  CATS_JSON = json.load(cats)
+ALL_CATEGORIES = [ cat['c'] for cat in CATS_JSON]
 
 
 # jwskey = jwk.JWK.generate(kty='oct', size=256)
