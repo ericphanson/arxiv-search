@@ -336,8 +336,8 @@ def extract_query_params(query_info):
 
   queries = []
 
-  if query_text:
-      queries.append(get_simple_search_query(query_text, weights = weights))
+  # if query_text:
+      # queries.append(get_simple_search_query(query_text, weights = weights))
   
   if rec_lib:
       lib_ids = ids_from_library()
@@ -357,7 +357,10 @@ def extract_query_params(query_info):
       
   else:
     if len(queries) > 0:
-      q = Q("bool", should = queries)
+      if len(queries) == 1:
+        q = queries[0]
+      else:
+        q = Q("bool", should = queries)
       search = search.query(q)
     else:
       search = search.sort('-updated')
@@ -403,14 +406,17 @@ def extract_query_params(query_info):
 
 def get_weighted_list_of_fields(weights):
   fields = ['fulltext', 'title', 'abstract', 'all_authors']
-  if weights == None:
-    print('no weights')
-    return fields
-  else:
-    weighted_list = [f + '^' + str(weights[f]) for f in weights]
-    leftover_fields = [f for f in fields if f not in weights]
-    full_list = weighted_list + leftover_fields
-    return full_list
+  # for now, just return fields because the boosting doesn't work
+  return fields
+
+  # if weights == None:
+  #   print('no weights')
+  #   return fields
+  # else:
+  #   weighted_list = [f + '^' + str(weights[f]) for f in weights]
+  #   leftover_fields = [f for f in fields if f not in weights]
+  #   full_list = weighted_list + leftover_fields
+  #   return full_list
 def get_simple_search_query(string, weights = None):
   return Q("simple_query_string", query=string, default_operator = "AND", \
       fields=get_weighted_list_of_fields(weights).append('_id'))
@@ -768,6 +774,11 @@ def sanitize_rec_tuning_object(rec_tuning):
   rec_tuning = san_dict_int(rec_tuning, 'min_doc_freq' )
   rec_tuning = san_dict_int(rec_tuning, 'max_doc_freq' )
 
+  # special for max_doc_freq:
+  if 'max_doc_freq' in rec_tuning:
+    if rec_tuning['max_doc_freq'] < 1:
+      rec_tuning.pop('max_doc_freq', None)
+  
   # min should match
   if 'minimum_should_match' in rec_tuning:
     m = rec_tuning['minimum_should_match']
@@ -971,9 +982,9 @@ def add_papers_similar_query(search, pidlist, extra_text = None):
     # mlts = search
   return search.query(q)
 
-def get_simple_search_query(string):
-  return Q("simple_query_string", query=string, default_operator = "AND", \
-      fields=['title','abstract', 'fulltext', 'all_authors', '_id'])
+# def get_simple_search_query(string):
+  # return Q("simple_query_string", query=string, default_operator = "AND", \
+      # fields=['title','abstract', 'fulltext', 'all_authors', '_id'])
 
 def ids_from_library():
   if g.libids:
