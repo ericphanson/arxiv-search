@@ -368,6 +368,8 @@ def extract_query_params(query_info):
 
 def get_weighted_list_of_fields(weights):
   fields = ['fulltext', 'title', 'abstract', 'all_authors']
+  return fields
+  # weights are broken at the moment
   if weights == None:
     print('no weights')
     return fields
@@ -715,6 +717,11 @@ def sanitize_rec_tuning_object(rec_tuning):
   rec_tuning = san_dict_int(rec_tuning, 'max_query_terms' )
   rec_tuning = san_dict_int(rec_tuning, 'min_doc_freq' )
   rec_tuning = san_dict_int(rec_tuning, 'max_doc_freq' )
+
+  # special for max_doc_freq:
+  if 'max_doc_freq' in rec_tuning:
+    if rec_tuning['max_doc_freq'] < 1:
+      rec_tuning.pop('max_doc_freq', None)
 
   # min should match
   if 'minimum_should_match' in rec_tuning:
