@@ -291,10 +291,11 @@ def extract_query_params(query_info):
   weights = None
   pair_fields = None
   if 'rec_tuning' in query_info:
-    rec_tuning = query_info['rec_tuning']
-    weights = rec_tuning.pop('rec_tuning', None)
-    pair_fields= rec_tuning.pop('pair_fields', None)
-    tune_dict = rec_tuning
+    if query_info['rec_tuning'] is not None:
+      rec_tuning = query_info['rec_tuning']
+      weights = rec_tuning.pop('weights', None)
+      pair_fields= rec_tuning.pop('pair_fields', None)
+      tune_dict = rec_tuning
     
 
   # add query
@@ -335,11 +336,9 @@ def extract_query_params(query_info):
   if not (queries):
     search = search.sort('-updated')
   elif len(queries)==1:
-    print(queries)
     q = queries[0]
     search = search.query(q)
   elif len(queries)>1:
-    print(queries)
     q = Q("bool", should = queries, disable_coord =True)
     search = search.query(q)
 
