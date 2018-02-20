@@ -43,7 +43,9 @@ import threading
 
 root_dir = os.path.join(".")
 def key_dir(file): return os.path.join(root_dir,"keys",file)
-def server_dir(file): return os.path.join(root_dir,"server", file);
+def server_dir(file): return os.path.join(root_dir,"server", file)
+def shared_dir(file): return os.path.join(root_dir,"shared", file)
+  
 
 # database configuration
 if os.path.isfile(key_dir('secret_key.txt')):
@@ -58,8 +60,9 @@ log_AWS_ACCESS_KEY = open(key_dir('log_AWS_ACCESS_KEY.txt'), 'r').read().strip()
 log_AWS_SECRET_KEY = open(key_dir('log_AWS_SECRET_KEY.txt'), 'r').read().strip()
 CLOUDFRONT_URL = 'https://d3dq07j9ipgft2.cloudfront.net/'
 
-with open(server_dir("all_categories.txt"), 'r') as cats:
-  ALL_CATEGORIES =  cats.read().splitlines()
+with open(shared_dir("all_categories.json"), 'r') as cats:
+  CATS_JSON = json.load(cats)
+ALL_CATEGORIES = [ cat['c'] for cat in CATS_JSON]
 
 
 # jwskey = jwk.JWK.generate(kty='oct', size=256)
@@ -250,7 +253,7 @@ def cat_filter(groups_of_cats):
 
 def prim_filter(prim_cat):
     filt_q = Q()
-    if prim_cat is not "any":
+    if prim_cat != "any":
       filt_q = Q('term', arxiv_primary_category__term__raw=prim_cat)
     return filt_q
 
@@ -284,36 +287,63 @@ def lib_filter(only_lib):
 def extract_query_params(query_info):
   query_info = sanitize_query_object(query_info)
   search = Search(using=es, index='arxiv')
-  SORT_QUERY = 1
-  SORT_LIB = 2
-  SORT_DATE = 3
-  SORT_SIM_TO = 4
-  SORT_CODES = {1 : "SORT_QUERY", 2: "SORT_LIB", 3: "SORT_DATE", 4: "SORT_SIM_TO"}
+  tune_dict = None
+  weights = None
+  pair_fields = None
+  if 'rec_tuning' in query_info:
+    rec_tuning = query_info['rec_tuning']
+    weights = rec_tuning.pop('rec_tuning', None)
+    pair_fields= rec_tuning.pop('pair_fields', None)
+    tune_dict = rec_tuning
+    
 
-  # author stuff not implemented yet
-  sort_auth = False
+  # add query
+  auth_query = None
+  query_text = None
+  sim_to_ids = None
+  rec_lib = False
 
-  #step 1: determine sorting
-  sort = SORT_DATE  
-  if 'query' in query_info:
-    if query_info['query'].strip() is not '':
-      sort = SORT_QUERY
-  if 'sort' in query_info:
-    if query_info['sort'] == "relevance":
-      sort = SORT_LIB
-    elif query_info['sort'] == "date":
-      sort = SORT_DATE
-    elif (query_info['sort'] == "query") and (query_info['query'].strip() is not ''):
-      sort = SORT_QUERY
-  if 'sim_to' in query_info:
-    if not (query_info['sim_to'] == []):
-      sort = SORT_SIM_TO
+  if 'rec_lib' in query_info:
+    rec_lib = query_info['rec_lib']
+  
+  if query_info['query'].strip() != '':
+      query_text = query_info['query'].strip() 
+  
   if 'author' in query_info:
-    if query_info['author'].strip() is not '':
-      sort_auth = True
-  print('sort = %s' % SORT_CODES[sort])
+    if query_info['author'].strip() != '':
+      auth_query = query_info['author'].strip()
+  
+  if 'sim_to' in query_info:
+    sim_to_ids = query_info['sim_to']
 
-  # add filters
+ 
+
+  queries = []
+
+  if query_text:
+      queries.append(get_simple_search_query(query_text, weights))
+  
+  if rec_lib:
+      lib_ids = ids_from_library()
+      if lib_ids:
+        queries.append(get_sim_to_query(lib_ids, tune_dict, weights))
+  
+  if sim_to_ids:
+    queries.append(get_sim_to_query(sim_to_ids, tune_dict, weights))
+
+  print('%s queries' % len(queries))
+  if not (queries):
+    search = search.sort('-updated')
+  elif len(queries)==1:
+    print(queries)
+    q = queries[0]
+    search = search.query(q)
+  elif len(queries)>1:
+    print(queries)
+    q = Q("bool", should = queries, disable_coord =True)
+    search = search.query(q)
+
+  # get filters
   Q_lib = Q()
   if 'only_lib' in query_info:
     Q_lib =  lib_filter(query_info['only_lib'])
@@ -334,21 +364,32 @@ def extract_query_params(query_info):
   if 'v1' in query_info:
     Q_v1= ver_filter(query_info['v1'])
 
-  
-  # add sorting
-  if sort == SORT_QUERY:
-    q = query_info['query'].strip()
-    search = search.query("simple_query_string", query=q, default_operator = "AND", \
-      fields=['title','summary', 'fulltext', 'all_authors', '_id'])
-    print(search.to_dict())
-  elif sort == SORT_DATE:
-    search = search.sort('-updated')
-  elif sort == SORT_LIB:
-    search = add_rec_query(search)
-  elif sort == SORT_SIM_TO:
-    search = add_papers_similar_query(search, query_info['sim_to'])
-
   return search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib
+
+def get_weighted_list_of_fields(weights):
+  fields = ['fulltext', 'title', 'abstract', 'all_authors']
+  if weights == None:
+    return fields
+  else:
+    weighted_list = [f + '^' + str(weights[f]) for f in weights]
+    leftover_fields = [f for f in fields if f not in weights]
+    full_list = weighted_list + leftover_fields
+    return full_list
+def get_simple_search_query(string, weights = None):
+  return Q("simple_query_string", query=string, default_operator = "AND", \
+      fields=get_weighted_list_of_fields(weights).append('_id'))
+
+
+def get_sim_to_query(pids, tune_dict = None, weights = None):
+  dlist = [ makepaperdict(strip_version(v)) for v in pids ]
+  if tune_dict:
+    q = Q("more_like_this", **tune_dict, like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
+  else:
+    q = Q("more_like_this", like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
+  return q 
+
+
+
 
 def build_query(query_info):
   search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
@@ -431,7 +472,7 @@ def get_meta_from_response(response):
           for buck in response.aggregations.sig_filt.sampler_agg.auth_agg.buckets:
             name = parse_author_name(buck.key)
             score = buck.score
-            if name is not '':
+            if name != '':
               auth_data[name] = score
           meta["auth_data"] = auth_data
         if "keywords_agg" in response.aggregations.sig_filt.sampler_agg:
@@ -561,11 +602,11 @@ def sanitize_string(text):
   # AND, OR and NOT are used by lucene as logical operators. We need
   # to escape them
   for word in ['AND', 'OR', 'NOT']:
-      if word is 'AND':
+      if word == 'AND':
         escaped_word = "+"
-      elif word is "OR":
+      elif word == "OR":
         escaped_word = "|"
-      elif word is "NOT":
+      elif word == "NOT":
         escaped_word = "-"
       # escaped_word = "".join(["\\" + letter for letter in word])
       text = re.sub(r'\s*\b({})\b\s*'.format(word), r" {} ".format(escaped_word), text)
@@ -577,6 +618,11 @@ def sanitize_string(text):
   quote_count = text.count('"')
   return re.sub(r'(.*)"(.*)', r'\1\"\2', text) if quote_count % 2 == 1 else text
 
+def san_dict(d):
+  if isinstance(d,dict):
+    return d
+  else:
+    return {}
 
 
 def san_dict_value(dictionary, key, typ, valid_options):
@@ -608,6 +654,13 @@ def san_dict_str(dictionary, key):
         dictionary[key] = sanitize_string(value)
     return dictionary
 
+def san_dict_num(dictionary, key):
+    if key in dictionary:
+      value = dictionary[key]
+      if not (isinstance(value, int) or isinstance(value,float)):
+        dictionary.pop(key, None)
+    return dictionary
+
 def san_dict_int(dictionary, key):
     if key in dictionary:
       value = dictionary[key]
@@ -616,6 +669,7 @@ def san_dict_int(dictionary, key):
     return dictionary
 
 def san_dict_keys(dictionary, valid_keys):
+  dictionary = san_dict(dictionary)
   dictionary = { key: dictionary[key] for key in valid_keys if key in dictionary}
   return dictionary
 
@@ -642,10 +696,47 @@ def san_dict_list_pids(dictionary, key):
   return dictionary
 
 
+def sanitize_rec_tuning_object(rec_tuning):
+  valid_keys = ['weights', 'max_query_terms', 'min_doc_freq', 'max_doc_freq', 'minimum_should_match', 'boost_terms','pair_fields']
+  rec_tuning = san_dict_keys(rec_tuning, valid_keys)
+
+  if 'weights' in rec_tuning:
+    w = rec_tuning['weights']
+    w_valid_keys = ['fulltext', 'title', 'abstract', 'all_authors']
+    w = san_dict_keys(w, valid_keys)
+    for key in w_valid_keys:
+      w = san_dict_str(w,key)
+    rec_tuning['weights'] = w
+
+  rec_tuning = san_dict_int(rec_tuning, 'max_query_terms' )
+  rec_tuning = san_dict_int(rec_tuning, 'min_doc_freq' )
+  rec_tuning = san_dict_int(rec_tuning, 'max_doc_freq' )
+
+  # min should match
+  if 'minimum_should_match' in rec_tuning:
+    m = rec_tuning['minimum_should_match']
+    if isinstance(m, int):
+        rec_tuning = san_dict_int(rec_tuning,'minimum_should_match' )
+    elif isinstance(m,str):
+      m = re.fullmatch('-?\d{1,2}?%',m)
+      if m:
+        rec_tuning['minimum_should_match'] = m
+      else:
+        rec_tuning.pop('minimum_should_match', None)
+    else:
+      rec_tuning.pop('minimum_should_match', None)
+  
+  rec_tuning = san_dict_num(rec_tuning, 'boost_terms' )
+  
+  rec_tuning = san_dict_bool(rec_tuning, 'pair_fields' )
+
 
 def sanitize_query_object(query_info):
-  valid_keys = ['query', 'sort', 'category', 'time', 'primaryCategory', 'author','v1', 'only_lib', 'sim_to']
+  valid_keys = ['query', 'rec_lib', 'category', 'time', 'primaryCategory', 'author','v1', 'only_lib', 'sim_to', 'rec_tuning']
   query_info = san_dict_keys(query_info, valid_keys)
+
+  if 'rec_tuning' in query_info:
+    query_info['rec_tuning'] = sanitize_rec_tuning_object(query_info['rec_tuning'])
 
   if 'category' in query_info:
     cats = query_info['category']
@@ -664,7 +755,7 @@ def sanitize_query_object(query_info):
 
   query_info = san_dict_list_pids(query_info, 'sim_to')
 
-  query_info = san_dict_value(query_info, 'sort', str, ["relevance","date", "query"])
+  query_info = san_dict_bool(query_info, 'rec_lib')
 
   query_info = san_dict_value(query_info, 'primaryCategory', str, ALL_CATEGORIES)
   
@@ -792,15 +883,25 @@ def makepaperdict(pid):
     }
     return d
 
-def add_papers_similar_query(search, pidlist):
+def add_papers_similar_query(search, pidlist, extra_text = None):
   session['recent_sort'] = False
   dlist = [ makepaperdict(strip_version(v)) for v in pidlist ]
-  if pidlist:
-    q = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'summary', 'all_authors'], include=False)
-    mlts=search.query(q)
+  option = 1
+
+  if option == 1:
+    if extra_text:
+      dlist.append(extra_text)
+    q = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False)
   else:
-    mlts = search
-  return mlts
+    q1 = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False, boost=.5)
+    if extra_text:
+      q2 = get_simple_search_query(extra_text)
+      q = Q("bool", should = [q1,q2], disable_coord =True)
+  # else:
+    # mlts = search
+  return search.query(q)
+
+
 
 
 def ids_from_library():
@@ -811,14 +912,13 @@ def ids_from_library():
   return out
 
 
-def add_rec_query(search):
+def add_rec_query(search, extra_text = None):
   # libids = []
   if g.libids:
-    out = add_papers_similar_query(search, g.libids)
+    out = add_papers_similar_query(search, g.libids, extra_text)
   else:
-    out = search
+    out = add_papers_similar_query(search, [], extra_text)
   return out
-
 
 
 #---------------------------------------------

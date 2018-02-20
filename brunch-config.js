@@ -1,6 +1,6 @@
 module.exports = {
     paths : {
-        watched : ["client", "shared"],
+        watched : ["client"],
         public: "static"
     },
     npm : {
@@ -15,7 +15,7 @@ module.exports = {
     files: {
         javascripts: {
             entryPoints: {'client/main.tsx' : {
-                "bundle.js" : [/^client/, "/^shared/"],
+                "bundle.js" : [/^client/],
                 "vendor.js" : /^(?!client)/
             }}
         },
