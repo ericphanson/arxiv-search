@@ -4,6 +4,7 @@ export type category = string;
 export type timestamp = number
 export type timeFilter = "3days" | "week" | "day" | "alltime" | "month" | "year" | {start : timestamp, end : timestamp}
 
+
 /** rec_tuning exposes parameters for tweaking how recommended searches are made to the client. Maybe we never want to actually give this much
  * complexity to the client, but I think it would be really useful to have some rough controls to move in order to pin down the right weights to use
  * as the default ones. And maybe we can keep it for logged in users...
@@ -13,7 +14,9 @@ export interface rec_tuning {
      * that matching the author field is worth 2 whereas matching other fields is 1.0 by default.
      * The key field should be one of 'fulltext', 'title', 'abstract', or 'all_authors'.
      */
-    weights :  {[field : string]: number}
+    weights :  {
+        fulltext : number, title : number, abstract : number, all_authors : number
+    }
     /** From ES: The maximum number of query terms that will be selected. 
      * Increasing this value gives greater accuracy at the expense of query execution speed. Defaults to 25 */
     max_query_terms? : number
@@ -25,7 +28,7 @@ export interface rec_tuning {
     /** From ES: After the disjunctive query has been formed, this parameter controls the number of terms that must match. Defaults to 30%.
      * See https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-minimum-should-match.html for syntax.
      */
-    minimum_should_match? : number | string
+    minimum_should_match? : string
     /** From ES: Each term in the formed query could be further boosted by their tf-idf score. 
      * This sets the boost factor to use when using this feature. Defaults to deactivated (0). Any other positive value activates terms boosting with the given boost factor.
     */

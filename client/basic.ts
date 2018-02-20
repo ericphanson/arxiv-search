@@ -9,15 +9,36 @@ export function sendRequest(url: string, request, callback: (response: any) => v
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin"
     }).then(
-        response => response.ok ? response.json() : console.log("couldn't connect to server."),
+        response => {
+            if (response.ok) {
+                let json = response.json();
+                if (json !== undefined) {return json;}
+            } 
+            console.log("couldn't connect to server.")
+            return;
+        },
         error => console.log(`Network error: ${error}`)
         ).then(callback);
 }
 declare global {
     interface Object {
         toKeyValueArray() :{k:string, v : any}[];
+        with(ps : any) : this;
+        lens(...path : string[]) : (value : any) => this;
     }
 }
+import * as assign from "object-assign";
+Object.prototype.lens = function (...path) {
+    let nested = path.scan((s,p,i) => s[p], this);
+    return (value) => {
+        let acc = value;
+        for (let i = nested.length - 2; i >= 0; i--) {
+            acc = nested[i].with({[path[i]]: acc});
+        }
+        return acc;
+    }
+}
+if (!Object.prototype.with) {Object.prototype.with = function (ps) {return assign(Object.create(Object.getPrototypeOf(this)), this, ps)} }
 declare global {
     interface Array<T> {
         interlace(sep: T): T[];
@@ -27,7 +48,18 @@ declare global {
         drop(index : number) : T[];
         /**Immutably add `item` unless it is already on the array. */
         addUnique(item : T) : T[];
+        scan<S>(folder : (state : S, item : T, index : number) => S, init : S) : S[];
     }
+}
+Array.prototype.scan = function (folder, init) {
+    let ss = [];
+    let s = init;
+    ss.push(s);
+    for (let i = 0; i < this.length; i++) {
+        s = folder(s, this[i], i);
+        ss.push(s);
+    }
+    return ss;
 }
 if (!Array.prototype.interlace) {
     Array.prototype.interlace = function <T>(sep: T): T[] {
