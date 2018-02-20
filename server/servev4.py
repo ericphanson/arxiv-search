@@ -337,15 +337,15 @@ def extract_query_params(query_info):
   queries = []
 
   if query_text:
-      queries.append(get_simple_search_query(query_text, weights))
+      queries.append(get_simple_search_query(query_text, weights = weights))
   
   if rec_lib:
       lib_ids = ids_from_library()
       if lib_ids:
-        queries.append(get_sim_to_query(lib_ids, tune_dict, weights))
+        queries.append(get_sim_to_query(lib_ids, tune_dict = tune_dict, weights = weights))
   
   if sim_to_ids:
-    queries.append(get_sim_to_query(sim_to_ids, tune_dict, weights))
+    queries.append(get_sim_to_query(sim_to_ids, tune_dict = tune_dict, weights = weights))
 
   if query_text:
     if len(queries) > 0:
@@ -404,6 +404,7 @@ def extract_query_params(query_info):
 def get_weighted_list_of_fields(weights):
   fields = ['fulltext', 'title', 'abstract', 'all_authors']
   if weights == None:
+    print('no weights')
     return fields
   else:
     weighted_list = [f + '^' + str(weights[f]) for f in weights]
@@ -716,6 +717,9 @@ def san_dict_num(dictionary, key):
 def san_dict_int(dictionary, key):
     if key in dictionary:
       value = dictionary[key]
+      if isinstance(value,float):
+        value = int(round(value))
+        dictionary[key] = value
       if not isinstance(value, int):
         dictionary.pop(key, None)
     return dictionary
@@ -755,9 +759,9 @@ def sanitize_rec_tuning_object(rec_tuning):
   if 'weights' in rec_tuning:
     w = rec_tuning['weights']
     w_valid_keys = ['fulltext', 'title', 'abstract', 'all_authors']
-    w = san_dict_keys(w, valid_keys)
+    w = san_dict_keys(w, w_valid_keys)
     for key in w_valid_keys:
-      w = san_dict_str(w,key)
+      w = san_dict_num(w,key)
     rec_tuning['weights'] = w
 
   rec_tuning = san_dict_int(rec_tuning, 'max_query_terms' )
@@ -770,10 +774,8 @@ def sanitize_rec_tuning_object(rec_tuning):
     if isinstance(m, int):
         rec_tuning = san_dict_int(rec_tuning,'minimum_should_match' )
     elif isinstance(m,str):
-      m = re.fullmatch('-?\d{1,2}?%',m)
-      if m:
-        rec_tuning['minimum_should_match'] = m
-      else:
+      m = re.fullmatch(r'-?\d{1,2}?%',m)
+      if not m:
         rec_tuning.pop('minimum_should_match', None)
     else:
       rec_tuning.pop('minimum_should_match', None)
@@ -781,6 +783,7 @@ def sanitize_rec_tuning_object(rec_tuning):
   rec_tuning = san_dict_num(rec_tuning, 'boost_terms' )
   
   rec_tuning = san_dict_bool(rec_tuning, 'pair_fields' )
+  return rec_tuning
 
 
 def sanitize_query_object(query_info):
