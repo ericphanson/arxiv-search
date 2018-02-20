@@ -4,7 +4,53 @@ export type category = string;
 export type timestamp = number
 export type timeFilter = "3days" | "week" | "day" | "alltime" | "month" | "year" | {start : timestamp, end : timestamp}
 
+
+/** rec_tuning exposes parameters for tweaking how recommended searches are made to the client. Maybe we never want to actually give this much
+ * complexity to the client, but I think it would be really useful to have some rough controls to move in order to pin down the right weights to use
+ * as the default ones. And maybe we can keep it for logged in users...
+ */
+export interface rec_tuning {
+    /** Dictionary that assigns a weight to each field. For example, {'authors' : 2.0} means
+     * that matching the author field is worth 2 whereas matching other fields is 1.0 by default.
+     * The key field should be one of 'fulltext', 'title', 'abstract', or 'all_authors'.
+     */
+    weights :  {
+        fulltext : number, title : number, abstract : number, all_authors : number
+    }
+    /** From ES: The maximum number of query terms that will be selected. 
+     * Increasing this value gives greater accuracy at the expense of query execution speed. Defaults to 25 */
+    max_query_terms? : number
+    /** The minimum document frequency below which the terms will be ignored from the input document. Defaults to 5. */
+    min_doc_freq? : number
+    /** The maximum document frequency above which the terms will be ignored from the input document. 
+     * This could be useful in order to ignore highly frequent words such as stop words. Defaults to unbounded (0).*/
+    max_doc_freq? : number
+    /** From ES: After the disjunctive query has been formed, this parameter controls the number of terms that must match. Defaults to 30%.
+     * See https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-minimum-should-match.html for syntax.
+     */
+    minimum_should_match? : string
+    /** From ES: Each term in the formed query could be further boosted by their tf-idf score. 
+     * This sets the boost factor to use when using this feature. Defaults to deactivated (0). Any other positive value activates terms boosting with the given boost factor.
+    */
+    boost_terms? : number
+    /** If true, e.g., papers with the same authors as from papers in your library add to the score, but papers who cite those authors
+     * (so the author's name appears in the fulltext) do not get points to their score. If false, terms that appear anywhere in papers in your library contribute
+     * count towards any field (fulltext, title, abstract, or all_authors) for which they show up in search documents.
+     */
+    pair_fields? : boolean
+}
+
+/** The object which is passed to the server to request author autocompletions */
+export interface auth_complete {
+    /** the partial name which has been typed so for, for which you want autocompletions */
+    partial_name : string
+}
+
+/** the object which is passed to the server to request papers from a certain query */
 export interface query {
+    /** pass info to tune how recommended searches are made. */
+    rec_tuning ?: rec_tuning
+    /** A string representing the search query. Can use AND (or +), NOT (or -), etc. */
     query? : string,
     /**Score higher if related to papers in the library. */
     rec_lib : boolean,
@@ -18,7 +64,9 @@ export interface query {
     author? : string,
     /**Only search for the first iteration of the papers. */
     v1 : boolean
+    /** only show papers in the library */
     only_lib : boolean
+    /** list of ids to boost the score of papers similar to them. */
     sim_to? : string[]
 }
 /**JSON object sent to _get_results() */

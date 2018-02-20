@@ -8,8 +8,8 @@ export function WithMaths(props: { text: string }) {
     return <span>{text.split("$").map((s: string, i) => (i % 2 === 0) ? s : <Math latex={s} key={i} />)}</span>
 }
 
-export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCategoryClick: (cat: category) => void }) {
-    let { p } = props
+export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCategoryClick: (cat: category) => void, onAuthorClick: (author : string) => void }) {
+    let { p, onAuthorClick } = props
     let pdf_link = p.link.replace("abs", "pdf");
     let pdf_url = pdf_link === p.link ? pdf_link : pdf_link + ".pdf";
     return <div className="apaper" id={p.pid}>
@@ -19,11 +19,11 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
             <span className="ts">
                 <a href={p.link} target="_blank"> <WithMaths text={p.title} /></a>
             </span>
-            {p.score && [<span className="ds2">Relevance: {p.score.toPrecision(3)}</span>]}
+            {p.score && [<span className="ds2"> Relevance: {p.score.toPrecision(3)}</span>]}
             <br />
             <span className="as">
                 {p.authors.map((a: string) =>
-                    <a key={a} href={`/search?q=${a.replace(/ /g, "+")}`}>{a}</a>)
+                    <a key={a} onClick={() => onAuthorClick(a)}>{a}</a>)
                     .interlace(", " as any)}
             </span>
             <br />
@@ -53,7 +53,7 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
             <img
                 src={p.in_library ? "static/saved.png" : "static/save.png"}
                 className="save-icon"
-                title="toggle save paper to library (requires login)"
+                title={p.in_library ? "unsave paper" : "save paper to library (requires login)"}
                 id={"lib" + p.pid}
                 onClick={() =>
                     sendRequest("libtoggle", { pid: p.pid }, ({ on }) => (on !== "FAIL") && props.onToggle(on))}

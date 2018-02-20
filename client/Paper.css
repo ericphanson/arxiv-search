@@ -41,6 +41,7 @@
 .as {
 	font-size: 14px;
 	color: #900;
+	cursor: pointer;
 }
 .as a:link{ text-decoration: none; color: #900; }
 .as a:visited{ text-decoration: none; color: #900; }
