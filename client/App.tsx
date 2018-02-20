@@ -214,7 +214,6 @@ class Tuning extends React.Component<{rt : rec_tuning, onChange : (r : rec_tunin
         let ch = (p1: keyof rec_tuning, p2?: keyof rec_tuning["weights"]) => (e) => this.handleChange((rt as Object).lens(...(p2 ? [p1, p2] : [p1]))(Number(e.target.value)) as any)
         return <div>
             <h3>Tuning</h3>
-            <ul>
                 <table>
                     <tbody>
                         <tr>
@@ -269,7 +268,6 @@ class Tuning extends React.Component<{rt : rec_tuning, onChange : (r : rec_tunin
                         </tr>
                     </tbody>
                 </table>
-            </ul>
             {this.props.rt !== rt && <button onClick={() => this.props.onChange(this.state.rt)}>Update!</button>}
         </div>
     }
