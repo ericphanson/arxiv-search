@@ -26,7 +26,7 @@ const rec_tuning_default: rec_tuning = {
     max_query_terms: 25,
     min_doc_freq: 5,
     max_doc_freq: 0,
-    minimum_should_match: "30%",
+    minimum_should_match: "1%",
     boost_terms: 0,
     pair_fields: false
 }
@@ -169,7 +169,7 @@ export class App extends React.Component<{}, state> {
 
 
                 <br />
-                {loggedIn && <label htmlFor="my-arxiv-checkbox">Reccomended<input type="checkbox" checked={query.rec_lib} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ rec_lib: e.target.checked }, () => this.activateQuery())} /></label>}
+                {loggedIn && <label htmlFor="my-arxiv-checkbox">Recommended<input type="checkbox" checked={query.rec_lib} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ rec_lib: e.target.checked }, () => this.activateQuery())} /></label>}
                 {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
                 <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
                 <br />
@@ -216,7 +216,7 @@ class Tuning extends React.Component<{rt : rec_tuning, onChange : (r : rec_tunin
             <h3>Tuning</h3>
                 <table>
                     <tbody>
-                        <tr>
+                        {/* <tr>
                             <td>fulltext weight</td>
                             <td><input type="number" step="0.1" min="0" max="100"
                                 value={rt.weights.fulltext}
@@ -239,7 +239,7 @@ class Tuning extends React.Component<{rt : rec_tuning, onChange : (r : rec_tunin
                             <td><input type="number" step="0.1" min="0" max="100"
                                 value={rt.weights.all_authors}
                                 onChange={ch("weights", "all_authors")} /></td>
-                        </tr>
+                        </tr> */}
                         <tr>
                             <td>max query terms</td>
                             <td><input type="number" value={rt.max_query_terms} onChange={ch("max_query_terms")} /></td>
@@ -259,8 +259,8 @@ class Tuning extends React.Component<{rt : rec_tuning, onChange : (r : rec_tunin
                             </td>
                         </tr>
                         <tr>
-                            <td>max query terms</td>
-                            <td><input type="number" value={rt.max_query_terms} onChange={ch("max_query_terms")} /></td>
+                            <td>boost terms</td>
+                            <td><input type="number" value={rt.boost_terms} onChange={ch("boost_terms")} /></td>
                         </tr>
                         <tr>
                             <td>pair fields</td>
