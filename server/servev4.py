@@ -386,7 +386,8 @@ def extract_query_params(query_info):
 
   #   q = Q("bool", must=get_simple_search_query(query_text), should = queries, disable_coord =True)
   #   search = search.query(q)
-    print(search.to_dict())
+  print('search dict:')
+  print(search.to_dict())
 
   # get filters
   Q_lib = Q()
@@ -426,7 +427,7 @@ def get_weighted_list_of_fields(weights):
   #   return full_list
 def get_simple_search_query(string, weights = None):
   return Q("simple_query_string", query=string, default_operator = "AND", \
-      fields=get_weighted_list_of_fields(weights).append('_id'))
+      fields=get_weighted_list_of_fields(weights) + ['_id'])
 
 
 def get_sim_to_query(pids, tune_dict = None, weights = None):
