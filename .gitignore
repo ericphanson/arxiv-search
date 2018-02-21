@@ -6,3 +6,4 @@ tornado.log
 node_modules
 static
 .vscode
+nfsrunserve.sh
