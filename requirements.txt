@@ -2,8 +2,8 @@ aws-requests-auth
 boto3
 certifi
 CMRESHandler
-elasticsearch
-elasticsearch-dsl
+elasticsearch==6.1.1
+elasticsearch-dsl==6.1.0
 Flask
 Flask-Limiter
 python-dateutil
