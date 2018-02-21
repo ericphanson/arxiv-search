@@ -38,3 +38,9 @@ You must add a directory `./keys/` containing the following keys:
 - `log_AWS_ACCESS_KEY.txt`
 - `log_AWS_SECRET_KEY.txt`
 - `secret_key.txt`
+- `ES_USER.txt`
+- `ES_LOG_USER.txt`
+- `ES_PASS.txt`
+- `ES_LOG_PASS.txt`
+
+You must add a directory `./user_db` where the file `as.db` will go to store the user data.
