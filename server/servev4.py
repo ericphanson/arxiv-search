@@ -1280,8 +1280,8 @@ if __name__ == "__main__":
   if not os.path.isfile(Config.database_path):
     print('did not find as.db, trying to create an empty database from schema.sql...')
     print('this needs sqlite3 to be installed!')
-    os.system('sqlite3 as.db < schema.sql')
-    os.system('chmod a+rwx as.db')
+    os.system('sqlite3 ' + Config.database_path + ' < schema.sql')
+    # os.system('chmod a+rwx as.db')
     
 
 
