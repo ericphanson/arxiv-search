@@ -21,7 +21,7 @@ class Config(object):
     # user_sim_path = 'user_sim.p'
     # sql database file
     # db_serve_path = 'db2.p' # an enriched db.p with various preprocessing info
-    database_path = 'as.db'
+    database_path = 'user_db/as.db'
     # serve_cache_path = 'serve_cache.p'
     
     beg_for_hosting_money = 0 # do we beg the active users randomly for money? 0 = no.
