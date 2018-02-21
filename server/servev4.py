@@ -1281,6 +1281,8 @@ if __name__ == "__main__":
     print('did not find as.db, trying to create an empty database from schema.sql...')
     print('this needs sqlite3 to be installed!')
     os.system('sqlite3 as.db < schema.sql')
+    os.system('chmod a+rwx as.db')
+    
 
 
 
