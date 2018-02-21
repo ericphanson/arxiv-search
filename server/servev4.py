@@ -22,6 +22,8 @@ from utils import safe_pickle_dump, strip_version, isvalidid, Config
 import re
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection
+from elasticsearch.connection import create_ssl_context
+
 
 from elasticsearch.helpers import streaming_bulk, bulk, parallel_bulk
 import elasticsearch
@@ -1284,8 +1286,10 @@ if __name__ == "__main__":
 
 
   print('connecting to elasticsearch...')
+  context = create_ssl_context(cafile=certifi.where())  
   es = Elasticsearch(
-   ["https://%s:%s@%s:9243" % (ES_USER,ES_PASS,es_host)], scheme="https", verify_certs=True) 
+   ["https://%s:%s@%s:9243" % (ES_USER,ES_PASS,es_host)], scheme="https", ssl_context=context) 
+
   # print(es.info())
   # m = Mapping.from_es('arxiv', 'paper', using=es)
   # print(m.authors)
