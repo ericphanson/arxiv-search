@@ -42,7 +42,7 @@ import threading
 
 
 # -----------------------------------------------------------------------------
-
+stop_words = ["the", "of", "and", "in", "a", "to", "we", "for", "mathcal", "can", "is", "this", "with", "by", "that", "as", "to"]
 root_dir = os.path.join(".")
 def key_dir(file): return os.path.join(root_dir,"keys",file)
 def server_dir(file): return os.path.join(root_dir,"server", file)
@@ -228,14 +228,19 @@ def add_user_data_to_hit(struct):
 def getResults(search):
   search_dict = search.to_dict()
   query_hash = make_hash(search_dict)
-  have = False
+  # query_hash = 0
 
+  have = False
   with cached_queries_lock:
     if query_hash in cached_queries:
       d = cached_queries[query_hash]
       list_of_ids = d["list_of_ids"]
       meta = d["meta"]
       have = True
+
+  # temp disable caching
+  # print("remember, caching disabled for testing")
+  # have = False
 
   if not have:
     es_response = search.execute()
@@ -301,7 +306,7 @@ def lib_filter(only_lib):
 
 def extract_query_params(query_info):
   query_info = sanitize_query_object(query_info)
-  search = Search(using=es, index='arxiv')
+  search = Search(using=es, index='arxiv_pointer')
   tune_dict = None
   weights = None
   pair_fields = None
@@ -365,7 +370,9 @@ def extract_query_params(query_info):
     else:
       search = search.sort('-updated')
       
-      
+    if rec_lib:
+      re_q = get_sim_to_query(lib_ids, tune_dict = {'max_query_terms' : 500, 'minimum_should_match': '1%'})
+      search = search.extra(rescore={'window_size': 500, "query": {"rescore_query": re_q.to_dict()}})
       
   # print('%s queries' % len(queries))
   # if not (queries):
@@ -425,9 +432,9 @@ def get_simple_search_query(string, weights = None):
 def get_sim_to_query(pids, tune_dict = None, weights = None):
   dlist = [ makepaperdict(strip_version(v)) for v in pids ]
   if tune_dict:
-    q = Q("more_like_this", **tune_dict, like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
+    q = Q("more_like_this", stop_words = stop_words, **tune_dict, like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
   else:
-    q = Q("more_like_this", like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
+    q = Q("more_like_this",stop_words = stop_words, like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
   return q 
 
 
@@ -607,12 +614,12 @@ def _getpapers():
   number = data['num_get']
   dynamic = data['dyn']
   query_info = data['query']
-
   #need to build the query from the info given here
   search = build_query(query_info)
 
   search = search.source(includes=['havethumb','rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
+  search.search_type="dfs_query_then_fetch"
 
   tot_num_papers = search.count()
   # print(tot_num_papers)
@@ -782,7 +789,7 @@ def sanitize_rec_tuning_object(rec_tuning):
   # min should match
   if 'minimum_should_match' in rec_tuning:
     m = rec_tuning['minimum_should_match']
-    if isinstance(m, int):
+    if isinstance(m, int) or isinstance(m, float):
         rec_tuning = san_dict_int(rec_tuning,'minimum_should_match' )
     elif isinstance(m,str):
       m = re.fullmatch(r'-?\d{1,2}?%',m)
@@ -938,12 +945,12 @@ def _invalidate_cache():
 #-------------------------------------------------
 
 def countpapers():
-  s = Search(using=es, index="arxiv")
+  s = Search(using=es, index="arxiv_pointer")
   return s.count()
 
 def makepaperdict(pid):
     d = {
-        "_index" : 'arxiv',
+        "_index" : 'arxiv_pointer',
         "_type" : 'paper',
         "_id" : pid
     }
@@ -1017,7 +1024,7 @@ def intmain():
   return render_template('main.html', **ctx)
 
 def getpaper(pid):
-  return Search(using=es, index="arxiv").query("match", _id=pid)
+  return Search(using=es, index="arxiv_pointer").query("match", _id=pid)
 
 def isvalid(pid):
   return not (getpaper(pid).count() == 0)

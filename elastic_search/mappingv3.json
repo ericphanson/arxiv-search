@@ -1,0 +1,99 @@
+curl -XPUT 'https://elastic:0xsextK2Ry3VQlnmVpFbqBDE@0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io:9243/arxiv_with_positions_offsets?pretty' -H 'Content-Type: application/json' -d '{
+        "mappings": {
+            "paper": {
+                "properties": {
+                    "abstract": {
+                        "type": "text",
+                        "term_vector": "with_positions_offsets"
+                    },
+                    "all_authors": {
+                        "type": "text",
+                        "term_vector": "with_positions_offsets"
+                    },
+                    "all_cats": {
+                        "type": "text"
+                    },
+                    "arxiv_affiliation": {
+                        "type": "text"
+                    },
+                    "arxiv_comment": {
+                        "type": "text"
+                    },
+                    "arxiv_doi": {
+                        "type": "keyword"
+                    },
+                    "arxiv_journal_ref": {
+                        "type": "text"
+                    },
+                    "authors": {
+                        "type": "keyword",
+                        "fields": {
+                            "auth_analyzed": {
+                                "type": "text",
+                                "analyzer": "auth_analyzer",
+                                "term_vector": "with_positions_offsets"
+                            },
+                            "text": {
+                                "type": "text",
+                                "term_vector": "with_positions_offsets"
+                            }
+                        }
+                    },
+                    "cats": {
+                        "type": "keyword"
+                    },
+                    "fulltext": {
+                        "type": "text",
+                        "term_vector": "with_positions_offsets"
+                    },
+                    "havepdf": {
+                        "type": "keyword"
+                    },
+                    "havetext": {
+                        "type": "keyword"
+                    },
+                    "havethumb": {
+                        "type": "keyword"
+                    },
+                    "link": {
+                        "type": "keyword"
+                    },
+                    "links": {
+                        "properties": {
+                            "href": {
+                                "type": "keyword"
+                            },
+                            "rel": {
+                                "type": "keyword"
+                            },
+                            "title": {
+                                "type": "keyword"
+                            },
+                            "type": {
+                                "type": "keyword"
+                            }
+                        }
+                    },
+                    "paper_version": {
+                        "type": "short"
+                    },
+                    "primary_cat": {
+                        "type": "keyword"
+                    },
+                    "published": {
+                        "type": "date"
+                    },
+                    "rawid": {
+                        "type": "keyword"
+                    },
+                    "title": {
+                        "type": "text",
+                        "term_vector": "with_positions_offsets"
+                    },
+                    "updated": {
+                        "type": "date"
+                    }
+                }
+            }
+        }
+    }'
