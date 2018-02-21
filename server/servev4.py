@@ -23,6 +23,7 @@ import re
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection
 
+
 from elasticsearch.helpers import streaming_bulk, bulk, parallel_bulk
 import elasticsearch
 from itertools import islice
@@ -39,8 +40,10 @@ from requests_aws4auth import AWS4Auth
 from pyparsing import Word, alphas, Literal, Group, Suppress, OneOrMore, oneOf
 import threading
 
-# -----------------------------------------------------------------------------
 
+
+# -----------------------------------------------------------------------------
+stop_words = ["the", "of", "and", "in", "a", "to", "we", "for", "mathcal", "can", "is", "this", "with", "by", "that", "as", "to"]
 root_dir = os.path.join(".")
 def key_dir(file): return os.path.join(root_dir,"keys",file)
 def server_dir(file): return os.path.join(root_dir,"server", file)
@@ -55,6 +58,12 @@ else:
 
 AWS_ACCESS_KEY = open(key_dir('AWS_ACCESS_KEY.txt'), 'r').read().strip()
 AWS_SECRET_KEY = open(key_dir('AWS_SECRET_KEY.txt'), 'r').read().strip()
+
+ES_USER = open(key_dir('ES_USER.txt'), 'r').read().strip()
+ES_PASS = open(key_dir('ES_PASS.txt'), 'r').read().strip()
+es_host = es_host = '0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io'
+
+
 
 log_AWS_ACCESS_KEY = open(key_dir('log_AWS_ACCESS_KEY.txt'), 'r').read().strip()
 log_AWS_SECRET_KEY = open(key_dir('log_AWS_SECRET_KEY.txt'), 'r').read().strip()
@@ -159,25 +168,32 @@ def render_date(timestr):
 
 def encode_hit(p, send_images=True, send_abstracts=True):
   
-  pid = str(p['_rawid'])
-  idvv = '%sv%d' % (p['_rawid'], p['paperversion'])
+  pid = str(p['rawid'])
+  idvv = '%sv%d' % (p['rawid'], p['paper_version'])
   struct = {}
   if "score" in p.meta:
     if p.meta.score is not None:
       struct['score'] = p.meta.score
   
+  if 'havethumb' in p:
+    struct['havethumb'] = p['havethumb']
   struct['title'] = p['title']
   struct['pid'] = idvv
-  struct['rawpid'] = p['_rawid']
-  struct['category'] = p['arxiv_primary_category']['term']
-  struct['authors'] = [a['name'] for a in p['authors']]
+  struct['rawpid'] = p['rawid']
+  struct['category'] = p['primary_cat']
+  struct['authors'] = [a for a in p['authors']]
   struct['link'] = p['link']
-  if send_abstracts:
-    struct['abstract'] = p['summary']
+  if 'abstract' in p:
+    struct['abstract'] = p['abstract']
+  # print(p.to_dict())
+  # exit()
   if send_images:
     # struct['img'] = '/static/thumbs/' + idvv.replace('/','') + '.pdf.jpg'
     struct['img'] = CLOUDFRONT_URL + 'thumbs/' + pid.replace('/','') + '.pdf.jpg'
-  struct['tags'] = [t['term'] for t in p['tags']]
+  
+
+  struct['tags'] = [t for t in p['cats']]
+
   # struct['tags'] = [t['term'] for t in p['tags']]
   
   # render time information nicely
@@ -213,14 +229,19 @@ def add_user_data_to_hit(struct):
 def getResults(search):
   search_dict = search.to_dict()
   query_hash = make_hash(search_dict)
-  have = False
+  # query_hash = 0
 
+  have = False
   with cached_queries_lock:
     if query_hash in cached_queries:
       d = cached_queries[query_hash]
       list_of_ids = d["list_of_ids"]
       meta = d["meta"]
       have = True
+
+  # temp disable caching
+  # print("remember, caching disabled for testing")
+  # have = False
 
   if not have:
     es_response = search.execute()
@@ -244,17 +265,17 @@ def cat_filter(groups_of_cats):
     filt_q = Q()
     for group in groups_of_cats:
       if len(group)==1:
-        filt_q = filt_q & Q('term', tags__term__raw=group[0])
+        filt_q = filt_q & Q('term', cats=group[0])
       elif len(group) > 1:
         # perform an OR filter among the different categories in this group                
-        filt_q = filt_q & Q('terms', tags__term__raw=group)
+        filt_q = filt_q & Q('terms', cats=group)
 
     return filt_q
 
 def prim_filter(prim_cat):
     filt_q = Q()
     if prim_cat != "any":
-      filt_q = Q('term', arxiv_primary_category__term__raw=prim_cat)
+      filt_q = Q('term', primary_cat=prim_cat)
     return filt_q
 
 def time_filter(time):
@@ -271,7 +292,7 @@ def time_filter(time):
 def ver_filter(v1):
     filt_q = Q()
     if v1:
-      filt_q = filt_q & Q('term', paperversion=1)
+      filt_q = filt_q & Q('term', paper_version=1)
     return filt_q
 
 def lib_filter(only_lib):
@@ -281,12 +302,12 @@ def lib_filter(only_lib):
       pids = ids_from_library()
       if pids:
         filt_q = Q('bool', filter=[Q('terms', _id=pids)])
-      # filt_q = filt_q & Q('term', paperversion=1)
+      # filt_q = filt_q & Q('term', paper_version=1)
     return filt_q
 
 def extract_query_params(query_info):
   query_info = sanitize_query_object(query_info)
-  search = Search(using=es, index='arxiv')
+  search = Search(using=es, index='arxiv_pointer')
   tune_dict = None
   weights = None
   pair_fields = None
@@ -321,8 +342,8 @@ def extract_query_params(query_info):
 
   queries = []
 
-  if query_text:
-      queries.append(get_simple_search_query(query_text, weights = weights))
+  # if query_text:
+      # queries.append(get_simple_search_query(query_text, weights = weights))
   
   if rec_lib:
       lib_ids = ids_from_library()
@@ -332,16 +353,42 @@ def extract_query_params(query_info):
   if sim_to_ids:
     queries.append(get_sim_to_query(sim_to_ids, tune_dict = tune_dict, weights = weights))
 
-  print('%s queries' % len(queries))
-  if not (queries):
-    search = search.sort('-updated')
-  elif len(queries)==1:
-    q = queries[0]
-    search = search.query(q)
-  elif len(queries)>1:
-    q = Q("bool", should = queries, disable_coord =True)
-    search = search.query(q)
-  print(search.query.to_dict())
+  if query_text:
+    if len(queries) > 0:
+      q = Q("bool", must=get_simple_search_query(query_text), should = queries)
+      search = search.query(q)
+    else:
+      q = get_simple_search_query(query_text)
+      search = search.query(q)
+      
+  else:
+    if len(queries) > 0:
+      if len(queries) == 1:
+        q = queries[0]
+      else:
+        q = Q("bool", should = queries)
+      search = search.query(q)
+    else:
+      search = search.sort('-updated')
+      
+    if rec_lib:
+      re_q = get_sim_to_query(lib_ids, tune_dict = {'max_query_terms' : 500, 'minimum_should_match': '1%'})
+      search = search.extra(rescore={'window_size': 500, "query": {"rescore_query": re_q.to_dict()}})
+      
+  # print('%s queries' % len(queries))
+  # if not (queries):
+  #   search = search.sort('-updated')
+  # elif len(queries)==1:
+  #   print(queries)
+  #   q = queries[0]
+  #   search = search.query(q)
+  # elif len(queries)>1:
+  #   if query_text:
+
+  #   q = Q("bool", must=get_simple_search_query(query_text), should = queries, disable_coord =True)
+  #   search = search.query(q)
+  print('search dict:')
+  print(search.to_dict())
 
   # get filters
   Q_lib = Q()
@@ -368,27 +415,28 @@ def extract_query_params(query_info):
 
 def get_weighted_list_of_fields(weights):
   fields = ['fulltext', 'title', 'abstract', 'all_authors']
+  # for now, just return fields because the boosting doesn't work
   return fields
-  # weights are broken at the moment
-  if weights == None:
-    print('no weights')
-    return fields
-  else:
-    weighted_list = [f + '^' + str(weights[f]) for f in weights]
-    leftover_fields = [f for f in fields if f not in weights]
-    full_list = weighted_list + leftover_fields
-    return full_list
+
+  # if weights == None:
+  #   print('no weights')
+  #   return fields
+  # else:
+  #   weighted_list = [f + '^' + str(weights[f]) for f in weights]
+  #   leftover_fields = [f for f in fields if f not in weights]
+  #   full_list = weighted_list + leftover_fields
+  #   return full_list
 def get_simple_search_query(string, weights = None):
   return Q("simple_query_string", query=string, default_operator = "AND", \
-      fields=get_weighted_list_of_fields(weights).append('_id'))
+      fields=get_weighted_list_of_fields(weights) + ['_id'])
 
 
 def get_sim_to_query(pids, tune_dict = None, weights = None):
   dlist = [ makepaperdict(strip_version(v)) for v in pids ]
   if tune_dict:
-    q = Q("more_like_this", **tune_dict, like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
+    q = Q("more_like_this", stop_words = stop_words, **tune_dict, like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
   else:
-    q = Q("more_like_this", like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
+    q = Q("more_like_this",stop_words = stop_words, like=dlist, fields=get_weighted_list_of_fields(weights), include=False)
   return q 
 
 
@@ -406,7 +454,7 @@ def add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib):
   
   # define and add the aggregations, each filtered by all the filters except
   # variables corresopnding to what the aggregation is binning over
-  prim_agg = A('terms', field='arxiv_primary_category.term.raw')
+  prim_agg = A('terms', field='primary_cat')
   prim_filt = A('filter', filter=(Q_cat & Q_time & Q_v1 & Q_lib) )
   search.aggs.bucket("prim_filt",prim_filt).bucket("prim_agg", prim_agg)
 
@@ -415,7 +463,7 @@ def add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib):
   search.aggs.bucket('year_filt', year_filt).bucket('year_agg', year_agg)
 
   in_filt = A('filter', filter=(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib))
-  in_agg = A('terms', field='tags.term.raw')
+  in_agg = A('terms', field='cats')
   search.aggs.bucket('in_filt', in_filt).bucket('in_agg',in_agg)
 
   time_filt = A('filter', filter = (Q_cat & Q_prim & Q_v1 & Q_lib))
@@ -441,11 +489,11 @@ def build_slow_meta_query(query_info):
 
   sampler_agg = A('sampler', shard_size=200)
 
-  auth_agg = A('significant_terms', field='authors.name.keyword')
+  auth_agg = A('significant_terms', field='authors')
 
   search.aggs.bucket('sig_filt', sig_filt).bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
 
-  keywords_agg = A('significant_terms', field='summary')
+  keywords_agg = A('significant_terms', field='abstract')
   
   search.aggs['sig_filt']['sampler_agg'].bucket('keywords_agg', keywords_agg)
 
@@ -533,11 +581,13 @@ def _getmeta():
 
 @app.route('/_getslowmeta', methods=['POST'])
 def _getslowmeta():
-    data = request.get_json()
-    query_info = data['query']
-    search = build_slow_meta_query(query_info)
-    search = search[0:0]
-    papers, meta = getResults(search)
+    # data = request.get_json()
+    # query_info = data['query']
+    # search = build_slow_meta_query(query_info)
+    # search = search[0:0]
+    # papers, meta = getResults(search)
+    meta = {'abc' : 'def'}
+    
     return jsonify(meta)
 
 def testmeta(query_info):
@@ -566,12 +616,12 @@ def _getpapers():
   number = data['num_get']
   dynamic = data['dyn']
   query_info = data['query']
-
   #need to build the query from the info given here
   search = build_query(query_info)
 
-  search = search.source(includes=['_rawid','paperversion','title','arxiv_primary_category.term', 'authors.name', 'link', 'summary', 'tags.term', 'updated', 'published','arxiv_comment'])
+  search = search.source(includes=['havethumb','rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
+  search.search_type="dfs_query_then_fetch"
 
   tot_num_papers = search.count()
   # print(tot_num_papers)
@@ -585,6 +635,21 @@ def _getpapers():
   access_log.info("ES search request", extra=log_dict )
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
   papers, meta = getResults(search)
+  scored_papers = 0
+  tot_score = 0
+  max_score = 0
+  for p in papers:
+    if "score" in p:
+      scored_papers +=1
+      tot_score += p["score"]
+      if p["score"] > max_score:
+        max_score = p["score"]
+  if scored_papers > 0:
+    avg_score = tot_score/scored_papers
+    print("avg_score")
+    print(avg_score)
+    print("max_score")
+    print(max_score)
   print('done papers')
   # testmeta(query_info)
   # testslowmeta(query_info)
@@ -722,11 +787,11 @@ def sanitize_rec_tuning_object(rec_tuning):
   if 'max_doc_freq' in rec_tuning:
     if rec_tuning['max_doc_freq'] < 1:
       rec_tuning.pop('max_doc_freq', None)
-
+  
   # min should match
   if 'minimum_should_match' in rec_tuning:
     m = rec_tuning['minimum_should_match']
-    if isinstance(m, int):
+    if isinstance(m, int) or isinstance(m, float):
         rec_tuning = san_dict_int(rec_tuning,'minimum_should_match' )
     elif isinstance(m,str):
       m = re.fullmatch(r'-?\d{1,2}?%',m)
@@ -882,12 +947,12 @@ def _invalidate_cache():
 #-------------------------------------------------
 
 def countpapers():
-  s = Search(using=es, index="arxiv")
+  s = Search(using=es, index="arxiv_pointer")
   return s.count()
 
 def makepaperdict(pid):
     d = {
-        "_index" : 'arxiv',
+        "_index" : 'arxiv_pointer',
         "_type" : 'paper',
         "_id" : pid
     }
@@ -913,6 +978,22 @@ def add_papers_similar_query(search, pidlist, extra_text = None):
 
 
 
+  if option == 1:
+    if extra_text:
+      dlist.append(extra_text)
+    q = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False)
+  else:
+    q1 = Q("more_like_this", like=dlist, fields=['fulltext', 'title', 'abstract', 'all_authors'], include=False, boost=.5)
+    if extra_text:
+      q2 = get_simple_search_query(extra_text)
+      q = Q("bool", should = [q1,q2], disable_coord =True)
+  # else:
+    # mlts = search
+  return search.query(q)
+
+# def get_simple_search_query(string):
+  # return Q("simple_query_string", query=string, default_operator = "AND", \
+      # fields=['title','abstract', 'fulltext', 'all_authors', '_id'])
 
 def ids_from_library():
   if g.libids:
@@ -945,7 +1026,7 @@ def intmain():
   return render_template('main.html', **ctx)
 
 def getpaper(pid):
-  return Search(using=es, index="arxiv").query("match", _id=pid)
+  return Search(using=es, index="arxiv_pointer").query("match", _id=pid)
 
 def isvalid(pid):
   return not (getpaper(pid).count() == 0)
@@ -1199,30 +1280,38 @@ if __name__ == "__main__":
   if not os.path.isfile(Config.database_path):
     print('did not find as.db, trying to create an empty database from schema.sql...')
     print('this needs sqlite3 to be installed!')
-    os.system('sqlite3 as.db < schema.sql')
+    os.system('sqlite3 ' + Config.database_path + ' < schema.sql')
+    # os.system('chmod a+rwx as.db')
+    
 
 
 
   print('connecting to elasticsearch...')
-  es_host = 'search-arxiv-esd-ahgls3q7eb5236pj2u5qxptdtq.us-east-1.es.amazonaws.com'
-  auth = AWSRequestsAuth(aws_access_key=AWS_ACCESS_KEY,
-                       aws_secret_access_key=AWS_SECRET_KEY,
-                       aws_host=es_host,
-                       aws_region='us-east-1',
-                       aws_service='es')
+  context = elasticsearch.connection.create_ssl_context(cafile=certifi.where())  
+  es = Elasticsearch(
+   ["https://%s:%s@%s:9243" % (ES_USER,ES_PASS,es_host)], scheme="https", ssl_context=context) 
 
-
-  es = Elasticsearch(host=es_host,
-                          port=80,
-                          connection_class=RequestsHttpConnection,
-                          http_auth=auth)
+  # print(es.info())
   # m = Mapping.from_es('arxiv', 'paper', using=es)
   # print(m.authors)
 
-  ES_log_handler = CMRESHandler(hosts=[{'host': es_host, 'port': 80}],
-                           auth_type=CMRESHandler.AuthType.AWS_SIGNED_AUTH, aws_access_key= log_AWS_ACCESS_KEY,
-                           aws_secret_key=log_AWS_SECRET_KEY,aws_region='us-east-1',index_name_frequency=CMRESHandler.IndexNameFrequency.MONTHLY,
-                           es_index_name="logs")
+
+  APP_NAME = 'Python Server'
+
+  ES_LOG_USER = open(key_dir('ES_LOG_USER.txt'), 'r').read().strip()
+  ES_LOG_PASS = open(key_dir('ES_LOG_PASS.txt'), 'r').read().strip()
+  es_host = '0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io'
+  ES_log_handler = CMRESHandler(hosts=[{'host': es_host, 'port': 9243}],
+                            auth_type=CMRESHandler.AuthType.BASIC_AUTH,
+                            auth_details=(ES_LOG_USER,ES_LOG_PASS),
+                            es_index_name="python_logger",
+                            es_additional_fields={'App': APP_NAME},
+                            use_ssl=True)
+
+  # ES_log_handler = CMRESHandler(hosts=[{'host': es_host, 'port': 80}],
+                          #  auth_type=CMRESHandler.AuthType.AWS_SIGNED_AUTH, aws_access_key= log_AWS_ACCESS_KEY,
+                          #  aws_secret_key=log_AWS_SECRET_KEY,aws_region='us-east-1',index_name_frequency=CMRESHandler.IndexNameFrequency.MONTHLY,
+                          #  es_index_name="logs")
   comments = []
   tags_collection = []
   goaway_collection = []
@@ -1239,7 +1328,6 @@ if __name__ == "__main__":
 
   addDefaultSearchesToCache()
   
-  TAGS = ['insightful!', 'thank you', 'agree', 'disagree', 'not constructive', 'troll', 'spam']
 
   # start
   # if args.prod:
@@ -1272,7 +1360,6 @@ if __name__ == "__main__":
   access_log.setLevel(logging.INFO)
 
   access_log.addHandler(ES_log_handler)
-  access_log.info("test log")
   # watchtower_request_handler.setFormatter(formatter)
 
   app_log = logging.getLogger("tornado.application")

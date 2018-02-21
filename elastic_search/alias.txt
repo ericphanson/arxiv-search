@@ -1,0 +1,6 @@
+curl -XPOST 'https://elastic:0xsextK2Ry3VQlnmVpFbqBDE@0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io:9243/_aliases?pretty' -H 'Content-Type: application/json' -d'
+{
+    "actions" : [
+        { "add" : { "index" : "arxiv_with_positions_offsets", "alias" : "arxiv_pointer" } }
+    ]
+}'
