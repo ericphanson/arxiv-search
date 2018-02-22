@@ -25,7 +25,7 @@ const c = {
 "washedgreen": {bg:"#e8fdf5", dark : true},
 "washedyellow": {bg:"#fffceb", dark : true},
 "washedred": {bg:"#ffdfdf", dark : true},
-"black" : {bg : "#ffffff", dark : false},
+"black" : {bg : "#000000", dark : false},
 "grey" : {bg : "#999999", dark : false},
 }
 const col_table = [
