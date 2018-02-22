@@ -20,25 +20,22 @@ export function sendRequest(url: string, request, callback: (response: any) => v
         error => console.log(`Network error: ${error}`)
         ).then(callback);
 }
-declare global {
-    interface Object {
-        toKeyValueArray() :{k:string, v : any}[];
-        with(ps : any) : this;
-        lens(...path : string[]) : (value : any) => this;
-    }
-}
+
 import * as assign from "object-assign";
-Object.prototype.lens = function (...path) {
-    let nested = path.scan((s,p,i) => s[p], this);
+export function lens(item, ...path) {
+    let nested = path.scan((s,p,i) => s[p], item);
     return (value) => {
         let acc = value;
         for (let i = nested.length - 2; i >= 0; i--) {
-            acc = nested[i].with({[path[i]]: acc});
+            acc = update(nested[i],{[path[i]]: acc});
         }
         return acc;
     }
 }
-if (!Object.prototype.with) {Object.prototype.with = function (ps) {return assign(Object.create(Object.getPrototypeOf(this)), this, ps)} }
+export function update(obj, ps) {
+    return assign(Object.create(Object.getPrototypeOf(obj)), obj, ps)
+} 
+
 declare global {
     interface Array<T> {
         interlace(sep: T): T[];
@@ -98,11 +95,11 @@ if (!Array.prototype.drop) {Array.prototype.drop = function (i) {
 if (!Array.prototype.addUnique) {Array.prototype.addUnique = function (item) {
     return this.exists(x => x === item) ? this : [...this,item];
 }}
-if (!Object.prototype.toKeyValueArray) {Object.prototype.toKeyValueArray = function () {
+export function toKeyValueArray (item) {
     let a = []
-    let ks = Object.getOwnPropertyNames(this);
+    let ks = Object.getOwnPropertyNames(item);
     for (let k of ks) {
-        a.push({k,v:this[k]});
+        a.push({k,v:item[k]});
     }
     return a;
-}}
+}

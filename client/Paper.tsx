@@ -9,7 +9,32 @@ export function WithMaths(props: { text: string }) {
     return <span>{text.split("$").map((s: string, i) => (i % 2 === 0) ? s : <Math latex={s} key={i} />)}</span>
 }
 
-export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCategoryClick: (cat: category) => void, onAuthorClick: (author : string) => void }) {
+class Image extends React.Component<any, { failed }> {
+    constructor(props) {
+        super(props);
+        this.state = { failed: false };
+    }
+    fallback() {
+        this.setState({ failed: true });
+    }
+    render() {
+        let { fallbackSrc, src, ...rest } = this.props;
+        if (this.state.failed) {
+            if (fallbackSrc) {
+                return <img src={fallbackSrc} {...rest} />;
+            }
+            else {
+                return null;
+            }
+        } else {
+            return <img src={src} onError={() => { console.log("image error"); this.fallback() }} {...rest} />;
+        }
+    }
+}
+
+
+
+export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCategoryClick: (cat: category) => void, onAuthorClick: (author: string) => void }) {
     let { p, onAuthorClick } = props
     let pdf_link = p.link.replace("abs", "pdf");
     let pdf_url = pdf_link === p.link ? pdf_link : pdf_link + ".pdf";
@@ -35,10 +60,10 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
             <span className="cs">{
                 p.tags.map(c =>
                     <CatBadge key={c} cat={c}
-                        onClick={() => props.onCategoryClick(c)}/>
-                        )
+                        onClick={() => props.onCategoryClick(c)} />
+                )
             }</span>
-            <br/>
+            <br />
             {p.comment && <span title="comments from arxiv.org" className="paper-comment">{p.comment}</span>}
         </div>
         <div className="dllinks">
@@ -56,7 +81,7 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
                     sendRequest("libtoggle", { pid: p.pid }, ({ on }) => (on !== "FAIL") && props.onToggle(on))}
             />
         </div>
-        {p.img !== undefined && (p.havethumb === undefined || p.havethumb === true) && <div className="animg"><img src={p.img} /></div>}
+        {p.img !== undefined && (p.havethumb === undefined || p.havethumb === true) && <div className="animg"><Image src={p.img} /></div>}
         {p.abstract && <div className="abstract"><WithMaths text={p.abstract} /></div>}
     </div>
 }

@@ -1,4 +1,4 @@
-import { notimpl, sendRequest } from './basic';
+import { notimpl, sendRequest, update, lens, toKeyValueArray } from './basic';
 import { paper, request, response, query, meta, timeFilter, category, rec_tuning } from './types';
 import * as React from 'react';
 import * as Infinite from 'react-infinite-scroller';
@@ -211,7 +211,7 @@ class Tuning extends React.Component<{rt : rec_tuning, onChange : (r : rec_tunin
     }
     render() {
         let rt = this.state.rt;
-        let ch = (p1: keyof rec_tuning, p2?: keyof rec_tuning["weights"]) => (e) => this.handleChange((rt as Object).lens(...(p2 ? [p1, p2] : [p1]))(Number(e.target.value)) as any)
+        let ch = (p1: keyof rec_tuning, p2?: keyof rec_tuning["weights"]) => (e) => this.handleChange(lens(rt,...(p2 ? [p1, p2] : [p1]))(Number(e.target.value)) as any)
         return <div>
             <h3>Tuning</h3>
                 <table>
@@ -255,7 +255,7 @@ class Tuning extends React.Component<{rt : rec_tuning, onChange : (r : rec_tunin
                         <tr>
                             <td>minimum should match</td>
                             <td><input type="text" value={rt.minimum_should_match}
-                                onChange={(e) => this.handleChange((rt as any).with({ "minimum_should_match": e.target.value }))} />
+                                onChange={(e) => this.handleChange(update(rt,{ "minimum_should_match": e.target.value }))} />
                             </td>
                         </tr>
                         <tr>
@@ -264,7 +264,7 @@ class Tuning extends React.Component<{rt : rec_tuning, onChange : (r : rec_tunin
                         </tr>
                         <tr>
                             <td>pair fields</td>
-                            <td><input type="checkbox" checked={rt.pair_fields} onChange={(e) => this.handleChange((rt as any).with({ "pair_fields": e.target.checked }))} /></td>
+                            <td><input type="checkbox" checked={rt.pair_fields} onChange={(e) => this.handleChange(update(rt,{ "pair_fields": e.target.checked }))} /></td>
                         </tr>
                     </tbody>
                 </table>
@@ -321,8 +321,7 @@ class LeaderBoard extends React.PureComponent<{ in_data?, primaryCategory, cats,
     }
     componentWillReceiveProps(newProps) {
         if (newProps.in_data !== undefined) {
-            let kvs = newProps.in_data
-                .toKeyValueArray()
+            let kvs = toKeyValueArray(newProps.in_data)
                 .filter(({ k }) => !is_ams(k) && k !== newProps.primaryCategory && !newProps.cats.exists(c => c === k))
                 .sort((a, b) => b.v - a.v)
                 .slice(0, 10)
