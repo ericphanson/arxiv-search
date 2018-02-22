@@ -7,7 +7,7 @@ const c = {
   "darkgreen" : {bg : "#006400", dark : false},
   "darkblue"  : {bg : "#000064", dark : false},
   "orange" :    {bg : "#ffa500", dark : true},
-  "yellow" :    {bg : "#ffff00", dark : true},
+  "yellow" :    {bg : "#dddd00", dark : true},
   "pink" :      {bg : "#ff00ff", dark : true},
   "green" :     {bg : "#008000", dark : false},
   "blue" :     {bg : "#0000a0", dark : false},
