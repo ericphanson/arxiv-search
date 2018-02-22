@@ -3,6 +3,7 @@ import { notimpl, sendRequest } from "./basic";
 import * as React from 'react';
 import { cat_col, cat_desc } from "./categories";
 import { Math } from './Math';
+import { CatBadge } from "./CatBadge";
 export function WithMaths(props: { text: string }) {
     let { text } = props;
     return <span>{text.split("$").map((s: string, i) => (i % 2 === 0) ? s : <Math latex={s} key={i} />)}</span>
@@ -33,13 +34,9 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
                 : undefined}
             <span className="cs">{
                 p.tags.map(c =>
-                    <a key={c}
-                        title={cat_desc(c)}
-                        className="badge"
-                        style={{ backgroundColor: cat_col(c) }}
-                        onClick={() => props.onCategoryClick(c)}>
-                        {c}
-                    </a>)
+                    <CatBadge key={c} cat={c}
+                        onClick={() => props.onCategoryClick(c)}/>
+                        )
             }</span>
             <br/>
             {p.comment && <span title="comments from arxiv.org" className="paper-comment">{p.comment}</span>}
