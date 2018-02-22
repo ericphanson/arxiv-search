@@ -324,6 +324,8 @@ def extract_query_params(query_info):
   query_text = None
   sim_to_ids = None
   rec_lib = False
+  bad_search = False
+  lib_ids = ids_from_library()
 
   if 'rec_lib' in query_info:
     rec_lib = query_info['rec_lib']
@@ -346,10 +348,10 @@ def extract_query_params(query_info):
       # queries.append(get_simple_search_query(query_text, weights = weights))
   
   if rec_lib:
-      lib_ids = ids_from_library()
       if lib_ids:
         queries.append(get_sim_to_query(lib_ids, tune_dict = tune_dict, weights = weights))
-  
+      else:
+        bad_search = True
   if sim_to_ids:
     queries.append(get_sim_to_query(sim_to_ids, tune_dict = tune_dict, weights = weights))
 
@@ -371,7 +373,7 @@ def extract_query_params(query_info):
     else:
       search = search.sort('-updated')
       
-    if rec_lib:
+    if rec_lib and lib_ids:
       re_q = get_sim_to_query(lib_ids, tune_dict = {'max_query_terms' : 500, 'minimum_should_match': '1%'})
       search = search.extra(rescore={'window_size': 500, "query": {"rescore_query": re_q.to_dict()}})
       
@@ -394,6 +396,8 @@ def extract_query_params(query_info):
   Q_lib = Q()
   if 'only_lib' in query_info:
     Q_lib =  lib_filter(query_info['only_lib'])
+    if query_info['only_lib'] and (not lib_ids):
+      bad_search = True
     
   Q_cat = Q()
   if 'category' in query_info:
@@ -410,7 +414,8 @@ def extract_query_params(query_info):
   Q_v1 = Q()
   if 'v1' in query_info:
     Q_v1= ver_filter(query_info['v1'])
-
+  if bad_search:
+    search = None
   return search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib
 
 def get_weighted_list_of_fields(weights):
@@ -445,7 +450,8 @@ def get_sim_to_query(pids, tune_dict = None, weights = None):
 def build_query(query_info):
   search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
   # add filters
-  search = search.filter(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib)
+  if search:
+    search = search.filter(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib)
   
   return search
 
@@ -485,6 +491,8 @@ def add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib):
 
 def build_slow_meta_query(query_info):
   search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)  
+  if not search:
+    return None
   sig_filt =  A('filter', filter=(Q_cat & Q_prim & Q_time & Q_v1 & Q_lib))
 
   sampler_agg = A('sampler', shard_size=200)
@@ -501,6 +509,8 @@ def build_slow_meta_query(query_info):
 
 def build_meta_query(query_info):
   search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
+  if not search:
+    return None
   search = add_counts_aggs(search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib)
   return search
 
@@ -575,6 +585,8 @@ def _getmeta():
     data = request.get_json()
     query_info = data['query']
     search = build_meta_query(query_info)
+    if not search:
+      return jsonify({})
     search = search[0:0]
     papers, meta = getResults(search)
     return jsonify(meta)
@@ -584,6 +596,8 @@ def _getslowmeta():
     # data = request.get_json()
     # query_info = data['query']
     # search = build_slow_meta_query(query_info)
+    # if not search:
+    #   return jsonify({})
     # search = search[0:0]
     # papers, meta = getResults(search)
     meta = {'abc' : 'def'}
@@ -618,7 +632,8 @@ def _getpapers():
   query_info = data['query']
   #need to build the query from the info given here
   search = build_query(query_info)
-
+  if not search:
+    return jsonify(dict(papers=[],dynamic=dynamic, start_at=start, num_get=number, tot_num_papers=0))
   search = search.source(includes=['havethumb','rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
   search.search_type="dfs_query_then_fetch"
@@ -633,6 +648,11 @@ def _getpapers():
     log_dict.update(client_x_real_ip = request.headers['X-Real-IP'])
 
   access_log.info("ES search request", extra=log_dict )
+
+  if 'user_id' in session:
+    uid = session['user_id']
+    user_log.info('User fired search', extra=dict(search =search.to_dict(), uid = uid, library = ids_from_library() ))
+  
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
   papers, meta = getResults(search)
   scored_papers = 0
@@ -1066,7 +1086,6 @@ def review():
     g.db.execute('''insert into library (paper_id, user_id, update_time) values (?, ?, ?)''',
         [rawpid, uid, int(time.time())])
     g.db.commit()
-
     #print('added %s for %s' % (pid, uid))
     ret = True
   
@@ -1075,7 +1094,11 @@ def review():
       list_of_users_cached.remove(uid)
   update_libids()
   addUserSearchesToCache()
-
+  if ret:
+    user_log.info('User added paper to their library', extra=dict(uid = uid, rawpid  =rawpid, added_paper =True, removed_paper = False, library = ids_from_library() ))
+  else:
+    user_log.info('User removed paper from their library', extra=dict(uid = uid, rawpid  =rawpid, added_paper =False, removed_paper = True, library = ids_from_library() ))
+    
   return jsonify(dict(on=ret))
 
 
@@ -1119,8 +1142,10 @@ def login():
 
 @app.route('/logout')
 def logout():
-  session.pop('user_id', None)
-  flash('You were logged out')
+
+  # session.pop('user_id', None)
+  session.clear()
+  # flash('You were logged out')
   return redirect(url_for('intmain'))
 
 @app.route('/static/<path:path>')
@@ -1358,16 +1383,18 @@ if __name__ == "__main__":
   logging.basicConfig(level=logging.INFO)
   access_log = logging.getLogger("tornado.access")
   access_log.setLevel(logging.INFO)
-
+  user_log = logging.getLogger("user_log")
   access_log.addHandler(ES_log_handler)
   # watchtower_request_handler.setFormatter(formatter)
 
   app_log = logging.getLogger("tornado.application")
   gen_log = logging.getLogger("tornado.general")
+
   # access_log.addHandler(watchtower_handler)
   # access_log.addHandler(watchtower_request_handler)
   app_log.addHandler(ES_log_handler)
   gen_log.addHandler(ES_log_handler)
+  user_log.addHandler(ES_log_handler)
 
   http_server = HTTPServer(WSGIContainer(app))
   http_server.listen(args.port, address='127.0.0.1')
