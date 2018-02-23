@@ -396,6 +396,7 @@ def extract_query_params(query_info):
   Q_lib = Q()
   if 'only_lib' in query_info:
     Q_lib =  lib_filter(query_info['only_lib'])
+    # print('lib_ids = %s' % lib_ids)
     if query_info['only_lib'] and (not lib_ids):
       bad_search = True
     
@@ -1082,9 +1083,8 @@ def review():
     ret = False
   else:
     # record does not exist, add it.
-    rawpid = strip_version(pid)
     g.db.execute('''insert into library (paper_id, user_id, update_time) values (?, ?, ?)''',
-        [rawpid, uid, int(time.time())])
+        [pid, uid, int(time.time())])
     g.db.commit()
     #print('added %s for %s' % (pid, uid))
     ret = True
@@ -1095,9 +1095,9 @@ def review():
   update_libids()
   addUserSearchesToCache()
   if ret:
-    user_log.info('User added paper to their library', extra=dict(uid = uid, rawpid  =rawpid, added_paper =True, removed_paper = False, library = ids_from_library() ))
+    user_log.info('User added paper to their library', extra=dict(uid = uid, pid  =pid, added_paper =True, removed_paper = False, library = ids_from_library() ))
   else:
-    user_log.info('User removed paper from their library', extra=dict(uid = uid, rawpid  =rawpid, added_paper =False, removed_paper = True, library = ids_from_library() ))
+    user_log.info('User removed paper from their library', extra=dict(uid = uid, pid  =pid, added_paper =False, removed_paper = True, library = ids_from_library() ))
     
   return jsonify(dict(on=ret))
 
