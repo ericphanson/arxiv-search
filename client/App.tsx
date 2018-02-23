@@ -113,10 +113,10 @@ export class App extends React.Component<{}, state> {
         let { papers, isDone, isLoading, meta, nextQuery: query } = this.state;
         let loggedIn = user !== "None"
         let cats = query.category.map(x => x[0]);
-        return <div className="app-root">
-            <div className="header-bg"></div>
+        return <div className="app-root helvetica bg-washed-yellow">
+            <div className="header-bg bg-maroon"></div>
             <nav className="header">
-                <h1 className="header-logo nav-item">ARXIV-SEARCH.COM</h1>
+                <h1 className="nav-item ma2 white f3">ARXIV-SEARCH.COM</h1>
                 {
                     user === "None" ?
                         (<form action="login" method="post">
@@ -176,21 +176,23 @@ export class App extends React.Component<{}, state> {
                 <Tuning rt={query.rec_tuning} onChange={rt => this.setNextQuery({rec_tuning : rt}, () => this.activateQuery())}/>
             </div>
             <Infinite
-                className="app-results"
+                className="app-results ba br2 b--black-10 bg-white"
                 pageStart={0}
                 loadMore={() => this.handleLoadMore()}
                 hasMore={!isDone}
-                loader={<div key="loading">Loading...</div>}
+                loader={<div key="loading" className="pa4 tc f3">Loading...</div>}
                 threshold={500} >
-                {[this.state.tot_num_papers && (<p><strong>{this.state.tot_num_papers.toLocaleString()}</strong> results</p>),
-                <div id="rtable" key="rtable">
+                
+                <div key="rtable">
+                    {this.state.tot_num_papers && (<div className="bb pa4 b--black-10"><strong>{this.state.tot_num_papers.toLocaleString()}</strong> results</div>)}
                     {papers.map((p, i) => <Paper p={p} key={p.pid}
                         onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
                         onCategoryClick={(c) => this.handleCat(cats.addUnique(c))}
                         onAuthorClick={a => this.handleAuthor(a)}
                     />)}
-                </div>,
-                this.state.isDone && <h2 className="app-done">Done</h2>]}
+                    {this.state.isDone && <h2 className="pa4 tc f3">no more results</h2>}
+                </div>
+                
             </Infinite>
         </div>
     }
