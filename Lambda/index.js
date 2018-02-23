@@ -33,8 +33,8 @@ exports.handler = (event, context, callback) => {
         let outputFile = `/tmp/thumb.jpg`;
         //based on https://github.com/awslabs/serverless-application-model/blob/master/examples/apps/image-processing-service/index.js
         //montage "/tmp/inputFile.pdf[0-7]" -mode Concatenate -thumbnail x156 -quality 80 -tile x1 /tmp/thumb.jpg
-        im.convert([
-            "montage", inputFile + '[0-7]',
+        im.montage([
+            inputFile + '[0-7]',
             '-mode', 'Concatenate',
             '-thumbnail', 'x156',
             '-quality', '80',
