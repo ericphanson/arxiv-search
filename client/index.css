@@ -187,4 +187,5 @@ a.link:hover {
     pointer-events: none;
 }
 
-
+.anim-opacity {transition: opacity 0.15s ease-in;}
+.hide {opacity: 0;}

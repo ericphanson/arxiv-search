@@ -183,7 +183,7 @@ export class App extends React.Component<{}, state> {
                 threshold={500} >
                 
                 <div key="rtable">
-                    {this.state.tot_num_papers && (<div className="bb pa4 b--black-10"><strong>{this.state.tot_num_papers.toLocaleString()}</strong> results</div>)}
+                    {this.state.tot_num_papers && (<div className="bb pa4 b--black-10"><strong>{this.state.tot_num_papers.toLocaleString()}</strong> {this.state.tot_num_papers === 1 ? "result" : "results"}</div>)}
                     {papers.map((p, i) => <Paper p={p} key={p.pid}
                         onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
                         onCategoryClick={(c) => this.handleCat(cats.addUnique(c))}
@@ -292,14 +292,21 @@ function TimeGrid({ handleTime, time_filter_data, current, className }) {
         gridTemplateAreas : `"day 3days week" "month year alltime"`}}>
             {
                 times.map(({k,d, b, r}, i) => 
-                    <div key={k} 
+                    {
+                        let n = time_filter_data && time_filter_data[k.toString()];
+                        let has_meta = n !== undefined;
+                        
+                        return (
+                        <div key={k} 
                     className={"link tc v-mid pv1 ph1 pointer pa1 hover-bg-light-blue " + (k === current ? "bg-lightest-blue checked " : "bg-near-white ") + r}
                     style={{gridArea:k}}
                     title={`Show papers from ${d}`} 
                     onClick={() => handleTime(k)}>
                         <div className="f6">{b}</div>
-                        <div className="f7">{tf_data(k as any)}</div>
-                    </div>)
+                        <div className={"f7 anim-opacity " + (has_meta ? "" : "hide ")}>{has_meta ? `(${n.toLocaleString()})` : ""}</div>
+                    </div>
+                    );
+                })
             }
         </div>
     </div>
