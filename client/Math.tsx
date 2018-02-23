@@ -11,7 +11,7 @@ export class Math extends React.Component<{latex : string}> {
             Katex.render(latex, this.element, config);
         }
         catch (e) {
-            debugger;
+            console.log(`rendering '${latex}' failed because: ${e}`)
             this.element.textContent = latex;
         }
 

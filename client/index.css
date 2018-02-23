@@ -189,3 +189,21 @@ a.link:hover {
 
 .anim-opacity {transition: opacity 0.15s ease-in;}
 .hide {opacity: 0;}
+
+
+.leaderboard-enter {
+    opacity: 0.01;
+}
+.leaderboard-enter.leaderboard-enter-active {
+opacity: 1;
+transition: opacity 500ms ease-in;
+}
+
+.leaderboard-leave {
+opacity: 1;
+}
+
+.leaderboard-leave.leaderboard-leave-active {
+opacity: 0.01;
+transition: opacity 300ms ease-in;
+}
