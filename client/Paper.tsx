@@ -32,8 +32,6 @@ class Image extends React.Component<any, { failed }> {
     }
 }
 
-
-
 export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCategoryClick: (cat: category) => void, onAuthorClick: (author: string) => void }) {
     let { p, onAuthorClick } = props
     let pdf_link = p.link.replace("abs", "pdf");

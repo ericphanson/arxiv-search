@@ -114,87 +114,92 @@ export class App extends React.Component<{}, state> {
         let { papers, isDone, isLoading, meta, nextQuery: query } = this.state;
         let loggedIn = user !== "None"
         let cats = query.category.map(x => x[0]);
-        return <div className="app-root helvetica bg-washed-yellow">
-            <div className="header-bg bg-maroon"></div>
-            <nav className="header ma1">
-                <h1 className="ma2 white f3 di">ARXIV-SEARCH.COM</h1>
-                {
-                    user === "None" ?
-                        (<form action="login" method="post" className="f5">
-                            <input className="form-control" type="text" name="username" placeholder="Username" />
-                            <input className="form-control" type="password" name="password" placeholder="Password" />
-                            <input type="submit" value="Login or Create" className="link white ba bw1 b--white bg-transparent br2 pointer dib b tc v-mid pa2 pointer hover-bg-dark-red" />
-                        </form>)
-                        :
-                        <span><span style={{ fontWeight: 700, color: "white" }}>Hello, {username}</span>
-                            <a href="logout" className="btn btn-primary" style={{ marginLeft: "16px" }}>log out</a></span>
-                }
-            </nav>
+        return (
+            <div className="app-root helvetica bg-washed-yellow">
+                <div className="header-bg bg-maroon"></div>
+                <nav className="header ma1">
+                    <h1 className="ma2 white f3 di">ARXIV-SEARCH.COM</h1>
+                    {
+                        user === "None" ?
+                            (<form action="login" method="post" className="f5">
+                                <input className="ba bw1 b--white br2 dib pa2" type="text" name="username" placeholder="Username" />
+                                <input className="ba bw1 b--white br2 dib pa2" type="password" name="password" placeholder="Password" />
+                                <input type="submit" value="Login or Create" 
+                                className="link white ba bw1 b--white bg-transparent br2 pointer dib b tc v-mid pa2 pointer hover-bg-dark-red" />
+                            </form>)
+                            :
+                            <span className="ma2">
+                                <span style={{ fontWeight: 700, color: "white" }}>Hello, {username}</span>
+                                <a href="logout" className="link white ba bw1 b--white bg-transparent br2 pointer dib b tc v-mid pa2 pointer hover-bg-dark-red" style={{ marginLeft: "16px" }}>log out</a>
+                            </span>
+                    }
+                </nav>
 
-            <div className="app-searchbar">
-                <input type="text" className="ba br2 br--left b--moon-gray f2 pa2 w-100"
-                    value={query.query}
-                    onChange={e => this.handleQueryboxChange(e)}
-                    onKeyDown={e => e.keyCode === 13 && this.activateQuery()}
-                    placeholder="Search" />
-                <button
-                    id="qbutton"
-                    className="link ba bl-0-l br2 br--right b--moon-gray bg-white hover-bg-light-blue"
-                    onClick={e => this.activateQuery()}></button>
-            </div>
-            <div className="app-filters">
-                <TimeGrid className="mb2" handleTime={(t) => this.handleTime(t)} current={query.time} time_filter_data={meta.time_filter_data} />
-                <Select
-                    className="mb2"
-                    onBlurResetsInput={false}
-                    onSelectResetsInput={false}
-                    placeholder="primary category"
-                    options={categories as any}
-                    simpleValue
-                    clearable={true}
-                    name="prim"
-                    value={query.primaryCategory || ""}
-                    searchable={true}
-                    onChange={(selected: any) => this.handlePrimCat(selected)} />
-                <Select
-                    className="mb2"
-                    onBlurResetsInput={false}
-                    onSelectResetsInput={false}
-                    placeholder="categories"
-                    options={categories as any}
-                    simpleValue
-                    clearable={true}
-                    name="categories"
-                    value={cats}
-                    searchable={true}
-                    multi
-                    onChange={(selected: any) => this.handleCat(selected.split(","))} />
-                <LeaderBoard cats={cats} in_data={meta.in_data} primaryCategory={query.primaryCategory} handleCat={x => this.handleCat(x)} />
-                {loggedIn && <label htmlFor="my-arxiv-checkbox">Recommended<input type="checkbox" checked={query.rec_lib} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ rec_lib: e.target.checked }, () => this.activateQuery())} /></label>}
-                {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
-                <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
-                <Tuning rt={query.rec_tuning} onChange={rt => this.setNextQuery({ rec_tuning: rt }, () => this.activateQuery())} />
-            </div>
-            <Infinite
-                className="app-results ba br2 b--light-gray bg-white"
-                pageStart={0}
-                loadMore={() => this.handleLoadMore()}
-                hasMore={!isDone}
-                loader={<div key="loading" className="pa4 tc f3">Loading...</div>}
-                threshold={500} >
-
-                <div key="rtable">
-                    {this.state.tot_num_papers && (<div className="bb pa4 b--black-10"><strong>{this.state.tot_num_papers.toLocaleString()}</strong> {this.state.tot_num_papers === 1 ? "result" : "results"}</div>)}
-                    {papers.map((p, i) => <Paper p={p} key={p.pid}
-                        onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
-                        onCategoryClick={(c) => this.handleCat(cats.addUnique(c))}
-                        onAuthorClick={a => this.handleAuthor(a)}
-                    />)}
-                    {this.state.isDone && <h2 className="pa4 tc f3">no more results</h2>}
+                <div className="app-searchbar">
+                    <input type="text" className="ba br2 br--left b--moon-gray f2 pa2 w-100"
+                        value={query.query}
+                        onChange={e => this.handleQueryboxChange(e)}
+                        onKeyDown={e => e.keyCode === 13 && this.activateQuery()}
+                        placeholder="Search" />
+                    <button
+                        id="qbutton"
+                        className="link ba bl-0-l br2 br--right b--moon-gray bg-white hover-bg-light-blue"
+                        onClick={e => this.activateQuery()}></button>
                 </div>
+                <div className="app-filters">
+                    <TimeGrid className="mb2" handleTime={(t) => this.handleTime(t)} current={query.time} time_filter_data={meta.time_filter_data} />
+                    <Select
+                        className="mb2"
+                        onBlurResetsInput={false}
+                        onSelectResetsInput={false}
+                        placeholder="primary category"
+                        options={categories as any}
+                        simpleValue
+                        clearable={true}
+                        name="prim"
+                        value={query.primaryCategory || ""}
+                        searchable={true}
+                        onChange={(selected: any) => this.handlePrimCat(selected)} />
+                    <Select
+                        className="mb2"
+                        onBlurResetsInput={false}
+                        onSelectResetsInput={false}
+                        placeholder="categories"
+                        options={categories as any}
+                        simpleValue
+                        clearable={true}
+                        name="categories"
+                        value={cats}
+                        searchable={true}
+                        multi
+                        onChange={(selected: any) => this.handleCat(selected.split(","))} />
+                    <LeaderBoard cats={cats} in_data={meta.in_data} primaryCategory={query.primaryCategory} handleCat={x => this.handleCat(x)} />
+                    {loggedIn && <label htmlFor="my-arxiv-checkbox">Recommended<input type="checkbox" checked={query.rec_lib} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ rec_lib: e.target.checked }, () => this.activateQuery())} /></label>}
+                    {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
+                    <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
+                    <Tuning rt={query.rec_tuning} onChange={rt => this.setNextQuery({ rec_tuning: rt }, () => this.activateQuery())} />
+                </div>
+                <Infinite
+                    className="app-results ba br2 b--light-gray bg-white"
+                    pageStart={0}
+                    loadMore={() => this.handleLoadMore()}
+                    hasMore={!isDone}
+                    loader={<div key="loading" className="pa4 tc f3">Loading...</div>}
+                    threshold={500} >
 
-            </Infinite>
-        </div>
+                    <div key="rtable">
+                        {this.state.tot_num_papers && (<div className="bb pa4 b--black-10"><strong>{this.state.tot_num_papers.toLocaleString()}</strong> {this.state.tot_num_papers === 1 ? "result" : "results"}</div>)}
+                        {papers.map((p, i) => <Paper p={p} key={p.pid}
+                            onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
+                            onCategoryClick={(c) => this.handleCat(cats.addUnique(c))}
+                            onAuthorClick={a => this.handleAuthor(a)}
+                        />)}
+                        {this.state.isDone && <h2 className="pa4 tc f3">no more results</h2>}
+                    </div>
+
+                </Infinite>
+            </div>
+        )
     }
 }
 
@@ -332,30 +337,30 @@ class LeaderBoard extends React.PureComponent<{ in_data?, primaryCategory, cats,
         let { in_data, primaryCategory, cats, handleCat } = this.props
         let { kvs } = this.state;
         return (
-            <table style={{height:"24em", maxHeight:"24em", display : "block"}}>
-                    {/* <CSSTransitionGroup
+            <table style={{ height: "24em", maxHeight: "24em", display: "block" }}>
+                {/* <CSSTransitionGroup
                         transitionName="leaderboard"
                         transitionEnterTimeout={500}
                         transitionLeaveTimeout={300}
                         component="tbody"
                         > */}
-                    <tbody>
-                        {(() => {
-                            return kvs.map(({ k, v }) => <tr key={k}>
-                                <td>
-                                    <CatBadge
-                                        onClick={() => {
-                                            let i = cats.findIndex(k2 => k2 === k);
-                                            if (i === -1) { handleCat([...cats, k as any]) }
-                                            else { handleCat(cats.drop(i)) }
-                                        }}
-                                        cat={k} />
-                                </td>
-                                <td>{in_data && `(${v.toLocaleString()})`}</td>
-                            </tr>)
-                        })()}
-                        </tbody>
-                    {/* </CSSTransitionGroup> */}
+                <tbody>
+                    {(() => {
+                        return kvs.map(({ k, v }) => <tr key={k}>
+                            <td>
+                                <CatBadge
+                                    onClick={() => {
+                                        let i = cats.findIndex(k2 => k2 === k);
+                                        if (i === -1) { handleCat([...cats, k as any]) }
+                                        else { handleCat(cats.drop(i)) }
+                                    }}
+                                    cat={k} />
+                            </td>
+                            <td>{in_data && `(${v.toLocaleString()})`}</td>
+                        </tr>)
+                    })()}
+                </tbody>
+                {/* </CSSTransitionGroup> */}
             </table>
         )
     }
