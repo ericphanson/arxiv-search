@@ -115,14 +115,14 @@ export class App extends React.Component<{}, state> {
         let cats = query.category.map(x => x[0]);
         return <div className="app-root helvetica bg-washed-yellow">
             <div className="header-bg bg-maroon"></div>
-            <nav className="header">
-                <h1 className="nav-item ma2 white f3">ARXIV-SEARCH.COM</h1>
+            <nav className="header ma1">
+                <h1 className="ma2 white f3 di">ARXIV-SEARCH.COM</h1>
                 {
                     user === "None" ?
-                        (<form action="login" method="post">
+                        (<form action="login" method="post" className="f5">
                             <input className="form-control" type="text" name="username" placeholder="Username" />
                             <input className="form-control" type="password" name="password" placeholder="Password" />
-                            <input type="submit" value="Login or Create" className="btn btn-primary" />
+                            <input type="submit" value="Login or Create" className="link white ba bw1 b--white bg-transparent br2 pointer dib b tc v-mid pa2 pointer hover-bg-dark-red" />
                         </form>)
                         :
                         <span><span style={{ fontWeight: 700, color: "white" }}>Hello, {username}</span>
@@ -293,15 +293,15 @@ function RadioGrid(props) {
 }
 
 function TimeGrid({ handleTime, time_filter_data, current }) {
-    let cl = t => t === current ? "timeButton btn-primary checked" : "timeButton btn-primary"
+    let cl = t => "link tc v-mid pv0 ph1 br0 pointer bg-white " + (t === current ? "checked" : "");
     const tf_data = (tf: timeFilter) => { let n = time_filter_data && time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n.toLocaleString()})` }
     return <div className="radioGrid">
-        <div key="day" title="Only show papers from the last day." onClick={() => handleTime("day")} style={{ borderTopLeftRadius: "4px", gridColumn: "1", gridRow: "1", }} className={cl("day")}><div className="timeName" style={{ gridRow: "1", gridColumn: "1" }}>day</div><div className="timeScore" style={{ gridRow: "2", gridColumn: "1" }}>{tf_data("day")}</div></div>
-        <div key="3days" title="Only show papers from the last 3 days." onClick={() => handleTime("3days")} style={{ gridColumn: "2", gridRow: "1", }} className={cl("3days")}><div className="timeName" style={{ gridRow: "1", gridColumn: "1" }}>3 days</div><div className="timeScore" style={{ gridRow: "2", gridColumn: "1" }}>{tf_data("3days")}</div></div>
-        <div key="week" title="Only show papers from the last week." onClick={() => handleTime("week")} style={{ borderTopRightRadius: "4px", gridColumn: "3", gridRow: "1" }} className={cl("week")}><div className="timeName" style={{ gridRow: "1", gridColumn: "1" }}>week</div><div className="timeScore" style={{ gridRow: "2", gridColumn: "1" }}>{tf_data("week")}</div></div>
-        <div key="month" title="Only show papers from the last month." onClick={() => handleTime("month")} style={{ borderBottomLeftRadius: "4px", gridColumn: "1", gridRow: "2", }} className={cl("month")}><div className="timeName" style={{ gridRow: "1", gridColumn: "1" }}>month</div><div className="timeScore" style={{ gridRow: "2", gridColumn: "1" }}>{tf_data("month")}</div></div>
-        <div key="year" title="Only show papers from the last year." onClick={() => handleTime("year")} style={{ gridColumn: "2", gridRow: "2", }} className={cl("year")}><div className="timeName" style={{ gridRow: "1", gridColumn: "1" }}>year</div><div className="timeScore" style={{ gridRow: "2", gridColumn: "1" }}>{tf_data("year")}</div></div>
-        <div key="alltime" title="Show papers from any time" onClick={() => handleTime("alltime")} style={{ borderBottomRightRadius: "4px", gridColumn: "3", gridRow: "2" }} className={cl("alltime")}><div className="timeName" style={{ gridRow: "1", gridColumn: "1" }}>all time</div><div className="timeScore" style={{ gridRow: "2", gridColumn: "1" }}>{tf_data("alltime")}</div></div>
+        <div key="day" title="Only show papers from the last day." onClick={() => handleTime("day")} style={{ borderTopLeftRadius: "4px", gridColumn: "1", gridRow: "1", }} className={cl("day")}><div className="f6" >day</div><div className="f7">{tf_data("day")}</div></div>
+        <div key="3days" title="Only show papers from the last 3 days." onClick={() => handleTime("3days")} style={{ gridColumn: "2", gridRow: "1", }} className={cl("3days")}><div className="f6" >3 days</div><div className="f7">{tf_data("3days")}</div></div>
+        <div key="week" title="Only show papers from the last week." onClick={() => handleTime("week")} style={{ borderTopRightRadius: "4px", gridColumn: "3", gridRow: "1" }} className={cl("week")}><div className="f6" >week</div><div className="f7">{tf_data("week")}</div></div>
+        <div key="month" title="Only show papers from the last month." onClick={() => handleTime("month")} style={{ borderBottomLeftRadius: "4px", gridColumn: "1", gridRow: "2", }} className={cl("month")}><div className="f6" >month</div><div className="f7">{tf_data("month")}</div></div>
+        <div key="year" title="Only show papers from the last year." onClick={() => handleTime("year")} style={{ gridColumn: "2", gridRow: "2", }} className={cl("year")}><div className="f6" >year</div><div className="f7">{tf_data("year")}</div></div>
+        <div key="alltime" title="Show papers from any time" onClick={() => handleTime("alltime")} style={{ borderBottomRightRadius: "4px", gridColumn: "3", gridRow: "2" }} className={cl("alltime")}><div className="f6" >all time</div><div className="f7">{tf_data("alltime")}</div></div>
         {/* {timeFilters.map(tf => <li 
         key={tf.toString()} 
         onClick={() => this.handleTime(tf)}

@@ -53,9 +53,9 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
             <br />
             <span title="publication date of latest version on arxiv.org" className="f6 mr1 purple">{p.published_time}</span>
             {p.originally_published_time !== p.published_time
-                ? <span title="original publication date on arxiv.org" className="f6 light-purple">(v1: {p.originally_published_time})</span>
+                ? <span title="original publication date on arxiv.org" className="f6 light-purple mh1">(v1: {p.originally_published_time})</span>
                 : undefined}
-            <span className="f5">{
+            <span>{
                 p.tags.map(c =>
                     <CatBadge key={c} cat={c}
                         onClick={() => props.onCategoryClick(c)} />

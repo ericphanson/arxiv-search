@@ -21,7 +21,7 @@ const c = {
 "blue": {bg:"#357edd", dark : false},
 "lightblue": {bg:"#96ccff", dark : true},
 "lightestblue": {bg:"#cdecff", dark : true},
-"washedblue": {bg:"#f6fffe", dark : true},
+"washedblue": {bg:"#c6ccde", dark : true},
 "washedgreen": {bg:"#e8fdf5", dark : true},
 "washedyellow": {bg:"#fffceb", dark : true},
 "washedred": {bg:"#ffdfdf", dark : true},
