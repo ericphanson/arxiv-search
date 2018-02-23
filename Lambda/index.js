@@ -1,7 +1,7 @@
 const AWS = require("aws-sdk");
 const im = require("imagemagick");
 const fs = require("fs");
-const s3 = new AWS.s3();
+const s3 = new AWS.S3();
 
 const decodeKey = key => decodeURIComponent(key).replace(/\+/g,' ');
 
