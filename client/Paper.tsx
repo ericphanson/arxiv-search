@@ -38,7 +38,7 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
     let { p, onAuthorClick } = props
     let pdf_link = p.link.replace("abs", "pdf");
     let pdf_url = pdf_link === p.link ? pdf_link : pdf_link + ".pdf";
-    return <div className="apaper bb pa4 b--black-10" id={p.pid}>
+    return <div className="apaper bb pa4 b--light-gray" id={p.pid}>
         {/* The below line has something to do with  " OpenURL COinS metadata element -- readable by Zotero, Mendeley, etc." */}
         {/* <span className="Z3988" title={build_ocoins_str(p)}></span> */}
         <div className="paperdesc mr3">

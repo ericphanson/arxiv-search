@@ -131,17 +131,20 @@ export class App extends React.Component<{}, state> {
             </nav>
 
             <div className="app-searchbar">
-                <input type="text" className="searchinput"
+                <input type="text" className="ba br2 br--left b--moon-gray f2 pa2 w-100"
                     value={query.query}
                     onChange={e => this.handleQueryboxChange(e)}
                     onKeyDown={e => e.keyCode === 13 && this.activateQuery()}
                     placeholder="Search" />
-                <button id="qbutton" className="btn" onClick={e => this.activateQuery()}></button>
+                <button
+                id="qbutton" 
+                className="link ba bl-0-l br2 br--right b--moon-gray bg-white hover-bg-light-blue" 
+                onClick={e => this.activateQuery()}></button>
             </div>
             <div className="app-filters">
-                <TimeGrid handleTime={(t) => this.handleTime(t)} current={query.time} time_filter_data={meta.time_filter_data} />
-                <br />
+                <TimeGrid className="mb2" handleTime={(t) => this.handleTime(t)} current={query.time} time_filter_data={meta.time_filter_data} />
                 <Select
+                    className="mb2"
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
                     placeholder="primary category"
@@ -152,8 +155,8 @@ export class App extends React.Component<{}, state> {
                     value={query.primaryCategory || ""}
                     searchable={true}
                     onChange={(selected: any) => this.handlePrimCat(selected)} />
-                <br />
                 <Select
+                    className="mb2"
                     onBlurResetsInput={false}
                     onSelectResetsInput={false}
                     placeholder="categories"
@@ -166,17 +169,13 @@ export class App extends React.Component<{}, state> {
                     multi
                     onChange={(selected: any) => this.handleCat(selected.split(","))} />
                 <LeaderBoard cats={cats} in_data={meta.in_data} primaryCategory={query.primaryCategory} handleCat={x => this.handleCat(x)} />
-
-
-                <br />
                 {loggedIn && <label htmlFor="my-arxiv-checkbox">Recommended<input type="checkbox" checked={query.rec_lib} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ rec_lib: e.target.checked }, () => this.activateQuery())} /></label>}
                 {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
                 <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
-                <br />
                 <Tuning rt={query.rec_tuning} onChange={rt => this.setNextQuery({rec_tuning : rt}, () => this.activateQuery())}/>
             </div>
             <Infinite
-                className="app-results ba br2 b--black-10 bg-white"
+                className="app-results ba br2 b--light-gray bg-white"
                 pageStart={0}
                 loadMore={() => this.handleLoadMore()}
                 hasMore={!isDone}
@@ -276,43 +275,33 @@ class Tuning extends React.Component<{rt : rec_tuning, onChange : (r : rec_tunin
 
 }
 
-function RadioGrid(props) {
-    let { options } = props;
-    let gridStyle = {
-        display: "grid",
-        gridGap: "1px",
-        border: "1px solid transparent",
-        borderRadius: "4px"
-    }
-    let buttonStyle = {
-        fontWeight: 400, textAlign: "center", whiteSpace: "nowrap", verticalAlign: "middle", userSelect: "none", borderRadius: "0px",
-        transition: "color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out",
-        color: "#fff",
-        backgroundColor: "rgb(173, 173, 173)"
-    }
-}
+const times = [
+    {k:"day", d:"the last day", b : "day", r : "br2 br--left br--top "},
+    {k:"3days", d:"the last three days", b : "3 days", r : "br0 "},
+    {k:"week", d:"the last week", b : "week", r : "br2 br--right br--top "},
+    {k:"month", d:"the last month", b : "month", r : "br2 br--left br--bottom "},
+    {k:"year", d:"the last year", b : "year", r : "br0 "},
+    {k:"alltime", d:"any time", b : "all time", r : "br2 br--right br--bottom "},
+]
 
-function TimeGrid({ handleTime, time_filter_data, current }) {
-    let cl = t => "link tc v-mid pv0 ph1 br0 pointer bg-white " + (t === current ? "checked" : "");
+function TimeGrid({ handleTime, time_filter_data, current, className }) {
     const tf_data = (tf: timeFilter) => { let n = time_filter_data && time_filter_data[tf.toString()]; return n === undefined ? undefined : `(${n.toLocaleString()})` }
-    return <div className="radioGrid">
-        <div key="day" title="Only show papers from the last day." onClick={() => handleTime("day")} style={{ borderTopLeftRadius: "4px", gridColumn: "1", gridRow: "1", }} className={cl("day")}><div className="f6" >day</div><div className="f7">{tf_data("day")}</div></div>
-        <div key="3days" title="Only show papers from the last 3 days." onClick={() => handleTime("3days")} style={{ gridColumn: "2", gridRow: "1", }} className={cl("3days")}><div className="f6" >3 days</div><div className="f7">{tf_data("3days")}</div></div>
-        <div key="week" title="Only show papers from the last week." onClick={() => handleTime("week")} style={{ borderTopRightRadius: "4px", gridColumn: "3", gridRow: "1" }} className={cl("week")}><div className="f6" >week</div><div className="f7">{tf_data("week")}</div></div>
-        <div key="month" title="Only show papers from the last month." onClick={() => handleTime("month")} style={{ borderBottomLeftRadius: "4px", gridColumn: "1", gridRow: "2", }} className={cl("month")}><div className="f6" >month</div><div className="f7">{tf_data("month")}</div></div>
-        <div key="year" title="Only show papers from the last year." onClick={() => handleTime("year")} style={{ gridColumn: "2", gridRow: "2", }} className={cl("year")}><div className="f6" >year</div><div className="f7">{tf_data("year")}</div></div>
-        <div key="alltime" title="Show papers from any time" onClick={() => handleTime("alltime")} style={{ borderBottomRightRadius: "4px", gridColumn: "3", gridRow: "2" }} className={cl("alltime")}><div className="f6" >all time</div><div className="f7">{tf_data("alltime")}</div></div>
-        {/* {timeFilters.map(tf => <li 
-        key={tf.toString()} 
-        onClick={() => this.handleTime(tf)}
-        style={{}}>
-            <div>
-                <input type="radio" name="time"
-                    checked={query.time === tf} onChange={() => this.handleTime(tf)} />
-                {tf.toString()}
-            </div>
-            <div className="result-count">{tf_data(tf)}</div>
-        </li>)} */}
+    return <div className={className}>
+        <div className="bg-moon-gray b--moon-gray ba br2" style={{display : "grid", gridGap : "1px", 
+        gridTemplateRows:"40px 40px", gridTemplateColumns : "1fr 1fr 1fr",
+        gridTemplateAreas : `"day 3days week" "month year alltime"`}}>
+            {
+                times.map(({k,d, b, r}, i) => 
+                    <div key={k} 
+                    className={"link tc v-mid pv1 ph1 pointer pa1 hover-bg-light-blue " + (k === current ? "bg-lightest-blue checked " : "bg-near-white ") + r}
+                    style={{gridArea:k}}
+                    title={`Show papers from ${d}`} 
+                    onClick={() => handleTime(k)}>
+                        <div className="f6">{b}</div>
+                        <div className="f7">{tf_data(k as any)}</div>
+                    </div>)
+            }
+        </div>
     </div>
 }
 

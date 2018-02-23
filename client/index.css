@@ -3,7 +3,7 @@
     justify-content: center;
     grid-template-columns: 40px minmax(auto, min-content) 1fr 40px;
     grid-template-rows: auto auto auto;
-    grid-gap: 8px;
+    grid-gap: .5rem;
     grid-template-areas:
         ".      header header  .     "
         ".      search search  .     "
@@ -130,18 +130,10 @@ opacity: 0.65;
     box-sizing: border-box;
 }
 #qbutton {
-    border-left-width: 0px;
     background-image: url('./search.png');
     background-repeat: no-repeat;
-    background-position: 40% 65%;      
+    background-position: 40% 50%;      
     flex : 0 0 50px;
-    border-top-right-radius: 4px;
-    border-bottom-right-radius: 4px;
-    border-top-left-radius: 0px;
-    border-bottom-left-radius: 0px;
-}
-#qbutton:hover {
-    background-color: rgb(219, 219, 219)
 }
 
 .app-filters {
@@ -165,7 +157,7 @@ a.link:hover {
 .bg-maroon { background-color : #9e2a3f}
 
 .anim-item {
-    transition: all 0.2s ease-out;
+    transition: all 0.1s ease-out;
 }
 .radioGrid {
     display: grid;
@@ -193,5 +185,6 @@ a.link:hover {
 .checked {
     cursor: default;
     pointer-events: none;
-    background-color: #EB6864;
 }
+
+
