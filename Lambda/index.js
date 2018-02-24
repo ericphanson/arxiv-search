@@ -53,7 +53,9 @@ exports.handler = (event, context, callback) => {
                         callback(err); 
                     }
                     else {
-                        console.log("wrote thumbnail to S3. Success.")
+                        console.log("wrote thumbnail to S3. Success.");
+                        //TODO delete the source pdf.
+                        //TODO extract plaintext and upload to elastic search.
                         context.done();
                     }
                 })
