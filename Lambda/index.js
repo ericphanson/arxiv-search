@@ -46,6 +46,7 @@ exports.handler = (event, context, callback) => {
                 callback(err);
             } else {
                 console.log("thumbnail successfully generated");
+                let data = fs.readFileSync(outputFile);
                 s3.putObject({
                     Bucket: bucket,
                     Key : out_key_without_ext + ".jpg",
