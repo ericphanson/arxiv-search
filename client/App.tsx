@@ -118,7 +118,10 @@ export class App extends React.Component<{}, state> {
             <div className="app-root helvetica bg-washed-yellow">
                 <div className="header-bg bg-maroon"></div>
                 <nav className="header ma1">
-                    <h1 className="ma2 white f3 di">ARXIV-SEARCH.COM</h1>
+                <div className="di">
+                        <h1 className="ma2 white f3">ARXIV-SEARCH.COM</h1>
+                        <h2 className="ma1 f5 white">Based on <a className="link white" href="http://arxiv-sanity.com">arxiv-sanity</a> built by <a className="link white" href="https://twitter.com/karpathy">@karpathy</a></h2>
+                </div>
                     {
                         user === "None" ?
                             (<form action="login" method="post" className="f5">
