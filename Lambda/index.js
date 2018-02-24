@@ -1,5 +1,6 @@
+'use strict';
 const AWS = require("aws-sdk");
-const im = require("imagemagick");
+const gm = require("gm").subClass({ imageMagick: true });
 const fs = require("fs");
 const s3 = new AWS.S3();
 
@@ -10,7 +11,7 @@ exports.handler = (event, context, callback) => {
     let bucket = s3_inst.bucket.name;
     let srcKey = decodeKey(s3_inst.object.key);
     if (!(srcKey.startsWith("pdf_for_thumbs/"))) {
-        console.error("key must be in `pdf_for_thumbs/` directory. Key: ", srcKey);
+        console.error("key must be in `pdf_for_thumbs\` directory. Key: ", srcKey);
         return;
     }
     let thumbs_dir = "thumbs"
@@ -22,7 +23,8 @@ exports.handler = (event, context, callback) => {
         return;
     }
     fileType = fileType[0].substr(1);
-    if (ALLOWED_FILETYPES.indexOf(fileType) === -1) {
+    console.log(`fileType: ${fileType}`);
+    if (fileType !== "pdf") {
         console.error(`Filetype ${fileType} is not valid for thumbnail.`);
         return;
     }
@@ -33,14 +35,13 @@ exports.handler = (event, context, callback) => {
         let outputFile = `/tmp/thumb.jpg`;
         //based on https://github.com/awslabs/serverless-application-model/blob/master/examples/apps/image-processing-service/index.js
         //montage "/tmp/inputFile.pdf[0-7]" -mode Concatenate -thumbnail x156 -quality 80 -tile x1 /tmp/thumb.jpg
-        im.montage([
-            inputFile + '[0-7]',
+        gm(inputFile + '[0-7]').montage()
+            .out(
             '-mode', 'Concatenate',
             '-thumbnail', 'x156',
             '-quality', '80',
-            '-tile', 'x1',
-            outputFile
-        ], (err, output) => {
+            '-tile', 'x1'
+        ).write(outputFile ,(err) => {
             if (err) {
                 console.error("thumbnail generation failed:", err);
                 callback(err);
@@ -62,6 +63,3 @@ exports.handler = (event, context, callback) => {
         });
     })
 }
-/* Original magick commands: */
-//['convert', '%s[0-7]' % (pdf_path, ), '-thumbnail', 'x156', os.path.join(Config.tmp_dir, 'thumb.png')])
-//cmd = "montage -mode concatenate -quality 80 -tile x1 %s %s" % (os.path.join(Config.tmp_dir, 'thumb-*.png'), thumb_path)
