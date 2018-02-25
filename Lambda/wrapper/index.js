@@ -74,9 +74,16 @@ exports.handler = (event, context, callback) => {
         let buck_key_dict = {}
         for (let k in resource_dict) {
             let r = resource_dict[k]
+            let key
+            if (r['subdir'])
+            {
+                key = r['subdir'] + '/' + idvv + r['ext']
+            } else {
+                key = idvv + r['ext']
+            }
             buck_key_dict[k] = {
                 Bucket: r['bucket'],
-                Key: r['subdir'] + '/' + idvv + r['ext']
+                Key: key
             }
         }
     }

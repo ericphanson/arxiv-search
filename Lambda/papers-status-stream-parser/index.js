@@ -10,8 +10,7 @@ const wrapper_name = 'lambda-wrapper-wrapper-82I9Y9GU33D8'
 const thumbs = {
     'resources': {
         'pdf': {
-            'bucket': 'arxiv-temp-pdfs',
-            'subdir': 'pdfs',
+            'bucket': 'arxiv-incoming',
             'ext': '.pdf'
         }
     },
