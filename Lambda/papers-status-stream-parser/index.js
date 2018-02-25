@@ -5,27 +5,35 @@ const db = new AWS.DynamoDB({
     apiVersion: '2012-08-10'
 });
 
-//const RESOURCES = ['pdf', 'tex', 'meta']
+const wrapper_name = 'lambda-wrapper-wrapper-82I9Y9GU33D8'
 
 const thumbs = {
-    'resources': ['pdf'],
-    'outputs': ['thumb']
+    'resources': {
+        'pdf': {
+            'bucket': 'arxiv-temp-pdfs',
+            'subdir': 'pdfs',
+            'ext': '.pdf'
+        }
+    },
+    'outputs': {
+        'thumb': {
+            'bucket': 'arxiv-temp-pdfs',
+            'subdir': 'thumbs',
+            'ext': '.jpg'
+        }
+    },
+    'lambda_name': 'lambda-make-thumb-from-pa-makethumbfrompapersstatu-1HBU715UH9VCV'
 };
 
-const parse_def = {
-    'resources': ['def'],
-    'outputs': ['parsed_def']
-};
 
 const Lambdas = {
-    'make-thumb-from-papers-status-update': thumbs
+    thumbs['lambda_name'] : thumbs
 };
 
 function have_all_resources(res, image) {
     let have_all_res = true;
     for (let r of res) {
-        if (image[r] === undefined)
-        {
+        if (image[r] === undefined) {
             have_all_res = false;
         } else if (!(image[r].S === 'have')) {
             have_all_res = false;
@@ -38,8 +46,7 @@ function have_all_resources(res, image) {
 function want_any_output(outputs, image) {
     let want_any_output = false;
     for (let o of outputs) {
-        if (image[o] != undefined)
-        {
+        if (image[o] != undefined) {
             if (image[o].S === 'want') {
                 want_any_output = true;
             }
@@ -72,8 +79,7 @@ exports.handler = (event, context, callback) => {
 
                 let fire
                 // only fire a lambda function if the old record wasn't ready, but the new record is
-                if (OldImage === undefined)
-                {
+                if (OldImage === undefined) {
                     fire = shouldFire(lambda_name, NewImage)
                 } else {
                     fire = (!(shouldFire(lambda_name, OldImage)) && shouldFire(lambda_name, NewImage));
@@ -112,15 +118,16 @@ exports.handler = (event, context, callback) => {
                 } else //Fire the Lambda
                 {
                     let lambda = new AWS.Lambda();
-
+                    let Payload = Lambdas[lambda_name]
+                    
                     let params = {
-                        FunctionName: lambda_name, // the lambda function we are going to invoke
+                        FunctionName: wrapper_name, // the lambda function we are going to invoke
                         InvocationType: 'Event',
                         LogType: 'None',
-                        Payload: '{ "idvv" : "' + idvv + '" }'
+                        Payload
                     };
                     console.log("firing " + lambda_name + " for idvv=" + idvv);
-                    lambdas_fired = lambdas_fired+1;
+                    lambdas_fired = lambdas_fired + 1;
                     lambda.invoke(params, function (err, data) {
                         if (err) {
                             console.log(err);

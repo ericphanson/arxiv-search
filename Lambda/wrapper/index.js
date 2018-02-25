@@ -1,6 +1,9 @@
 'use strict';
+
 const AWS = require("aws-sdk");
-AWS.config.region = 'us-east-1';
+const REGION = 'us-east-1'
+AWS.config.region = REGION;
+
 const db = new AWS.DynamoDB({
     apiVersion: '2012-08-10'
 });
@@ -103,7 +106,8 @@ exports.handler = (event, context, callback) => {
     let lambda = new AWS.Lambda();
     let Payload = {
         'resources': bk_res,
-        'outputs': bk_outs
+        'outputs': bk_outs,
+        'region' : REGION
     };
 
     let params = {
