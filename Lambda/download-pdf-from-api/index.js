@@ -57,33 +57,34 @@ function uploadFile(bucket, key, contentType, data) {
 
 exports.handler = function(event, context, callback) {
     // need to get the id and version somehow
-    id = "1707.04249"
-    version = "2"
+    let id = "1707.04249";
+    let version = "2";
     // from id an dversion, define the parameters
-    bucket = 'arxiv-temp-pdfs'
-    key1 = 'pdf_buffer/' + id + "v" + version + ".pdf"
-    key2 = 'pdf_for_thumbs/' + id + "v" + version + ".pdf"
+    let bucket = 'arxiv-temp-pdfs';
+    let key1 = 'pdf_buffer/' + id + "v" + version + ".pdf";
+    let key2 = 'pdf_for_thumbs/' + id + "v" + version + ".pdf";
     
-    content_type = "application/pdf"
+    let content_type = "application/pdf";
 
-    url = "https://export.arxiv.org/pdf/" + id + ".pdf"
+    let url = "https://export.arxiv.org/pdf/" + id + ".pdf"
+    //let url = "http://export.arxiv.org/api/query?search_query=all:electron&start=0&max_results=10"
 
-    pdf_temp_file = mktemp.createFileSync("/tmp/XXXXXXXXXX.pdf")
+    let pdf_temp_file = mktemp.createFileSync("/tmp/XXXXXXXXXX.pdf")
     download(url, pdf_temp_file)
         .then(() => {
-            p1 = uploadFile(bucket, key1, contentType, pdf_temp_file)
-            p2 = uploadFile(bucket, key1, contentType, pdf_temp_file)
+            let p1 = uploadFile(bucket, key1, content_type, pdf_temp_file);
+            let p2 = uploadFile(bucket, key1, content_type, pdf_temp_file);
             Promise.all(p1,p2).then( () => {
-                fs.unlinkSync(pdf_temp_file)
-                callback("all pdfs uploaded")
+                fs.unlinkSync(pdf_temp_file);
+                callback("all pdfs uploaded");
             }).catch( (err) => {
-                fs.unlinkSync(pdf_temp_file)
-                console.log("error in uploading pdfs", err)
-                callback(err)                
+                fs.unlinkSync(pdf_temp_file);
+                console.log("error in uploading pdfs", err);
+                callback(err);
             })
         })
         .catch((error) => {
-            console.log('error: ', error)
-            callback(error)
+            console.log('error: ', error);
+            callback(error);
     })
 }
