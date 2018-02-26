@@ -66,7 +66,7 @@ exports.handler = function(event, context, callback) {
     
     content_type = "application/pdf"
 
-    url = "https://arxiv.org/pdf/" + id + ".pdf"
+    url = "https://export.arxiv.org/pdf/" + id + ".pdf"
 
     pdf_temp_file = mktemp.createFileSync("/tmp/XXXXXXXXXX.pdf")
     download(url, pdf_temp_file)
