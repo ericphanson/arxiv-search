@@ -16,15 +16,7 @@ let parseAsync = (s) => new Promise((resolve, reject) => xml2js.parseString(s, (
 let writeFileAsync = (path, data, options) => new Promise((res, rej) => fs.writeFile(path, data, options, (err, result) => err ? rej(err) : res(result)));
 let sleepAsync = (n) => new Promise((resolve, reject) => { msleep(n); resolve(); });
 
-let getFileType = (stream) => new Promise((resolve, reject) => {
-    stream.once("data", chunk => {
-        console.log(chunk.length);
-        resolve(fileType(chunk).ext)
-    });
-})
-
-const Id = new Transform({transform(chunk, enc, cb) { this.push(chunk); cb(); }})
-
+/**Stream Transformer that also figures out what the file type is.  */
 const FtTr = () => new Transform({
     transform(chunk, enc, cb) {
         if (!this.initBuffer) { this.initBuffer = Buffer.alloc(4100); this.index = 0; }
@@ -38,52 +30,55 @@ const FtTr = () => new Transform({
             this.emit("havetype", ft);
         }
         cb();
+    },
+    flush(cb) {
+        if (!this.emitted) {
+            let ft = fileType(this.initBuffer).ext;
+            this.emitted = true;
+            this.emit("havetype", ft);
+        }
+        cb();
     }
 });
 
-function FileTypeTransform(options) {
-    if (!(this instanceof FileTypeTransform)) { return new FileTypeTransform(options); }
-    this.initBuffer = Buffer.alloc(4100);
-    this.index = 0;
-}
-inherits(FileTypeTransform, Transform);
-FileTypeTransform._transform = function (chunk, enc, cb) {
+/**Search the arxiv with the given search query and return a list of `idvvs` __with slashes__ from the arxiv API. */
+function getEntries(search, max_results) {
+    return requestAsync(`http://export.arxiv.org/api/query?search_query=all:${search || "quantum"}&max_results=${max_results || 10}`)
+        .then(response => parseAsync(response.body))
+        .then(parsed => parsed.feed.entry.map(entry => entry.id[0].match(/http:\/\/arxiv\.org\/abs\/([\w\.\/-]+)$/)[1]))
 }
 
 
-const dldir = "dl";
-
-function dl(idvv) {
-    let outputPath = path.join("dl", idvv);
-    let unzipped = request({ url: `https://export.arxiv.org/e-print/${idvv.replace("_","/")}`, headers: { "User-Agent": "request", "Accept-Encoding": "gzip" } })
-        .pipe(zlib.createGunzip())
-        .pipe(FtTr())
-    unzipped.on("havetype", (ty) => {
-        console.log(`${idvv}.${ty}`);
-        if (ty === "tar") {
-            unzipped.pipe(tar.extract(outputPath)).on("error", (err) => {
-                console.log("error for " + outputPath);
+exports.handler = (event, context, callback) => {
+    throw new Error("not implemented properly yet, just an outline");
+    getEntries("cambyse", 10).then(entries => {
+        for (let entry of entries) {
+            let idvv = entry.replace("/", "");
+            let outputPath = path.join("dl", idvv);
+            let unzipped = request({
+                url: `https://export.arxiv.org/e-print/${entry}`,
+                headers: { "User-Agent": "request", "Accept-Encoding": "gzip" }
+            })
+                .pipe(zlib.createGunzip())
+                .pipe(FtTr())
+            unzipped.once("havetype", (ty) => {
+                console.log(`${idvv}.${ty}`);
+                if (ty === "tar") {
+                    //we have a source object!
+                    //TODO: I think that we should just add this as a tarball rather than try to maintain directories in S3.
+                    //TODO: in a different lambda, place the extracted tar in the local temp directory and then process it into a 'semantic' xml document 
+                    //      with pandoc or whatever.
+                    unzipped.pipe(tar.extract(outputPath));
+                }
+                else if (ty === "pdf") {
+                    //todo; add the pdf to the db.
+                }
+                else {
+                    console.warn("unrecognised file format ", ty);
+                }
             });
+            //wait before performing the next request.
+            msleep(1001);
         }
-    });
+    })
 }
-
-async function getEntries(search, number) {
-    let response = await requestAsync(`http://export.arxiv.org/api/query?search_query=all:${search || "quantum"}&max_results=${number || 3}`);
-    let parsed = await parseAsync(response.body);
-    let entries = parsed.feed.entry.map(entry => entry.id[0].match(/http:\/\/arxiv\.org\/abs\/([\w\.\/-]+)$/)[1].replace(/\//g, "_"));
-    return entries;
-}
-
-async function run() {
-    let entries = await getEntries("cambyse", 10);
-    //let entries = ["1711.07945v1"];
-    for (let entry of entries) {
-        let idvv = entry;
-        dl(idvv);
-        await sleepAsync(1001);
-    }
-}
-run().then(() => {
-    console.log("job done");
-}).catch(err => console.log(err.toString().substr(0, 1000)));
