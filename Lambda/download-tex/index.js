@@ -1,16 +1,22 @@
-let { promisify, inherits } = require("util");
-let path = require("path");
 "use strict";
-exports.__esModule = true;
-var request = require("request");
-var xml2js = require("xml2js");
-let zlib = require("zlib");
-let fs = require("fs");
+
+//nodejs
+const { promisify, inherits } = require("util");
+const path = require("path");
+const fs = require("fs");
 const { Transform } = require("stream");
-let fileType = require("file-type");
-let tar = require("tar-fs");
+
+//3rd party
+const request = require("request");
+const xml2js = require("xml2js");
+const zlib = require("zlib");
+const fileType = require("file-type");
+const tar = require("tar-fs");
+
+/**Sleep for `n` milliseconds. */
 function msleep(n) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, n); }
 
+/* Some promisified functions. */
 let requestAsync = param => new Promise((resolve, reject) => request(param, (err, res) => err ? reject(err) : resolve(res)));
 let parseAsync = (s) => new Promise((resolve, reject) => xml2js.parseString(s, (err, result) => err ? reject(err) : resolve(result)));
 let writeFileAsync = (path, data, options) => new Promise((res, rej) => fs.writeFile(path, data, options, (err, result) => err ? rej(err) : res(result)));
@@ -47,7 +53,6 @@ function getEntries(search, max_results) {
         .then(response => parseAsync(response.body))
         .then(parsed => parsed.feed.entry.map(entry => entry.id[0].match(/http:\/\/arxiv\.org\/abs\/([\w\.\/-]+)$/)[1]))
 }
-
 
 exports.handler = (event, context, callback) => {
     throw new Error("not implemented properly yet, just an outline");
