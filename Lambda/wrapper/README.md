@@ -1,0 +1,1 @@
+A lambda that wraps another Lambda and handles updating the `papers-status` table.

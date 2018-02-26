@@ -26,7 +26,7 @@ const thumbs = {
 
 
 const Lambdas = {
-    thumbs['lambda_name'] : thumbs
+    [thumbs['lambda_name']] : thumbs
 };
 
 function have_all_resources(res, image) {
