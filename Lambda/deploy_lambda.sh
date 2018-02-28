@@ -5,9 +5,13 @@ if [ $# -eq 0 ]; then
 fi
 set -e;
 cd $1
-if [ -f $1/package.json ]; then
+if [ -f package.json ]; then
     echo "package.json found, so running yarn install..."
     yarn install
+fi
+if [ -f tsconfig.json ]; then
+    echo "tsconfig.json found, so running tsc..."
+    tsc *.ts --lib "es2015"
 fi
 echo "Preparing package and uploading to S3..."
 aws cloudformation package --template-file $1.yaml --output-template-file serverless-output.yaml --s3-bucket arxiv-search-lambda-code
