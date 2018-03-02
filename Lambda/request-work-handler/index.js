@@ -1,4 +1,12 @@
 'use strict';
+var __assign = (this && this.__assign) || Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+            t[p] = s[p];
+    }
+    return t;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -34,7 +42,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var _this = this;
+exports.__esModule = true;
 var AWS = require("aws-sdk");
 AWS.config.region = 'us-east-1';
 var db = new AWS.DynamoDB({
@@ -69,199 +77,103 @@ exports.handler = function (event, context, callback) {
     var send_string = "sent_to_client=" + event.client_id;
     var MAX_NUM_TO_DOWNLOAD = 20;
     var url_keys = ["tar_url", "pdf_url"];
+    // Step 1. convert our lists of urls and statuses into parameters for a db scan
     var status_keys = ["tar", "pdf"];
+    var FilterExpression = status_keys.map(function (r) { return r + " = :w"; }).join(" OR ");
     //all the fields we want to return
     var get_fields = url_keys.concat(status_keys, ["idvv"]);
-    // Step 1. convert our lists of urls and statuses into parameters for a db scan
-    var expr = function (r) { return r + " = :w"; };
-    var or_reducer = function (accumulator, currentValue) {
-        return accumulator + ' OR ' + currentValue;
-    };
-    var FilterExpression = status_keys.map(expr).reduce(or_reducer);
-    var comma_reducer = function (accumulator, currentValue) {
-        return accumulator + ', ' + currentValue;
-    };
-    var ProjectionExpression = get_fields.reduce(comma_reducer);
+    var ProjectionExpression = get_fields.join(", ");
     var scan_params = {
         TableName: "papers-status",
         ProjectionExpression: ProjectionExpression,
-        ExpressionAttributeValues: {
-            ":w": {
-                "S": "want"
-            }
-        },
+        ExpressionAttributeValues: { ":w": { "S": "want" } },
         FilterExpression: FilterExpression
     };
-    var num_items = 0;
-    var num_pages = 0;
-    /** The central object: a list of download parameters to return to the gateway. */
-    var list_of_download_params = [];
-    var num_urls_so_far = 0;
     // Step 2. Page the database, find relevant records.
-    /**
-     * A recursive function for paginating through the database,
-     * processing any records which meet the FilterExpression.
-     * @param first true for the first round of recursion, false otherwise
-     * @param start_key after the first round, a key should be sent for pagination
-     * @param list_of_download_params keep track of the list the function is generating. Should start empty.
-     */
-    var recurse = function (first, start_key, list_of_download_params) { return __awaiter(_this, void 0, void 0, function () {
-        var list_of_download_params_recurse, sp, data, outputs, _a, e_1, continue_key, e_2;
-        return __generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    list_of_download_params_recurse = [];
-                    if (!(first || start_key)) return [3 /*break*/, 9];
-                    sp = scan_params;
-                    if (!(first)) {
-                        sp['ExclusiveStartKey'] = start_key; //if it's not the first, there should be a resumption key
-                    }
-                    return [4 /*yield*/, db.scan(sp).promise()];
-                case 1:
-                    data = _b.sent();
-                    if (data.Items === undefined) {
-                        return [2 /*return*/, list_of_download_params];
-                    }
-                    num_pages++;
-                    console.log("On page " + num_pages);
-                    num_items += data.Items.length;
-                    outputs = void 0;
-                    _b.label = 2;
-                case 2:
-                    _b.trys.push([2, 4, , 5]);
-                    _a = flatten;
-                    return [4 /*yield*/, Promise.all(data.Items.map(process_record))];
-                case 3:
-                    outputs = _a.apply(void 0, [_b.sent()]);
-                    return [3 /*break*/, 5];
-                case 4:
-                    e_1 = _b.sent();
-                    console.log("error on processing records");
-                    console.log(e_1);
-                    return [2 /*return*/, list_of_download_params];
-                case 5:
-                    // flatten the list
-                    list_of_download_params = list_of_download_params.concat(flatten(outputs));
-                    continue_key = data.LastEvaluatedKey;
-                    if (num_urls_so_far > MAX_NUM_TO_DOWNLOAD) {
-                        continue_key = false;
-                    }
-                    _b.label = 6;
-                case 6:
-                    _b.trys.push([6, 8, , 9]);
-                    return [4 /*yield*/, recurse(false, continue_key, list_of_download_params)];
-                case 7:
-                    list_of_download_params = _b.sent();
-                    return [3 /*break*/, 9];
-                case 8:
-                    e_2 = _b.sent();
-                    console.log("Caught error when recursing:");
-                    console.log(e_2);
-                    return [3 /*break*/, 9];
-                case 9: return [2 /*return*/, list_of_download_params];
-            }
-        });
-    }); };
-    // fire off the recursion
-    recurse(true, undefined, list_of_download_params).then(function (result) {
-        // Lastly: return the download params to the waiting API
-        callback(null, result);
-    })["catch"](function (err) {
-        console.log("Recurse had an error");
-        callback(err);
-    });
-    // Step 3.  process the records that come through
-    /** For each record, we check each possible URL to see if it is wanted.
-     * If so, we collect the download parameters, and update the database
-     * to say we are sending it to the client to download.
-     * @param record a record returned from dynamodb
-     */
-    function process_record(record) {
+    function getDownloadParams() {
         return __awaiter(this, void 0, void 0, function () {
-            var local_list_for_download, db_update_promises, _a, _b, _i, i, sk, uk, get_item, idvv, fetch_url, signed_url, _c, _d, _e, _f, e_3, e_4;
-            return __generator(this, function (_g) {
-                switch (_g.label) {
+            var list_of_download_params, first, continue_key, num_pages, num_items, sp, data, _i, _a, record, _b, _c, _d, i, sk, uk, idvv, fetch_url, uploadUrl;
+            return __generator(this, function (_e) {
+                switch (_e.label) {
                     case 0:
-                        local_list_for_download = [];
-                        db_update_promises = [];
-                        _a = [];
-                        for (_b in url_keys)
-                            _a.push(_b);
-                        _i = 0;
-                        _g.label = 1;
+                        list_of_download_params = [];
+                        first = true;
+                        continue_key = undefined;
+                        num_pages = 0;
+                        num_items = 0;
+                        _e.label = 1;
                     case 1:
-                        if (!(_i < _a.length)) return [3 /*break*/, 6];
-                        i = _a[_i];
+                        sp = __assign({}, scan_params);
+                        if (continue_key) {
+                            sp.ExclusiveStartKey = continue_key;
+                        }
+                        return [4 /*yield*/, db.scan(sp).promise()];
+                    case 2:
+                        data = _e.sent();
+                        if (data.Items === undefined) {
+                            return [2 /*return*/, list_of_download_params];
+                        }
+                        num_pages++;
+                        console.log("On page " + num_pages);
+                        num_items += data.Items.length;
+                        _i = 0, _a = data.Items;
+                        _e.label = 3;
+                    case 3:
+                        if (!(_i < _a.length)) return [3 /*break*/, 9];
+                        record = _a[_i];
+                        _b = [];
+                        for (_c in url_keys)
+                            _b.push(_c);
+                        _d = 0;
+                        _e.label = 4;
+                    case 4:
+                        if (!(_d < _b.length)) return [3 /*break*/, 8];
+                        i = _b[_d];
                         sk = status_keys[i];
                         uk = url_keys[i];
-                        get_item = false;
-                        if (record[sk]) {
-                            try {
-                                get_item = record[sk].S === "want";
-                            }
-                            catch (e) {
-                                console.log(e);
-                                console.log("^caught error from record[sk].S");
-                                return [3 /*break*/, 5];
-                            }
+                        if (!(record[sk] && record[sk].S === "want" && list_of_download_params.length <= MAX_NUM_TO_DOWNLOAD)) return [3 /*break*/, 7];
+                        if (!record.idvv) {
+                            console.log("record doesn't have an `idvv` term: ", record);
+                            return [3 /*break*/, 7];
                         }
-                        if (!(get_item && num_urls_so_far <= MAX_NUM_TO_DOWNLOAD)) return [3 /*break*/, 5];
-                        idvv = void 0;
-                        try {
-                            idvv = record.idvv.S;
+                        if (!record.idvv.S) {
+                            console.log("record.idvv is not a string ", record.idvv);
+                            return [3 /*break*/, 7];
                         }
-                        catch (e) {
-                            console.log(e);
-                            console.log("^caught error from record.idvv.S");
-                            console.log("printing whole record:");
-                            console.log(record);
-                            return [3 /*break*/, 5];
+                        idvv = record.idvv.S;
+                        if (record[uk] === undefined || record[uk].S === undefined) {
+                            console.log("record[" + uk + "].S was not found:  " + record);
+                            return [3 /*break*/, 7];
                         }
-                        fetch_url = void 0;
-                        try {
-                            fetch_url = record[uk].S;
-                        }
-                        catch (e) {
-                            console.log(e);
-                            console.log("^caught error from record[uk].s");
-                            return [3 /*break*/, 5];
-                        }
-                        signed_url = getUploadURL(idvv, sk);
-                        db_update_promises.push(update_db(idvv, sk));
-                        _g.label = 2;
-                    case 2:
-                        _g.trys.push([2, 4, , 5]);
-                        _d = (_c = local_list_for_download).push;
-                        _e = {
-                            "fetch": fetch_url
-                        };
-                        _f = "submit";
-                        return [4 /*yield*/, signed_url];
-                    case 3:
-                        _d.apply(_c, [(_e[_f] = _g.sent(),
-                                _e)]);
-                        num_urls_so_far++;
-                        return [3 /*break*/, 5];
-                    case 4:
-                        e_3 = _g.sent();
-                        console.log("Error in getting signed URL");
-                        console.log(e_3);
-                        return [3 /*break*/, 5];
+                        fetch_url = record[uk].S;
+                        return [4 /*yield*/, update_db(idvv, sk)];
                     case 5:
-                        _i++;
-                        return [3 /*break*/, 1];
+                        _e.sent();
+                        return [4 /*yield*/, getUploadURL(idvv, sk)];
                     case 6:
-                        _g.trys.push([6, 8, , 9]);
-                        return [4 /*yield*/, Promise.all(db_update_promises)];
+                        uploadUrl = _e.sent();
+                        list_of_download_params.push({
+                            "fetch": fetch_url,
+                            "submit": uploadUrl
+                        });
+                        _e.label = 7;
                     case 7:
-                        _g.sent();
-                        return [3 /*break*/, 9];
+                        _d++;
+                        return [3 /*break*/, 4];
                     case 8:
-                        e_4 = _g.sent();
-                        console.log("Caught error when updating database:");
-                        console.log(e_4);
-                        return [3 /*break*/, 9];
-                    case 9: return [2 /*return*/, local_list_for_download];
+                        _i++;
+                        return [3 /*break*/, 3];
+                    case 9:
+                        // proceed to the next phase of recusion once the urls are processed
+                        continue_key = data.LastEvaluatedKey;
+                        if (list_of_download_params.length > MAX_NUM_TO_DOWNLOAD) {
+                            continue_key = false;
+                        }
+                        _e.label = 10;
+                    case 10:
+                        if (continue_key) return [3 /*break*/, 1];
+                        _e.label = 11;
+                    case 11: return [2 /*return*/, list_of_download_params];
                 }
             });
         });
@@ -272,22 +184,17 @@ exports.handler = function (event, context, callback) {
      * @param extension file extension
      */
     function getUploadURL(id, extension) {
-        return __awaiter(this, void 0, void 0, function () {
-            var key, params, URL;
-            return __generator(this, function (_a) {
-                key = id + "." + extension;
-                params = {
-                    Bucket: BUCKET,
-                    Key: key
-                };
-                URL = new Promise(function (resolve, reject) {
-                    s3.getSignedUrl('putObject', params, function (err, url) {
-                        resolve(url);
-                    });
-                });
-                return [2 /*return*/, URL];
+        var key = id + "." + extension;
+        var params = {
+            Bucket: BUCKET,
+            Key: key
+        };
+        var URL = new Promise(function (resolve, reject) {
+            s3.getSignedUrl('putObject', params, function (err, url) {
+                resolve(url);
             });
         });
+        return URL;
     }
     /**
      * Update the database by changing "want"s to "sent to client"'s. Returns a promise that resolves when
@@ -296,24 +203,19 @@ exports.handler = function (event, context, callback) {
      * @param field which field to declare as being sent to the client. e.g. "pdf".
      */
     function update_db(idvv, field) {
-        return __awaiter(this, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                return [2 /*return*/, db.updateItem({
-                        TableName: "papers-status",
-                        Key: {
-                            "idvv": {
-                                "S": idvv
-                            }
-                        },
-                        ExpressionAttributeValues: {
-                            ":sent": {
-                                "S": send_string
-                            }
-                        },
-                        UpdateExpression: "SET " + field + " = :sent",
-                        ReturnValues: "NONE"
-                    })];
-            });
-        });
+        return db.updateItem({
+            TableName: "papers-status",
+            Key: { "idvv": { "S": idvv } },
+            ExpressionAttributeValues: { ":sent": { "S": send_string } },
+            UpdateExpression: "SET " + field + " = :sent",
+            ReturnValues: "NONE"
+        }).promise();
     }
+    getDownloadParams().then(function (result) {
+        // Lastly: return the download params to the waiting API
+        callback(null, result);
+    })["catch"](function (err) {
+        console.log("Recurse had an error");
+        callback(err);
+    });
 };
