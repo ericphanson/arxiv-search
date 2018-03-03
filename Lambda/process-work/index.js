@@ -114,6 +114,9 @@ function handleRequest(event) {
         return __generator(this, function (_e) {
             switch (_e.label) {
                 case 0:
+                    if (event.client_id === undefined) {
+                        return [2 /*return*/, Promise.reject("client_id undefined.")];
+                    }
                     send_string = "sent_to_client=" + event.client_id;
                     FilterExpression = status_keys.map(function (r) { return r + " = :w"; }).join(" OR ");
                     get_fields = url_keys.concat(status_keys, ["idvv"]);
@@ -280,14 +283,20 @@ exports.handler = function (http_resp, context, callback) {
     }
     promise.then(function (r) { return end_eval(null, r, callback); })["catch"](function (e) { return end_eval(e, null, callback); });
 };
+/**
+ * Function to end evaulation of the Lambda and format the response for the API.
+ * @param error error to pass out ot the API
+ * @param success data to pass out of the API if it succeeds
+ * @param end_callback the callback from exports.handler
+ */
 function end_eval(error, success, end_callback) {
     var PR = new LambdaProxyResponse(undefined);
     var resp;
     if (error) {
-        resp = PR.serverError({ 'X-header': 'Your headers value' }, { 'bodyData': JSON.stringify(error) });
+        resp = PR.serverError({}, { 'bodyData': JSON.stringify(error) });
     }
     else {
-        resp = PR.ok({ 'X-header': 'Your headers value' }, { 'bodyData': JSON.stringify(success) });
+        resp = PR.ok({}, { 'bodyData': JSON.stringify(success) });
     }
     return end_callback(null, resp);
 }

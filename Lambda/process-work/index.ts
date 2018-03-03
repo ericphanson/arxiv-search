@@ -47,6 +47,7 @@ const status_keys = ["src", "pdf"];
 const TableName = "papers-status";
 
 async function handleRequest(event: requestEvent) {
+    if (event.client_id===undefined){ return Promise.reject("client_id undefined.") }
     // the API should pass through a client_id
     const send_string = "sent_to_client=" + event.client_id;
 
@@ -158,11 +159,15 @@ async function handleRequest(event: requestEvent) {
 
 async function handleError(event : errorEvent) {
     let {client_id, errors} = event;
+    if (client_id===undefined){ return Promise.reject("client_id undefined.") }
+    if (errors===undefined){ return Promise.reject("No errors provided.") }
+
+    let db_items = []
     for (let {idvv, field} of errors) {
         //perform some validation so the api can't change things willy nilly.
         if(field === undefined || idvv === undefined) {continue;}
         if (!status_keys.some(k => field === k)) {continue;}
-        await db.updateItem({
+        db_items.push(db.updateItem({
             TableName,
             Key: { "idvv": { "S": idvv } },
             ConditionExpression : `idvv = :idvv AND ${field} <> :have AND ${field} <> :dead`, //don't update if the idvv isn't there or if we regress the state.
@@ -174,9 +179,9 @@ async function handleError(event : errorEvent) {
             },
             UpdateExpression: `SET ${field} = :error`,
             ReturnValues: "NONE"
-        }).promise();
+        }).promise());
     }
-    return {};
+    return Promise.all(db_items);
 }
 
 /** Called by AWS */
@@ -194,22 +199,28 @@ exports.handler = (http_resp, context, callback) => {
     }
     else {
         let e = "unknown event type: " + event!.kind
-        end_eval(e,null,callback)
+        end_eval(e,null,callback);
         return;
     }
     promise.then(r =>  end_eval(null,r,callback)).catch(e => end_eval(e,null,callback));
 
 };
 
+/**
+ * Function to end evaulation of the Lambda and format the response for the API.
+ * @param error error to pass out ot the API
+ * @param success data to pass out of the API if it succeeds
+ * @param end_callback the callback from exports.handler
+ */
 function end_eval(error,success, end_callback) {
     let PR = new LambdaProxyResponse(undefined);
     let resp;
     if (error) {
-        resp = PR.serverError({ 'X-header': 'Your headers value' }, { 'bodyData': JSON.stringify(error) });
+        resp = PR.serverError({}, { 'bodyData': JSON.stringify(error) });
     } else {
-        resp = PR.ok({ 'X-header': 'Your headers value' }, { 'bodyData': JSON.stringify(success) });
+        resp = PR.ok({}, { 'bodyData': JSON.stringify(success) });
     }
-    return end_callback(null,resp)
+    return end_callback(null,resp);
 }
 
 // from https://www.npmjs.com/package/lambda-proxy-response
