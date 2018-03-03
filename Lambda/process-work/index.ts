@@ -42,8 +42,8 @@ type errorEvent = {
 type event = errorEvent | requestEvent;
 
 const MAX_NUM_TO_DOWNLOAD = 20;
-const url_keys = ["source_url", "pdf_url"];
-const status_keys = ["source", "pdf"];
+const url_keys = ["src_url", "pdf_url"];
+const status_keys = ["src", "pdf"];
 const TableName = "papers-status";
 
 async function handleRequest(event: requestEvent) {
@@ -180,7 +180,11 @@ async function handleError(event : errorEvent) {
 }
 
 /** Called by AWS */
-exports.handler = (event: event, context, callback) => {
+exports.handler = (http_resp, context, callback) => {
+    let event : event
+    event = JSON.parse(http_resp.body)
+
+    console.log("Got event: " +  event)
     let promise;
     if (event.kind === "request") {
         promise = handleRequest(event);
@@ -189,8 +193,116 @@ exports.handler = (event: event, context, callback) => {
         promise = handleError(event);
     }
     else {
-        callback("unknown event type: " + event!.kind);
+        let e = "unknown event type: " + event!.kind
+        end_eval(e,null,callback)
         return;
     }
-    promise.then(r => callback(null, r)).catch(e => callback(e));
+    promise.then(r =>  end_eval(null,r,callback)).catch(e => end_eval(e,null,callback));
+
 };
+
+function end_eval(error,success, end_callback) {
+    let PR = new LambdaProxyResponse(undefined);
+    let resp;
+    if (error) {
+        resp = PR.serverError({ 'X-header': 'Your headers value' }, { 'bodyData': JSON.stringify(error) });
+    } else {
+        resp = PR.ok({ 'X-header': 'Your headers value' }, { 'bodyData': JSON.stringify(success) });
+    }
+    return end_callback(null,resp)
+}
+
+// from https://www.npmjs.com/package/lambda-proxy-response
+class LambdaProxyResponse {
+    options;
+    constructor(options) {
+      this.options = options || { headers: {}, body: {}, status: null, extendHeader: true };
+    }
+  
+    config(options) {
+      if (typeof options === 'object' && options !== null) {
+        Object.assign(this.options, options);
+      }
+    }
+  
+    response(status, headers, body, cb?, options?) {
+      let responseStatus = {};
+      let responseHeader = {};
+      let responseBody = {};
+  
+      responseStatus = status || this.options.status || 400;
+  
+      // set headers
+      if (typeof headers !== 'object' || headers === null ) {
+        if (this.options && this.options.headers) {
+          responseHeader = this.options.headers;
+        } else {
+          responseHeader = {};
+        }
+      } else {
+        if (this.options.headers && this.options.extendHeader) {
+          responseHeader = Object.assign(responseHeader, headers, this.options.headers);
+        } else {
+          responseHeader = headers;
+        }
+      }
+  
+      // set body
+      if (typeof body === 'undefined' || body === null) {
+        if (this.options && this.options.body) {
+          responseBody = this.options.body;
+        } else {
+          responseBody = {};
+        }
+      } else {
+        responseBody = body;
+      }
+  
+      const responseTemplate = this._createResponseTemplate(responseStatus, responseHeader, responseBody);
+  
+      // call cb
+      if (typeof cb === 'function') {
+        cb(null, responseTemplate);
+      }
+  
+      return responseTemplate;
+    }
+  
+    ok(headers, body, cb?, options?) {
+      return this.response(200, headers, body, cb, options || {});
+    }
+  
+    created(headers, body, cb?, options?) {
+      return this.response(201, headers, body, cb, options || {});
+    }
+  
+    badRequest(headers, body, cb?, options?) {
+      return this.response(400, headers, body, cb, options || {});
+    }
+  
+    notAuthorized(headers, body, cb?, options?) {
+      return this.response(401, headers, body, cb, options || {});
+    }
+  
+    forbidden(headers, body, cb?, options?) {
+      return this.response(403, headers, body, cb, options || {});
+    }
+  
+    notFound(headers, body, cb?, options?) {
+      return this.response(404, headers, body, cb, options || {});
+    }
+  
+    serverError(headers, body, cb?, options?) {
+      return this.response(500, headers, body, cb, options || {});
+    }
+  
+    _createResponseTemplate(status, headers, body) {
+      return {
+        statusCode: status,
+        body: JSON.stringify(body),
+        headers: headers
+      }; 
+    }
+  }
+  
+  

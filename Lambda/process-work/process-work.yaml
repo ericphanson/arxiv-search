@@ -2,7 +2,7 @@
 Transform: 'AWS::Serverless-2016-10-31'
 Description: An AWS Serverless Specification template describing your function.
 Resources:
-  makethumbfrompapersstatusupdate:
+  processwork:
     Type: 'AWS::Serverless::Function'
     Properties:
       Handler: index.handler
@@ -15,3 +15,9 @@ Resources:
       MemorySize: 128
       Timeout: 60
       Role: 'arn:aws:iam::351532156193:role/lambda_everything'
+      Events:
+        Api1:
+          Type: Api
+          Properties:
+            Path: /process-work
+            Method: ANY
