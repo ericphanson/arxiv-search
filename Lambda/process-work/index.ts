@@ -6,7 +6,8 @@ const db = new AWS.DynamoDB({
     apiVersion: '2012-08-10'
 });
 const s3 = new AWS.S3({
-    apiVersion: '2006-03-01'
+    apiVersion: '2006-03-01',
+    signatureVersion: 'v4'
 });
 
 /** The bucket to make URLs for placing downloads in */
@@ -186,10 +187,15 @@ async function handleError(event : errorEvent) {
 
 /** Called by AWS */
 exports.handler = (http_resp, context, callback) => {
-    let event : event
-    event = JSON.parse(http_resp.body)
+    let event : event = JSON.parse(http_resp.body)
+    // try {
+    // event = JSON.parse(JSON.parse(http_resp.body));
+    // }
+    // catch (e) {
+    //     console.log(e)
+    //     event =JSON.parse(http_resp.body);
+    // }
 
-    console.log("Got event: " +  event)
     let promise;
     if (event.kind === "request") {
         promise = handleRequest(event);
@@ -213,107 +219,26 @@ exports.handler = (http_resp, context, callback) => {
  * @param end_callback the callback from exports.handler
  */
 function end_eval(error,success, end_callback) {
-    let PR = new LambdaProxyResponse(undefined);
-    let resp;
-    if (error) {
-        resp = PR.serverError({}, { 'bodyData': JSON.stringify(error) });
-    } else {
-        resp = PR.ok({}, { 'bodyData': JSON.stringify(success) });
-    }
-    return end_callback(null,resp);
-}
 
-// from https://www.npmjs.com/package/lambda-proxy-response
-class LambdaProxyResponse {
-    options;
-    constructor(options) {
-      this.options = options || { headers: {}, body: {}, status: null, extendHeader: true };
-    }
-  
-    config(options) {
-      if (typeof options === 'object' && options !== null) {
-        Object.assign(this.options, options);
+    const responseHeaders = {
+        'Content-Type': 'application/json',
+        // Required for CORS support to work
+        'Access-Control-Allow-Origin': '*',  
+        // Required for cookies, authorization headers with HTTPS
+        'Access-Control-Allow-Credentials': true
       }
+
+    let response = {
+        "headers": responseHeaders,
+        "isBase64Encoded": false
+    };
+
+    if (error) {
+        response['statusCode'] = 500;
+        response['body'] = JSON.stringify(error)
+    } else {
+        response['statusCode'] = 200;
+        response['body'] = JSON.stringify(success)
     }
-  
-    response(status, headers, body, cb?, options?) {
-      let responseStatus = {};
-      let responseHeader = {};
-      let responseBody = {};
-  
-      responseStatus = status || this.options.status || 400;
-  
-      // set headers
-      if (typeof headers !== 'object' || headers === null ) {
-        if (this.options && this.options.headers) {
-          responseHeader = this.options.headers;
-        } else {
-          responseHeader = {};
-        }
-      } else {
-        if (this.options.headers && this.options.extendHeader) {
-          responseHeader = Object.assign(responseHeader, headers, this.options.headers);
-        } else {
-          responseHeader = headers;
-        }
-      }
-  
-      // set body
-      if (typeof body === 'undefined' || body === null) {
-        if (this.options && this.options.body) {
-          responseBody = this.options.body;
-        } else {
-          responseBody = {};
-        }
-      } else {
-        responseBody = body;
-      }
-  
-      const responseTemplate = this._createResponseTemplate(responseStatus, responseHeader, responseBody);
-  
-      // call cb
-      if (typeof cb === 'function') {
-        cb(null, responseTemplate);
-      }
-  
-      return responseTemplate;
-    }
-  
-    ok(headers, body, cb?, options?) {
-      return this.response(200, headers, body, cb, options || {});
-    }
-  
-    created(headers, body, cb?, options?) {
-      return this.response(201, headers, body, cb, options || {});
-    }
-  
-    badRequest(headers, body, cb?, options?) {
-      return this.response(400, headers, body, cb, options || {});
-    }
-  
-    notAuthorized(headers, body, cb?, options?) {
-      return this.response(401, headers, body, cb, options || {});
-    }
-  
-    forbidden(headers, body, cb?, options?) {
-      return this.response(403, headers, body, cb, options || {});
-    }
-  
-    notFound(headers, body, cb?, options?) {
-      return this.response(404, headers, body, cb, options || {});
-    }
-  
-    serverError(headers, body, cb?, options?) {
-      return this.response(500, headers, body, cb, options || {});
-    }
-  
-    _createResponseTemplate(status, headers, body) {
-      return {
-        statusCode: status,
-        body: JSON.stringify(body),
-        headers: headers
-      }; 
-    }
-  }
-  
-  
+    return end_callback(null,response);
+}

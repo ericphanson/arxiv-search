@@ -20,4 +20,4 @@ Resources:
           Type: Api
           Properties:
             Path: /process-work
-            Method: ANY
+            Method: POST

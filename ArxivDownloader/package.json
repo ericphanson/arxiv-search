@@ -1,12 +1,18 @@
 {
-  "devDependencies": {
-    "@types/node": "^9.4.6",
+  "name": "arxivdownloader",
+  "version": "1.0.0",
+  "description": "A script to run on a host machine (e.g. DigitalOcean or your personal server) which requests papers.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "file-type": "^7.6.0",
     "request": "^2.83.0",
-    "tar-fs": "^1.16.0",
-    "xml2js": "^0.4.19",
-    "zlib": "^1.0.5"
+    "request-promise-native": "^1.0.5"
+  },
+  "devDependencies": {
+    "@types/request-promise-native": "^1.0.14"
   }
 }

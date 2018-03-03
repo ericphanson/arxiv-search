@@ -49,7 +49,8 @@ var db = new AWS.DynamoDB({
     apiVersion: '2012-08-10'
 });
 var s3 = new AWS.S3({
-    apiVersion: '2006-03-01'
+    apiVersion: '2006-03-01',
+    signatureVersion: 'v4'
 });
 /** The bucket to make URLs for placing downloads in */
 var BUCKET = 'arxiv-incoming';
@@ -212,63 +213,56 @@ function handleRequest(event) {
 }
 function handleError(event) {
     return __awaiter(this, void 0, void 0, function () {
-        var client_id, errors, _loop_1, _i, errors_1, _a, idvv, field;
+        var client_id, errors, db_items, _loop_1, _i, errors_1, _a, idvv, field;
         return __generator(this, function (_b) {
-            switch (_b.label) {
-                case 0:
-                    client_id = event.client_id, errors = event.errors;
-                    _loop_1 = function (idvv, field) {
-                        return __generator(this, function (_a) {
-                            switch (_a.label) {
-                                case 0:
-                                    //perform some validation so the api can't change things willy nilly.
-                                    if (field === undefined || idvv === undefined) {
-                                        return [2 /*return*/, "continue"];
-                                    }
-                                    if (!status_keys.some(function (k) { return field === k; })) {
-                                        return [2 /*return*/, "continue"];
-                                    }
-                                    return [4 /*yield*/, db.updateItem({
-                                            TableName: TableName,
-                                            Key: { "idvv": { "S": idvv } },
-                                            ConditionExpression: "idvv = :idvv AND " + field + " <> :have AND " + field + " <> :dead",
-                                            ExpressionAttributeValues: {
-                                                ":error": { "S": "error" },
-                                                ":idvv": { "S": idvv },
-                                                ":have": { "S": "have" },
-                                                ":dead": { "S": "dead" }
-                                            },
-                                            UpdateExpression: "SET " + field + " = :error",
-                                            ReturnValues: "NONE"
-                                        }).promise()];
-                                case 1:
-                                    _a.sent();
-                                    return [2 /*return*/];
-                            }
-                        });
-                    };
-                    _i = 0, errors_1 = errors;
-                    _b.label = 1;
-                case 1:
-                    if (!(_i < errors_1.length)) return [3 /*break*/, 4];
-                    _a = errors_1[_i], idvv = _a.idvv, field = _a.field;
-                    return [5 /*yield**/, _loop_1(idvv, field)];
-                case 2:
-                    _b.sent();
-                    _b.label = 3;
-                case 3:
-                    _i++;
-                    return [3 /*break*/, 1];
-                case 4: return [2 /*return*/, {}];
+            client_id = event.client_id, errors = event.errors;
+            if (client_id === undefined) {
+                return [2 /*return*/, Promise.reject("client_id undefined.")];
             }
+            if (errors === undefined) {
+                return [2 /*return*/, Promise.reject("No errors provided.")];
+            }
+            db_items = [];
+            _loop_1 = function (idvv, field) {
+                //perform some validation so the api can't change things willy nilly.
+                if (field === undefined || idvv === undefined) {
+                    return "continue";
+                }
+                if (!status_keys.some(function (k) { return field === k; })) {
+                    return "continue";
+                }
+                db_items.push(db.updateItem({
+                    TableName: TableName,
+                    Key: { "idvv": { "S": idvv } },
+                    ConditionExpression: "idvv = :idvv AND " + field + " <> :have AND " + field + " <> :dead",
+                    ExpressionAttributeValues: {
+                        ":error": { "S": "error" },
+                        ":idvv": { "S": idvv },
+                        ":have": { "S": "have" },
+                        ":dead": { "S": "dead" }
+                    },
+                    UpdateExpression: "SET " + field + " = :error",
+                    ReturnValues: "NONE"
+                }).promise());
+            };
+            for (_i = 0, errors_1 = errors; _i < errors_1.length; _i++) {
+                _a = errors_1[_i], idvv = _a.idvv, field = _a.field;
+                _loop_1(idvv, field);
+            }
+            return [2 /*return*/, Promise.all(db_items)];
         });
     });
 }
 /** Called by AWS */
 exports.handler = function (http_resp, context, callback) {
-    var event;
-    event = JSON.parse(http_resp.body);
-    console.log("Got event: " + event);
+    var event = JSON.parse(http_resp.body);
+    // try {
+    // event = JSON.parse(JSON.parse(http_resp.body));
+    // }
+    // catch (e) {
+    //     console.log(e)
+    //     event =JSON.parse(http_resp.body);
+    // }
     var promise;
     if (event.kind === "request") {
         promise = handleRequest(event);
@@ -290,94 +284,24 @@ exports.handler = function (http_resp, context, callback) {
  * @param end_callback the callback from exports.handler
  */
 function end_eval(error, success, end_callback) {
-    var PR = new LambdaProxyResponse(undefined);
-    var resp;
+    var responseHeaders = {
+        'Content-Type': 'application/json',
+        // Required for CORS support to work
+        'Access-Control-Allow-Origin': '*',
+        // Required for cookies, authorization headers with HTTPS
+        'Access-Control-Allow-Credentials': true
+    };
+    var response = {
+        "headers": responseHeaders,
+        "isBase64Encoded": false
+    };
     if (error) {
-        resp = PR.serverError({}, { 'bodyData': JSON.stringify(error) });
+        response['statusCode'] = 500;
+        response['body'] = JSON.stringify(error);
     }
     else {
-        resp = PR.ok({}, { 'bodyData': JSON.stringify(success) });
+        response['statusCode'] = 200;
+        response['body'] = JSON.stringify(success);
     }
-    return end_callback(null, resp);
+    return end_callback(null, response);
 }
-// from https://www.npmjs.com/package/lambda-proxy-response
-var LambdaProxyResponse = /** @class */ (function () {
-    function LambdaProxyResponse(options) {
-        this.options = options || { headers: {}, body: {}, status: null, extendHeader: true };
-    }
-    LambdaProxyResponse.prototype.config = function (options) {
-        if (typeof options === 'object' && options !== null) {
-            Object.assign(this.options, options);
-        }
-    };
-    LambdaProxyResponse.prototype.response = function (status, headers, body, cb, options) {
-        var responseStatus = {};
-        var responseHeader = {};
-        var responseBody = {};
-        responseStatus = status || this.options.status || 400;
-        // set headers
-        if (typeof headers !== 'object' || headers === null) {
-            if (this.options && this.options.headers) {
-                responseHeader = this.options.headers;
-            }
-            else {
-                responseHeader = {};
-            }
-        }
-        else {
-            if (this.options.headers && this.options.extendHeader) {
-                responseHeader = Object.assign(responseHeader, headers, this.options.headers);
-            }
-            else {
-                responseHeader = headers;
-            }
-        }
-        // set body
-        if (typeof body === 'undefined' || body === null) {
-            if (this.options && this.options.body) {
-                responseBody = this.options.body;
-            }
-            else {
-                responseBody = {};
-            }
-        }
-        else {
-            responseBody = body;
-        }
-        var responseTemplate = this._createResponseTemplate(responseStatus, responseHeader, responseBody);
-        // call cb
-        if (typeof cb === 'function') {
-            cb(null, responseTemplate);
-        }
-        return responseTemplate;
-    };
-    LambdaProxyResponse.prototype.ok = function (headers, body, cb, options) {
-        return this.response(200, headers, body, cb, options || {});
-    };
-    LambdaProxyResponse.prototype.created = function (headers, body, cb, options) {
-        return this.response(201, headers, body, cb, options || {});
-    };
-    LambdaProxyResponse.prototype.badRequest = function (headers, body, cb, options) {
-        return this.response(400, headers, body, cb, options || {});
-    };
-    LambdaProxyResponse.prototype.notAuthorized = function (headers, body, cb, options) {
-        return this.response(401, headers, body, cb, options || {});
-    };
-    LambdaProxyResponse.prototype.forbidden = function (headers, body, cb, options) {
-        return this.response(403, headers, body, cb, options || {});
-    };
-    LambdaProxyResponse.prototype.notFound = function (headers, body, cb, options) {
-        return this.response(404, headers, body, cb, options || {});
-    };
-    LambdaProxyResponse.prototype.serverError = function (headers, body, cb, options) {
-        return this.response(500, headers, body, cb, options || {});
-    };
-    LambdaProxyResponse.prototype._createResponseTemplate = function (status, headers, body) {
-        return {
-            statusCode: status,
-            body: JSON.stringify(body),
-            headers: headers
-        };
-    };
-    return LambdaProxyResponse;
-}());
