@@ -35,8 +35,8 @@ exports.handler = (event, context, callback) => {
     if (filetype === "pdf") {
         updateHave(pid, "pdf", callback);
     }
-    else if (filetype === "tex") {
-        updateHave(pid, "tex", callback);
+    else if (filetype === "src") {
+        updateHave(pid, "src", callback);
     }
     else {
         callback("unrecognised extension " + filetype);
