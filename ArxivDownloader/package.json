@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "@types/node": "^9.4.6",
+  },
+  "dependencies": {
+    "file-type": "^7.6.0",
+    "request": "^2.83.0",
+    "tar-fs": "^1.16.0",
+    "xml2js": "^0.4.19",
+    "zlib": "^1.0.5"
+  }
+}
