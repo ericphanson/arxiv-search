@@ -13,5 +13,5 @@ Resources:
       CodeUri: .
       Description: ''
       MemorySize: 128
-      Timeout: 60
+      Timeout: 300
       Role: 'arn:aws:iam::351532156193:role/lambda_everything'
