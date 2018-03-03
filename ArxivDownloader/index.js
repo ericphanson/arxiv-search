@@ -14,7 +14,7 @@ var api_vals = require('./aws-api-key.json');
 var options = {
     uri: 'https://z9m8rwiox4.execute-api.us-east-1.amazonaws.com/Prod/process-work',
     headers: {
-        'XAPIKEY_HEADER': api_vals.key,
+        // 'XAPIKEY_HEADER': api_vals.key,
         'User-Agent': 'Request-Promise'
     },
     body: {
@@ -29,6 +29,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 let count = 0;
+let file_promises = [];
 rp.post(options)
     .then(function (resp) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -39,41 +40,54 @@ rp.post(options)
             // return;
             // }
             let filename = paper.idvv + "." + paper.field;
-            request.get({
-                'uri': paper.fetch,
-                headers: {
-                    "User-Agent": "request"
-                }
-            }).pipe(fs.createWriteStream(filename)).on('finish', () => {
-                var stats = fs.statSync(filename);
-                fs.createReadStream(filename).pipe(request.put({
-                    uri: paper.submit,
+            file_promises.push(new Promise((resolve, reject) => {
+                request.get({
+                    'uri': paper.fetch,
                     headers: {
-                        'Content-Length': stats['size']
+                        "User-Agent": "request"
                     }
-                }, function (err, res, body) {
-                    if (err) {
-                        console.log(err);
-                        fails.push({
-                            idvv: paper.idvv,
-                            field: paper.field
+                }).pipe(fs.createWriteStream(filename)).on('finish', () => {
+                    var stats = fs.statSync(filename);
+                    fs.createReadStream(filename).pipe(request.put({
+                        uri: paper.submit,
+                        headers: {
+                            'Content-Length': stats['size']
+                        }
+                    }, function (err, res, body) {
+                        fs.unlink(filename, (ferr) => {
+                            if (ferr) {
+                                console.log("Error deleting " + filename + " : " + ferr);
+                            }
+                            ;
                         });
-                    }
-                    else {
-                        succ.push(paper.idvv);
-                        console.log("Uploaded " + paper.idvv + "." + paper.field);
-                    }
-                    fs.unlink(filename);
-                }));
-            });
+                        if (err) {
+                            console.log(err);
+                            fails.push({
+                                idvv: paper.idvv,
+                                field: paper.field
+                            });
+                            reject();
+                        }
+                        else {
+                            succ.push(filename);
+                            console.log("Uploaded " + filename);
+                            resolve();
+                        }
+                    }));
+                });
+            }));
             yield sleep(1001);
         }
-        console.log("Failed papers: " + JSON.stringify(fails));
-        console.log("Succeeded papers: " + succ);
+        return Promise.all(file_promises);
     });
+}).then(() => {
+    console.log("Succeeded papers: " + succ);
 })
     .catch(function (err) {
     // API call failed...
     console.log("Got error : " + JSON.stringify(err));
+    if (fails) {
+        console.log("Failed papers: " + JSON.stringify(fails));
+    }
 });
 //# sourceMappingURL=index.js.map

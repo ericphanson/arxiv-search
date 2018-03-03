@@ -43,6 +43,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 let count = 0
+let file_promises = []
 rp.post(options)
     .then(async function (resp: paper_data[]) {
         console.log("Got response " + JSON.stringify(resp))
@@ -53,7 +54,9 @@ rp.post(options)
             // }
             let filename = paper.idvv + "." + paper.field
 
-            request.get({
+            file_promises.push(new Promise( (resolve,reject) => {
+                
+                request.get({
                 'uri': paper.fetch,
                 headers: {
                     "User-Agent": "request"
@@ -67,29 +70,39 @@ rp.post(options)
                         'Content-Length': stats['size']
                     }
                 }, function (err, res, body) {
+                    fs.unlink(filename, (ferr) => {
+                        if (ferr){console.log("Error deleting " + filename + " : " + ferr)};
+                      });
+
                     if (err) {
                         console.log(err)
                         fails.push({
                             idvv: paper.idvv,
                             field: paper.field
-                        })
+                        });
+                        reject()
                     } else {
-                        succ.push(paper.idvv);
-                        console.log("Uploaded " + paper.idvv + "." + paper.field)
+                        succ.push(filename);
+                        console.log("Uploaded " + filename)
+                        resolve()
                     }
-                    fs.unlink(filename, (err) => {
-                        if (err){console.log("Error deleting " + filename + " : " + err)};
-                      });
+        
+
                 }))
-            });
+            })} ));
 
             await sleep(1001)
 
         }
-        console.log("Failed papers: " + JSON.stringify(fails))
+        return Promise.all(file_promises)
+        
+    }).then( () => {
         console.log("Succeeded papers: " + succ)
     })
     .catch(function (err) {
         // API call failed...
         console.log("Got error : " + JSON.stringify(err))
+        if (fails) {
+            console.log("Failed papers: " + JSON.stringify(fails));
+        }
     });
