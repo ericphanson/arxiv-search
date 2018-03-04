@@ -66,9 +66,9 @@ async function downloadPaper(url, filename): Promise < request.Response > {
             // wait for the response
             let dl_response : any = await awaitEvent(r, "response");
             if (dl_response.statusCode === 200) {
-                let p = r.pipe(fs.createWriteStream(filename)) //pipe to where you want it to go
+                let file = r.pipe(fs.createWriteStream(filename)) //pipe to where you want it to go
                 r.resume();
-                let e : request.Response = await awaitEvent(p,'finish');
+                let e : request.Response = await awaitEvent(file,'finish');
                 return e;
             } else {
                 console.log(`Got status ${dl_response.statusCode} on attempt ${attempts}`)
@@ -76,7 +76,7 @@ async function downloadPaper(url, filename): Promise < request.Response > {
                     try_again = true;
                 } else {
                     try_again = false;
-                    throw new Error("we errored");
+                    throw new Error(`Failed on MAX_TRIES (${MAX_TRIES}) download attempts, so moving on...`);
                 }
             }
         } while (try_again)
