@@ -510,12 +510,10 @@ def build_slow_meta_query(query_info):
   sampler_agg = A('sampler', shard_size=200)
 
   auth_agg = A('significant_terms', field='authors')
-
   search.aggs.bucket('sig_filt', sig_filt).bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
 
-  keywords_agg = A('significant_terms', field='abstract')
-  
-  search.aggs['sig_filt']['sampler_agg'].bucket('keywords_agg', keywords_agg)
+  # keywords_agg = A('significant_terms', field='abstract')
+  # search.aggs['sig_filt']['sampler_agg'].bucket('keywords_agg', keywords_agg)
 
   return search
 
@@ -605,14 +603,14 @@ def _getmeta():
 
 @app.route('/_getslowmeta', methods=['POST'])
 def _getslowmeta():
-    # data = request.get_json()
-    # query_info = data['query']
-    # search = build_slow_meta_query(query_info)
-    # if not search:
-    #   return jsonify({})
-    # search = search[0:0]
-    # papers, meta = getResults(search)
-    meta = {'abc' : 'def'}
+    data = request.get_json()
+    query_info = data['query']
+    search = build_slow_meta_query(query_info)
+    if not search:
+      return jsonify({})
+    search = search[0:0]
+    papers, meta = getResults(search)
+    # meta = {'abc' : 'def'}
     
     return jsonify(meta)
 
