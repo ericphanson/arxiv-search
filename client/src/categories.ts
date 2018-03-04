@@ -64,7 +64,7 @@ export const cat_col = (cat : category) => {
   }
   return {bg : "grey", dark : false}
 }
-export const all_categories : {c : category, d : string}[] = require("../shared/all_categories.json")
+export const all_categories : {c : category, d : string}[] = require("../../shared/all_categories.json")
 let desc_table = {};
 for (let {c,d} of all_categories) {
   desc_table[c] = d;
