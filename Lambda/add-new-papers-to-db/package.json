@@ -1,0 +1,11 @@
+{
+    "dependencies": {
+        "request": "^2.83.0",
+        "xml2js": "^0.4.19"
+    },
+    "devDependencies": {
+        "@types/node": "^9.4.6",
+        "@types/request": "^2.47.0",
+        "@types/xml2js": "^0.4.2"
+    }
+}

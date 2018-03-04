@@ -1,0 +1,1 @@
+Takes a pdf file and creates a thumb using imagemagick.

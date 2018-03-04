@@ -1,0 +1,1 @@
+In progress; trying to use typescript. The idea is an external client can request download work from an amazon API gateway, which passes the request to this Lambda. This function returns a list of dictionaries each with a "fetch" url and a "submit" url. The client's job is to download whatever is at the fetch url, and upload it to the submit url.
