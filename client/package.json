@@ -10,7 +10,6 @@
   "devDependencies": {
     "@types/react": "^16.0.36",
     "@types/react-dom": "^16.0.3",
-    "aws-sdk": "^2.205.0",
     "brunch": "^2.10.12",
     "brunch-typescript": "^2.1.0",
     "copycat-brunch": "^1.1.0",
