@@ -1,8 +1,8 @@
 'use strict';
 
-let rp = require('request-promise-native')
-let request = require('request')
-let fs = require('fs')
+import * as rp from 'request-promise-native'
+import * as fs from 'fs'
+import * as request from 'request'
 
 type api_params = {
     key: string
@@ -14,7 +14,7 @@ var api_vals: api_params = require('./aws-api-key.json');
 var options = {
     uri: 'https://z9m8rwiox4.execute-api.us-east-1.amazonaws.com/Prod/process-work',
     headers: {
-        'XAPIKEY_HEADER': api_vals.key,
+        'x-api-key': api_vals.key,
         'User-Agent': 'Request-Promise'
     },
     body: {
@@ -35,6 +35,7 @@ type failed_paper = {
     idvv: string,
     field: string
 };
+const MAX_TRIES = 5;
 
 let fails: failed_paper[] = [];
 let succ: string[] = [];
@@ -42,67 +43,122 @@ let succ: string[] = [];
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-let count = 0
-let file_promises = []
-rp.post(options)
-    .then(async function (resp: paper_data[]) {
-        console.log("Got response " + JSON.stringify(resp))
-        for (let paper of resp) {
-            count++
-            // if (count > 3) {
-            // return;
-            // }
-            let filename = paper.idvv + "." + paper.field
+function awaitEvent(item, eventName) {return new Promise<any>((resolve, reject) => item.on(eventName, resolve))}
 
-            file_promises.push(new Promise( (resolve,reject) => {
-                
-                request.get({
-                'uri': paper.fetch,
+/**
+ * Attempts to download the paper up to MAX_TRIES number of times. 
+ * Returns a promise which resolves when the download completes, or rejects if the maximum number of attempts was reached.
+ * @param url url to download
+ * @param filename filename to place the document
+ */
+async function downloadPaper(url, filename): Promise < request.Response > {
+        let try_again : boolean;
+        let attempts = 0;
+        do {
+            attempts++;
+            let r = request.get({
+                'uri': url,
                 headers: {
                     "User-Agent": "request"
                 }
-            }).pipe(fs.createWriteStream(filename)).on('finish', () => {
-                var stats = fs.statSync(filename);
+            });
+            r.pause();
+            // wait for the response
+            let dl_response : any = await awaitEvent(r, "response");
+            if (dl_response.statusCode === 200) {
+                let p = r.pipe(fs.createWriteStream(filename)) //pipe to where you want it to go
+                r.resume();
+                let e : request.Response = await awaitEvent(p,'finish');
+                return e;
+            } else {
+                console.log(`Got status ${dl_response.statusCode} on attempt ${attempts}`)
+                if (attempts < MAX_TRIES) {
+                    try_again = true;
+                } else {
+                    try_again = false;
+                    throw new Error("we errored");
+                }
+            }
+        } while (try_again)
+}
 
-                fs.createReadStream(filename).pipe(request.put({
-                    uri: paper.submit,
-                    headers: {
-                        'Content-Length': stats['size']
-                    }
-                }, function (err, res, body) {
-                    fs.unlink(filename, (ferr) => {
-                        if (ferr){console.log("Error deleting " + filename + " : " + ferr)};
-                      });
+function uploadPaper(url, filename) {
+    let stats = fs.statSync(filename);
+    return new Promise((resolve, reject) => {
+        fs.createReadStream(filename).pipe(request.put({
+            uri: url,
+            headers: {
+                'Content-Length': stats['size']
+            }
+        }, (err, res, body) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(res);
+            }
+        }));
+    });
+}
 
-                    if (err) {
-                        console.log(err)
-                        fails.push({
-                            idvv: paper.idvv,
-                            field: paper.field
-                        });
-                        reject()
-                    } else {
-                        succ.push(filename);
-                        console.log("Uploaded " + filename)
-                        resolve()
-                    }
-        
 
-                }))
-            })} ));
+
+function deleteFile(filename) {
+    return new Promise((resolve, reject) => {
+        fs.unlink(filename, (ferr) => {
+            if (ferr) {
+                console.log("Error deleting " + filename + " : " + ferr)
+                reject(ferr)
+            } else {
+                resolve()
+            }
+        })
+    });
+}
+
+rp.post(options)
+    .then(async function (resp: paper_data[]) {
+
+        console.log(`Got response of length ${resp.length}` )
+        for (let paper of resp) {
+            let filename = paper.idvv + "." + paper.field;
+            try {
+                await downloadPaper(paper.fetch, filename)
+                console.log(`Downloaded ${filename}`)
+            } catch (e) {
+                console.log("Download request failed. Probably set to dead?")
+                fails.push({
+                    idvv: paper.idvv,
+                    field: paper.field
+                });
+                continue; // skip the rest for this paper, since we couldn't download it
+            }
+
+            // validate file ?
+
+            try {
+                await uploadPaper(paper.submit, filename)
+                console.log(`Uploaded ${filename}`)                
+            } catch (e) {
+                console.log("Upload request failed. Probably set to error?")
+                fails.push({
+                    idvv: paper.idvv,
+                    field: paper.field
+                });
+                continue; // skip the rest for this paper, since we couldn't download it
+            }
+
+            await deleteFile(filename)
 
             await sleep(1001)
 
         }
-        return Promise.all(file_promises)
-        
-    }).then( () => {
         console.log("Succeeded papers: " + succ)
-    })
-    .catch(function (err) {
-        // API call failed...
-        console.log("Got error : " + JSON.stringify(err))
         if (fails) {
             console.log("Failed papers: " + JSON.stringify(fails));
         }
-    });
+    }).catch(
+        (err)  => {
+            console.log("Request error!")
+            console.log(err)
+        }
+    )
