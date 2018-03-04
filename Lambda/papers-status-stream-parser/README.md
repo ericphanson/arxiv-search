@@ -1,1 +1,0 @@
-Reads a stream of chenges to `papers-status` and fires lambdas to update entries marked as `want` when all of the resources are available.
