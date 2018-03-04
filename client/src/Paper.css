@@ -1,0 +1,25 @@
+
+.apaper {
+	display: grid;
+	grid-template-columns: auto minmax(auto, min-content);
+}
+.paperdesc {
+	grid-column: 1;
+	grid-row: 1;
+}
+
+.dllinks {
+	grid-column: 2;
+	grid-row: 1
+}
+.animg {
+	grid-column: 1 / span 2;
+	grid-row:2;
+}
+.animg img {
+	max-width: 100%;
+}
+.abstract {
+	grid-column: 1 / span 2;
+	grid-row: 3;
+}

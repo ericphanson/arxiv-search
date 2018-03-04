@@ -1,0 +1,209 @@
+.app-root {
+    display: grid;
+    justify-content: center;
+    grid-template-columns: 40px minmax(auto, min-content) 1fr 40px;
+    grid-template-rows: auto auto auto;
+    grid-gap: .5rem;
+    grid-template-areas:
+        ".      header header  .     "
+        ".      search search  .     "
+        ".      side   results .     "
+        ".      footer footer  .     ";
+}
+
+.header-bg {
+    grid-row: 1;
+    grid-column: 1 / span 4;
+}
+
+
+.header {
+    grid-area: header;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+
+nav form {
+    display: flex;
+}
+
+nav input {
+    margin: 4px;
+}
+
+.form-control {
+    padding: 0.375rem 1rem;
+    font-size: 1em;
+    /* line-height: 1.5; */
+    color: #495057;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid #999;
+    border-radius: 4px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus {
+    color: #495057;
+    background-color: #fff;
+    border-color: #ffffff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.75);
+}
+
+input[type="submit"]:focus {
+    outline : unset;
+}
+
+.btn {
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    user-select: none;
+    border: 1px solid #999;
+    padding: 0.375rem 1rem;
+    font-size: 1rem;
+    /* line-height: 1.5; */
+    border-radius: 4px;
+    cursor: pointer;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.btn:hover, .btn:focus {
+    text-decoration: none;
+}
+
+.btn:focus, .btn.focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.75);
+}
+
+.btn.disabled, .btn:disabled {
+opacity: 0.65;
+}
+  
+.btn-primary {
+    color: #fff;
+    background-color: #EB6864;
+    border-color: #EB6864;
+}
+  
+.btn-primary:hover {
+    color: #fff;
+    background-color: #ca3d38;
+    border-color: #e53c37;
+}
+  
+.btn-secondary {
+    color: #222;
+    background-color: #aaa;
+    border-color: #aaa;
+}
+  
+.btn-secondary:hover {
+    color: #222;
+    background-color: #979797;
+    border-color: #919090;
+}
+.app-searchbar {
+    grid-area : search;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    
+}
+
+.searchinput {
+    border: solid 1px #999;
+    background-color: white;
+    color: "#333";
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+    padding: 0.2em 0.5em;
+    outline: 0;
+    font-size: 32px;
+    width:100%;
+    box-sizing: border-box;
+}
+#qbutton {
+    background-image: url('./search.png');
+    background-repeat: no-repeat;
+    background-position: 40% 50%;      
+    flex : 0 0 50px;
+}
+
+.app-filters {
+    grid-area: side;
+    width : 200px;
+    display: flex;
+    flex-flow: column nowrap;
+    font-size: 0.8em;
+}
+
+.app-results {
+    grid-area: results;
+}
+
+a.link:hover {
+    cursor : pointer;
+    text-decoration: underline;
+}
+
+.maroon { color : #9e2a3f}
+.bg-maroon { background-color : #9e2a3f}
+
+.anim-item {
+    transition: all 0.1s ease-out;
+}
+.radioGrid {
+    display: grid;
+    grid-gap: 1px;
+    grid-template-rows: 2.7em 2.7em;
+    border-color : black;
+    border-width: 1px;
+    border-style: solid;
+    background-color: black;
+    border-radius: 4px;
+}
+.timeButton {
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    user-select: none;
+    padding: 0.3em 0rem;
+    border-radius: 0px;
+    cursor: pointer;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;    
+    color: #fff;
+    background-color: rgb(173, 173, 173);
+}
+.checked {
+    cursor: default;
+    pointer-events: none;
+}
+
+.anim-opacity {transition: opacity 0.15s ease-in;}
+.hide {opacity: 0;}
+
+
+.leaderboard-enter {
+    opacity: 0.01;
+}
+.leaderboard-enter.leaderboard-enter-active {
+opacity: 1;
+transition: opacity 500ms ease-in;
+}
+
+.leaderboard-leave {
+opacity: 1;
+}
+
+.leaderboard-leave.leaderboard-leave-active {
+opacity: 0.01;
+transition: opacity 300ms ease-in;
+}

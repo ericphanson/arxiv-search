@@ -4,11 +4,10 @@ Code for lambdas gets deployed by the AWS CLI to an S3 bucket. We use `arxiv-sea
 
 ## Creating the lambda
 
-Make a subfolder here and create an `index.js` file containing the lambda file. Also create a `name_of_lambda.yaml` file containing the AWS SAM file, see e.g. `papers-status-stream-parser` as an example.
+Create a lambda either in `infrastructure` or `processors`. See examples there.
 
-The important part is that the YAML should contain a `S3_BUCKET` environment variable:
+Then add it to `lambdas.yaml`. The important part is that the YAML should contain a `S3_BUCKET` environment variable:
 ```yaml
-Resources:
   nameoflambda:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -24,5 +23,5 @@ Resources:
 The lambdas are deployed via AWS CloudFormation. The following bash script does that for you (assuming you have the AWS CLI configured):
 
 ```
-./deploy_lambda.sh "papers-status-stream-parser"
+./deploy_lambda.sh
 ```
