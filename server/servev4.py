@@ -249,8 +249,8 @@ def getResults(search):
       have = True
 
   # temp disable caching
-  print("remember, caching disabled for testing")
-  have = False
+  # print("remember, caching disabled for testing")
+  # have = False
 
   if not have:
     es_response = search.execute()
