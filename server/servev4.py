@@ -18,7 +18,6 @@ from flask import Flask, request, session, url_for, redirect, \
      render_template, abort, g, flash, _app_ctx_stack
 from flask_limiter import Limiter
 from werkzeug import check_password_hash, generate_password_hash
-from utils import safe_pickle_dump, strip_version, isvalidid, Config
 import re
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection
@@ -45,10 +44,22 @@ import threading
 # -----------------------------------------------------------------------------
 stop_words = ["the", "of", "and", "in", "a", "to", "we", "for", "mathcal", "can", "is", "this", "with", "by", "that", "as", "to"]
 root_dir = os.path.join(".")
-def key_dir(file): return os.path.join(root_dir,"keys",file)
+def key_dir(file): return os.path.join(root_dir,"server","keys",file)
 def server_dir(file): return os.path.join(root_dir,"server", file)
 def shared_dir(file): return os.path.join(root_dir,"shared", file)
-  
+
+database_path = os.path.join(root_dir,"server", 'user_db', 'as.db') 
+schema_path = os.path.join(root_dir,"server", 'user_db', 'schema.sql')
+
+def strip_version(idstr):
+    """ identity function if arxiv id has no version, otherwise strips it. """
+    parts = idstr.split('v')
+    return parts[0]
+
+# "1511.08198v1" is an example of a valid arxiv id that we accept
+def isvalidid(pid):
+  return re.match('^([a-z]+(-[a-z]+)?/)?\d+(\.\d+)?(v\d+)?$', pid)
+
 
 # database configuration
 if os.path.isfile(key_dir('secret_key.txt')):
@@ -56,8 +67,8 @@ if os.path.isfile(key_dir('secret_key.txt')):
 else:
   SECRET_KEY = 'devkey, should be in a file'
 
-AWS_ACCESS_KEY = open(key_dir('AWS_ACCESS_KEY.txt'), 'r').read().strip()
-AWS_SECRET_KEY = open(key_dir('AWS_SECRET_KEY.txt'), 'r').read().strip()
+# AWS_ACCESS_KEY = open(key_dir('AWS_ACCESS_KEY.txt'), 'r').read().strip()
+# AWS_SECRET_KEY = open(key_dir('AWS_SECRET_KEY.txt'), 'r').read().strip()
 
 ES_USER = open(key_dir('ES_USER.txt'), 'r').read().strip()
 ES_PASS = open(key_dir('ES_PASS.txt'), 'r').read().strip()
@@ -65,8 +76,8 @@ es_host = es_host = '0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io'
 
 
 
-log_AWS_ACCESS_KEY = open(key_dir('log_AWS_ACCESS_KEY.txt'), 'r').read().strip()
-log_AWS_SECRET_KEY = open(key_dir('log_AWS_SECRET_KEY.txt'), 'r').read().strip()
+# log_AWS_ACCESS_KEY = open(key_dir('log_AWS_ACCESS_KEY.txt'), 'r').read().strip()
+# log_AWS_SECRET_KEY = open(key_dir('log_AWS_SECRET_KEY.txt'), 'r').read().strip()
 CLOUDFRONT_URL = 'https://d3dq07j9ipgft2.cloudfront.net/'
 
 with open(shared_dir("all_categories.json"), 'r') as cats:
@@ -93,7 +104,7 @@ app.config.from_object(__name__)
 # -----------------------------------------------------------------------------
 # to initialize the database: sqlite3 as.db < schema.sql
 def connect_db():
-  sqlite_db = sqlite3.connect(Config.database_path)
+  sqlite_db = sqlite3.connect(database_path)
   sqlite_db.row_factory = sqlite3.Row # to return dicts rather than tuples
   return sqlite_db
 
@@ -1302,10 +1313,10 @@ if __name__ == "__main__":
   args = parser.parse_args()
   print(args)
 
-  if not os.path.isfile(Config.database_path):
+  if not os.path.isfile(database_path):
     print('did not find as.db, trying to create an empty database from schema.sql...')
     print('this needs sqlite3 to be installed!')
-    os.system('sqlite3 ' + Config.database_path + ' < schema.sql')
+    os.system('sqlite3 ' + database_path + ' < ' + schema_path)
     # os.system('chmod a+rwx as.db')
     
 
