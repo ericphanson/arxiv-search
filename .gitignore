@@ -11,3 +11,4 @@ Lambda/add-new-papers-to-db/index.js
 yarn.lock
 packages-lock.json
 **/ts-compiled
+.map

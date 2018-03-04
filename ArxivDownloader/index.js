@@ -13,7 +13,8 @@ const fs = require("fs");
 const request = require("request");
 var api_vals = require('./aws-api-key.json');
 var options = {
-    uri: 'https://z9m8rwiox4.execute-api.us-east-1.amazonaws.com/Prod/process-work',
+    uri: 'https://5r5jxlv6f3.execute-api.us-east-1.amazonaws.com/Prod/process-work',
+    // uri: 'https://z9m8rwiox4.execute-api.us-east-1.amazonaws.com/Prod/process-work',
     headers: {
         'x-api-key': api_vals.key,
         'User-Agent': 'Request-Promise'
