@@ -3,6 +3,101 @@ Transform: 'AWS::Serverless-2016-10-31'
 Description: An AWS Serverless Specification template describing your function.
 Resources:
 
+  # API
+  Api1:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: lambda
+
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:invokeFunction
+      FunctionName:
+        Fn::GetAtt:
+        - processwork
+        - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+        - ''
+        - - 'arn:aws:execute-api:'
+          - Ref: AWS::Region
+          - ":"
+          - Ref: AWS::AccountId
+          - ":"
+          - Ref: Api1
+          - "/*"
+
+  Api1Resource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref Api1
+      ParentId: 
+        Fn::GetAtt: 
+          - "Api1"
+          - "RootResourceId"
+      PathPart: "process-work"
+
+  Api1OPTIONS:
+    DependsOn: LambdaPermission
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      ResourceId: !Ref Api1Resource
+      RestApiId: !Ref Api1
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+            StatusCode: '200'
+        PassthroughBehavior: NEVER
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+      MethodResponses:
+        - ResponseModels:
+            application/json: Empty
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          StatusCode: '200'
+
+  ProcessWorkRequest:
+    DependsOn: LambdaPermission
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Credentials: 'arn:aws:iam::351532156193:role/lambda_everything'
+        Uri:
+          Fn::Join:
+            - ''
+            - - 'arn:aws:apigateway:'
+              - Ref: AWS::Region
+              - ":lambda:path/2015-03-31/functions/"
+              - Fn::GetAtt:
+                - processwork
+                - Arn
+              - "/process_work"
+        IntegrationResponses:
+          - StatusCode: 200
+      ResourceId:
+        Ref: Api1Resource
+      RestApiId:
+        Ref: Api1
+      MethodResponses:
+        - StatusCode: 200
+
   ##########################
   # INFRASTRUCTURE
   ##########################
@@ -97,12 +192,7 @@ Resources:
       MemorySize: 128
       Timeout: 60
       Role: 'arn:aws:iam::351532156193:role/lambda_everything'
-      Events:
-        Api1:
-          Type: Api
-          Properties:
-            Path: /process-work
-            Method: POST
+
   # infrastructure/try-errors-again.js
   tryerrorsagain:
     Type: 'AWS::Serverless::Function'
