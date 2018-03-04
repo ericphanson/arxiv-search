@@ -182,9 +182,6 @@ def encode_hit(p, send_images=True, send_abstracts=True):
   pid = str(p['rawid'])
   idvv = '%sv%d' % (p['rawid'], p['paper_version'])
   struct = {}
-  if "score" in p.meta:
-    if p.meta.score is not None:
-      struct['score'] = p.meta.score
   
   if 'havethumb' in p:
     struct['havethumb'] = p['havethumb']
@@ -216,11 +213,11 @@ def encode_hit(p, send_images=True, send_abstracts=True):
 
   # arxiv comments from the authors (when they submit the paper)
   # cc = p.get('arxiv_comment', '')
-  try:
-    cc  = p['arxiv_comment']
-  except Exception as e:
+  if 'arxiv_comment' in p:
+    cc = p['arxiv_comment']
+  else:
     cc = ""
-
+  
   if len(cc) > 100:
     cc = cc[:100] + '...' # crop very long comments
   struct['comment'] = cc
@@ -240,6 +237,7 @@ def add_user_data_to_hit(struct):
 def getResults(search):
   search_dict = search.to_dict()
   query_hash = make_hash(search_dict)
+  print(query_hash)
   # query_hash = 0
 
   have = False
@@ -251,8 +249,8 @@ def getResults(search):
       have = True
 
   # temp disable caching
-  # print("remember, caching disabled for testing")
-  # have = False
+  print("remember, caching disabled for testing")
+  have = False
 
   if not have:
     es_response = search.execute()
@@ -260,10 +258,18 @@ def getResults(search):
     list_of_ids = process_query_to_cache(query_hash, es_response, meta)
 
   with cached_docs_lock:
-    records = [ cached_docs[_id] for _id in list_of_ids ]
+    records = []
+    for _id in list_of_ids:
+      doc = cached_docs[_id]
+      if list_of_ids[_id] is not None:
+        doc.update({'score' : list_of_ids[_id]})
+      records.append(doc)
 
   records = [add_user_data_to_hit(r) for r in records]
+  
   return records, meta
+
+
 
 # def test_hash_speed():
   # {'size': 10, 'query': {'match_all': {}}, 'sort': [{'updated': {'order': 'desc'}}], 'from': 0}
@@ -367,9 +373,11 @@ def extract_query_params(query_info):
     queries.append(get_sim_to_query(sim_to_ids, tune_dict = tune_dict, weights = weights))
 
   if query_text:
+    # search = search.sort('_score')
+    # print("sorting by score")  
     if len(queries) > 0:
       q = Q("bool", must=get_simple_search_query(query_text), should = queries)
-      search = search.query(q)
+      search = search.query(q)   
     else:
       q = get_simple_search_query(query_text)
       search = search.query(q)
@@ -381,6 +389,7 @@ def extract_query_params(query_info):
       else:
         q = Q("bool", should = queries)
       search = search.query(q)
+      
     else:
       search = search.sort('-updated')
       
@@ -400,8 +409,8 @@ def extract_query_params(query_info):
 
   #   q = Q("bool", must=get_simple_search_query(query_text), should = queries, disable_coord =True)
   #   search = search.query(q)
-  print('search dict:')
-  print(search.to_dict())
+  # print('search dict:')
+  # print(search.to_dict())
 
   # get filters
   Q_lib = Q()
@@ -610,6 +619,7 @@ def _getslowmeta():
       return jsonify({})
     search = search[0:0]
     papers, meta = getResults(search)
+    print("slow meta arrived")
     # meta = {'abc' : 'def'}
     
     return jsonify(meta)
@@ -664,6 +674,7 @@ def _getpapers():
     user_log.info('User fired search', extra=dict(search =search.to_dict(), uid = uid, library = ids_from_library() ))
   
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
+  print(search.to_dict())
   papers, meta = getResults(search)
   scored_papers = 0
   tot_score = 0
@@ -910,13 +921,17 @@ def make_hash(o):
 
 
 def process_query_to_cache(query_hash, es_response, meta):
-  list_of_ids = []
+  list_of_ids = {}
 
   for record in es_response:
     
     _id = record.meta.id
-
-    list_of_ids.append(_id)
+    if "score" in record.meta:
+      _score = record.meta.score
+    else:
+      _score = None
+    
+    list_of_ids[_id] = _score
     with cached_docs_lock:
       if _id not in cached_docs:
         cached_docs[_id] = encode_hit(record)
