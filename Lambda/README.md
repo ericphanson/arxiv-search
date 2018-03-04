@@ -23,5 +23,5 @@ Then add it to `lambdas.yaml`. The important part is that the YAML should contai
 The lambdas are deployed via AWS CloudFormation. The following bash script does that for you (assuming you have the AWS CLI configured):
 
 ```
-./deploy_lambda.sh
+./deploy_lambdas.sh
 ```
