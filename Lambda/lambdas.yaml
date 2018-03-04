@@ -106,7 +106,7 @@ Resources:
   addnewpaperstodb:
     Type: 'AWS::Serverless::Function'
     Properties:
-      Handler: ts-compiled/infrastucture/add-new-papers-to-db.handler
+      Handler: ts-compiled/infrastructure/add-new-papers-to-db.handler
       Runtime: nodejs6.10
       Environment:
         Variables:
@@ -182,7 +182,7 @@ Resources:
   processwork:
     Type: 'AWS::Serverless::Function'
     Properties:
-      Handler: ts-compiled/infrastucture/process-work.handler
+      Handler: ts-compiled/infrastructure/process-work.handler
       Runtime: nodejs6.10
       Environment:
         Variables:
