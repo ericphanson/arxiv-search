@@ -1,4 +1,5 @@
 {
+    "name": "lambdas-infrastructure",
     "dependencies": {
         "request": "^2.83.0",
         "xml2js": "^0.4.19"
