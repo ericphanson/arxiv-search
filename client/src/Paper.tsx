@@ -42,7 +42,7 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
             {/* <span className="Z3988" title={build_ocoins_str(p)}></span> */}
             <div className="paperdesc mr3">
                 <a href={p.link} target="_blank" className="link b black hover-ul"> <WithMaths text={p.title} /></a>
-                {p.score && [<span className="ma1 green f5"> Relevance: {p.score.toPrecision(3)}</span>]}
+                {p.score && [<span className="ma1 green f5" title={p.explain_sentence || ""}> Relevance: {p.score.toPrecision(3)}</span>]}
                 <br />
                 <span>
                     {p.authors.map((a: string) =>

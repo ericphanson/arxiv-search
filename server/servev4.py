@@ -261,8 +261,11 @@ def getResults(search):
     records = []
     for _id in list_of_ids:
       doc = cached_docs[_id]
-      if list_of_ids[_id] is not None:
-        doc.update({'score' : list_of_ids[_id]})
+      if list_of_ids[_id]:
+        if "score" in list_of_ids[_id]:
+          doc.update({'score' : list_of_ids[_id]["score"]})
+        if "explain_sentence" in list_of_ids[_id]:
+          doc.update({'explain_sentence' : list_of_ids[_id]["explain_sentence"]})
       records.append(doc)
 
   records = [add_user_data_to_hit(r) for r in records]
@@ -321,6 +324,8 @@ def lib_filter(only_lib):
         filt_q = Q('bool', filter=[Q('terms', _id=pids)])
       # filt_q = filt_q & Q('term', paper_version=1)
     return filt_q
+
+
 
 def extract_query_params(query_info):
   query_info = sanitize_query_object(query_info)
@@ -526,6 +531,15 @@ def build_slow_meta_query(query_info):
 
   return search
 
+def build_explain_query(query_info, id):
+  search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
+  if search:
+    search = search.extra(explain=True)
+    search = search.filter('term', _id=id)
+  return search
+
+
+
 def build_meta_query(query_info):
   search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
   if not search:
@@ -597,7 +611,48 @@ def get_meta_from_response(response):
         num_results=buck.doc_count
         time_filter_data[time_range] = num_results
       meta["time_filter_data"] = time_filter_data
+
   return meta
+
+@app.route('/_explainscore', methods=['POST'])
+def _getexplanation():
+    data = request.get_json()
+    query_info = data['query']
+    search = build_explain_query(query_info, id)
+    if not search:
+      return jsonify({})
+    search.source(includes=[])
+    search = search[0:1]
+    results = search.execute()
+    print(results)
+    try:
+      hit = results.hits[0]
+      expl =  hit.meta['explanation']
+    except Exception:
+      print("no hits for explain query")
+      expl = {}
+
+    print('expl:')
+    print(expl)
+    return jsonify(expl)
+
+def testexpl(query_info, id):
+    search = build_explain_query(query_info, id)
+    if not search:
+      return jsonify({})
+    search.source(includes=[])
+    search = search[0:1]
+    results = search.execute()
+    print(results)
+    try:
+      hit = results.hits[0]
+      expl =  hit.meta['explanation']
+    except Exception:
+      print("no hits for explain query")
+      expl = {}
+
+    print('expl:')
+    print(expl)
 
 @app.route('/_getmeta', methods=['POST'])
 def _getmeta():
@@ -657,7 +712,7 @@ def _getpapers():
   search = search.source(includes=['havethumb','rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
   search.search_type="dfs_query_then_fetch"
-
+  search = search.extra(explain=True)
   tot_num_papers = search.count()
   # print(tot_num_papers)
   log_dict = {}
@@ -676,22 +731,25 @@ def _getpapers():
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
   print(search.to_dict())
   papers, meta = getResults(search)
-  scored_papers = 0
-  tot_score = 0
-  max_score = 0
-  for p in papers:
-    if "score" in p:
-      scored_papers +=1
-      tot_score += p["score"]
-      if p["score"] > max_score:
-        max_score = p["score"]
-  if scored_papers > 0:
-    avg_score = tot_score/scored_papers
-    print("avg_score")
-    print(avg_score)
-    print("max_score")
-    print(max_score)
-  print('done papers')
+
+  # testexpl(query_info,papers[0]['rawpid'])
+  # scored_papers = 0
+  # tot_score = 0
+  # max_score = 0
+  # for p in papers:
+  #   if "score" in p:
+  #     scored_papers +=1
+  #     tot_score += p["score"]
+  #     if p["score"] > max_score:
+  #       max_score = p["score"]
+  # if scored_papers > 0:
+  #   avg_score = tot_score/scored_papers
+  #   print("avg_score")
+  #   print(avg_score)
+  #   print("max_score")
+  #   print(max_score)
+  # print('done papers')
+
   # testmeta(query_info)
   # testslowmeta(query_info)
   return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number, tot_num_papers=tot_num_papers))
@@ -919,19 +977,79 @@ def make_hash(o):
   return hash(tuple(frozenset(sorted(new_o.items()))))
 
 
+def getExplainSentence(explanation):
+  if explanation['description'] == 'ConstantScore(*:*)^0.0':
+    return ""
+  else:
+    tot_score = explanation['value']
+    reasons = []
+    sentfrags = []
+    sentfrags, reasons  = parseItem(explanation, sentfrags, reasons, '')
+    sentfrags.sort(key=lambda tup : tup[0], reverse=True)
+    sl = [ x[1] for x in sentfrags ]
+    m = 4
+    if len(sl) > m:
+      sl = sl[:m-1]
+      sl.append("...")
+    if len(sl) >= 1:
+      it = sl[0]
+      it = it[1:]
+      sl[0] = it
+    # if len(sl)==0:
+      # return None
+    return "{0:.2f}".format(tot_score) + ' = ' + ' '.join(sl)
+
+def parseItem(item, sentfrags, reasons, op):
+  if item is None:
+    return sentfrags, reasons
+  try:
+    desc = item['description']
+  except Exception:
+    return sentfrags, reasons
+  if desc == 'sum of:' or desc == 'max of:':
+    if desc == 'sum of:':
+      op = '+'
+    else:
+      op = 'v'
+    for subitem in item["details"]:
+      sentfrags, reasons = parseItem(subitem, sentfrags, reasons, op)
+  else:
+    value = item['value']
+    newfrags, newreasons = parseReasons(desc,value, op)
+    reasons = reasons + newreasons
+    sentfrags = sentfrags  + newfrags
+  return sentfrags, reasons
+
+def parseReasons(desc, value, op):
+  sentfrags = []
+  reasons = []
+  try:
+    match_obj = re.search(r'weight\(\w+?:.+? in', desc)
+    if match_obj:
+      match_str = match_obj.group(0)
+      get_rid_of_weight = match_str[len('weight('):]
+      field = get_rid_of_weight.split(":")[0]
+      word = get_rid_of_weight.split(":")[1][:-1*len(' in')]
+      sentfrag = ( value , op + ' ' + "{0:.2f}".format(value) + ' (for occurrences of ' + word + ' in the ' + field + ')' )
+      reasons.append({'word' : word, "field" : field, "value" : value})
+      sentfrags.append(sentfrag)
+  except Exception:
+    print("error")
+  return sentfrags, reasons
+
 
 def process_query_to_cache(query_hash, es_response, meta):
   list_of_ids = {}
 
   for record in es_response:
-    
+    score_object = {}
     _id = record.meta.id
     if "score" in record.meta:
-      _score = record.meta.score
-    else:
-      _score = None
+      score_object["score"] = record.meta.score
     
-    list_of_ids[_id] = _score
+    if "explanation" in record.meta:
+      score_object["explain_sentence"] = getExplainSentence(record.meta.explanation)
+    list_of_ids[_id] = score_object
     with cached_docs_lock:
       if _id not in cached_docs:
         cached_docs[_id] = encode_hit(record)
