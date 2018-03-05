@@ -1,0 +1,101 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Resources": {
+        "IncomingBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "BucketName" : "arxiv-incoming",
+                "Description": "Bucket that paper retrievers can upload papers' source files and pdfs to.",
+                "NotificationConfiguration": {
+                    "LambdaConfigurations": [
+                        {
+                            "Function": {"Fn::GetAtt": [ "WatchIncomingLambda", "Arn"  ] },
+                            "Event": "s3:ObjectCreated:*"
+                        }
+                    ]
+                }
+            }
+        },
+        "CodeBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "BucketName" : "arxiv-search-lambda-code",
+                "Description": "Repository for lambda code."
+            }
+        },
+        "PublicBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "PublicRead",
+                "Description": "Public facing bucket containing thumbs, assets and so on. ",
+                "BucketName" : "arxiv-static"
+            }
+        },
+        "StatusTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+                "TableName" : "papers-status",
+                "AttributeDefinitions" : [
+                    {"AttributeName" : "idvv", "AttributeType" : "S"}
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "idvv",
+                        "KeyType": "HASH"
+                    }
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": "5",
+                    "WriteCapacityUnits": "5"
+                }
+            }
+        },
+        "StatusEventSourceMapping" : {
+            "Type" : "AWS::Lambda::EventSourceMapping",
+            "Properties" : {
+                "Description" : "The source of truth for the processing status of the papers.",
+                "EventSourceArn" : {"Fn::GetAtt" : ["StatusTable", "StreamArn"]},
+                "FunctionName" : {"Fn::GetAtt" : ["WatchStatusLambda", "Arn"]},
+                "BatchSize" : 100,
+                "StartingPosition" : "TRIM_HORIZON"
+            }
+        },
+        "WatchStatusLambda":{        
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName" : "WatchStatusLambda",
+                "Description": "Watches changes to the database and determines if it is possible to perform any processing on the papers.",
+                "Code": {
+                    "S3Bucket": {"Fn::GetAtt" : ["CodeBucket", "Arn"]},
+                    "S3Key": "infrastructure.zip"
+                },
+                "MemorySize": 128,
+                "Handler": "index.WatchStatusLambda",
+                "Role": "arn:aws:iam::351532156193:role/lambda_everything",
+                "Timeout": 3,
+                "Runtime": "nodejs6.10"
+            }
+        },
+        "WatchIncomingLambda":{        
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName" : "WatchIncomingLambda",
+                "Description": "Watches additions to the IncomingBucket and updates the corresponding entry on StatusTable.",
+                "Code": {
+                    "S3Bucket": {"Fn::GetAtt" : ["CodeBucket", "Arn"]},
+                    "S3Key": "infrastructure.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "STATUS_TABLE": {"Fn::GetAtt" : ["StatusTable", "Arn"]}
+                    }
+                },
+                "MemorySize": 128,
+                "Handler": "index.WatchIncomingLambda",
+                "Role": "arn:aws:iam::351532156193:role/lambda_everything",
+                "Timeout": 3,
+                "Runtime": "nodejs6.10"
+            }
+        }
+    }
+}

@@ -116,11 +116,11 @@ Resources:
       MemorySize: 128
       Timeout: 300
       Role: 'arn:aws:iam::351532156193:role/lambda_everything'
-  # infrastructure/add-new-arxiv-incoming-process.js
+  # infrastructure/arxiv-incoming-process.js
   arxivincomingprocess:
     Type: 'AWS::Serverless::Function'
     Properties:
-      Handler: infrastructure/add-new-arxiv-incoming-process.handler
+      Handler: infrastructure/arxiv-incoming-process.handler
       Runtime: nodejs6.10
       Environment:
         Variables:
