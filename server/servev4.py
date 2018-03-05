@@ -18,7 +18,6 @@ from flask import Flask, request, session, url_for, redirect, \
      render_template, abort, g, flash, _app_ctx_stack
 from flask_limiter import Limiter
 from werkzeug import check_password_hash, generate_password_hash
-from utils import safe_pickle_dump, strip_version, isvalidid, Config
 import re
 
 from elasticsearch import Elasticsearch, RequestsHttpConnection
@@ -45,10 +44,22 @@ import threading
 # -----------------------------------------------------------------------------
 stop_words = ["the", "of", "and", "in", "a", "to", "we", "for", "mathcal", "can", "is", "this", "with", "by", "that", "as", "to"]
 root_dir = os.path.join(".")
-def key_dir(file): return os.path.join(root_dir,"keys",file)
+def key_dir(file): return os.path.join(root_dir,"server","keys",file)
 def server_dir(file): return os.path.join(root_dir,"server", file)
 def shared_dir(file): return os.path.join(root_dir,"shared", file)
-  
+
+database_path = os.path.join(root_dir,"server", 'user_db', 'as.db') 
+schema_path = os.path.join(root_dir,"server", 'user_db', 'schema.sql')
+
+def strip_version(idstr):
+    """ identity function if arxiv id has no version, otherwise strips it. """
+    parts = idstr.split('v')
+    return parts[0]
+
+# "1511.08198v1" is an example of a valid arxiv id that we accept
+def isvalidid(pid):
+  return re.match('^([a-z]+(-[a-z]+)?/)?\d+(\.\d+)?(v\d+)?$', pid)
+
 
 # database configuration
 if os.path.isfile(key_dir('secret_key.txt')):
@@ -56,8 +67,8 @@ if os.path.isfile(key_dir('secret_key.txt')):
 else:
   SECRET_KEY = 'devkey, should be in a file'
 
-AWS_ACCESS_KEY = open(key_dir('AWS_ACCESS_KEY.txt'), 'r').read().strip()
-AWS_SECRET_KEY = open(key_dir('AWS_SECRET_KEY.txt'), 'r').read().strip()
+# AWS_ACCESS_KEY = open(key_dir('AWS_ACCESS_KEY.txt'), 'r').read().strip()
+# AWS_SECRET_KEY = open(key_dir('AWS_SECRET_KEY.txt'), 'r').read().strip()
 
 ES_USER = open(key_dir('ES_USER.txt'), 'r').read().strip()
 ES_PASS = open(key_dir('ES_PASS.txt'), 'r').read().strip()
@@ -65,8 +76,8 @@ es_host = es_host = '0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io'
 
 
 
-log_AWS_ACCESS_KEY = open(key_dir('log_AWS_ACCESS_KEY.txt'), 'r').read().strip()
-log_AWS_SECRET_KEY = open(key_dir('log_AWS_SECRET_KEY.txt'), 'r').read().strip()
+# log_AWS_ACCESS_KEY = open(key_dir('log_AWS_ACCESS_KEY.txt'), 'r').read().strip()
+# log_AWS_SECRET_KEY = open(key_dir('log_AWS_SECRET_KEY.txt'), 'r').read().strip()
 CLOUDFRONT_URL = 'https://d3dq07j9ipgft2.cloudfront.net/'
 
 with open(shared_dir("all_categories.json"), 'r') as cats:
@@ -93,7 +104,7 @@ app.config.from_object(__name__)
 # -----------------------------------------------------------------------------
 # to initialize the database: sqlite3 as.db < schema.sql
 def connect_db():
-  sqlite_db = sqlite3.connect(Config.database_path)
+  sqlite_db = sqlite3.connect(database_path)
   sqlite_db.row_factory = sqlite3.Row # to return dicts rather than tuples
   return sqlite_db
 
@@ -171,9 +182,6 @@ def encode_hit(p, send_images=True, send_abstracts=True):
   pid = str(p['rawid'])
   idvv = '%sv%d' % (p['rawid'], p['paper_version'])
   struct = {}
-  if "score" in p.meta:
-    if p.meta.score is not None:
-      struct['score'] = p.meta.score
   
   if 'havethumb' in p:
     struct['havethumb'] = p['havethumb']
@@ -205,11 +213,11 @@ def encode_hit(p, send_images=True, send_abstracts=True):
 
   # arxiv comments from the authors (when they submit the paper)
   # cc = p.get('arxiv_comment', '')
-  try:
-    cc  = p['arxiv_comment']
-  except Exception as e:
+  if 'arxiv_comment' in p:
+    cc = p['arxiv_comment']
+  else:
     cc = ""
-
+  
   if len(cc) > 100:
     cc = cc[:100] + '...' # crop very long comments
   struct['comment'] = cc
@@ -229,6 +237,7 @@ def add_user_data_to_hit(struct):
 def getResults(search):
   search_dict = search.to_dict()
   query_hash = make_hash(search_dict)
+  print(query_hash)
   # query_hash = 0
 
   have = False
@@ -249,10 +258,21 @@ def getResults(search):
     list_of_ids = process_query_to_cache(query_hash, es_response, meta)
 
   with cached_docs_lock:
-    records = [ cached_docs[_id] for _id in list_of_ids ]
+    records = []
+    for _id in list_of_ids:
+      doc = cached_docs[_id]
+      if list_of_ids[_id]:
+        if "score" in list_of_ids[_id]:
+          doc.update({'score' : list_of_ids[_id]["score"]})
+        if "explain_sentence" in list_of_ids[_id]:
+          doc.update({'explain_sentence' : list_of_ids[_id]["explain_sentence"]})
+      records.append(doc)
 
   records = [add_user_data_to_hit(r) for r in records]
+  
   return records, meta
+
+
 
 # def test_hash_speed():
   # {'size': 10, 'query': {'match_all': {}}, 'sort': [{'updated': {'order': 'desc'}}], 'from': 0}
@@ -305,6 +325,8 @@ def lib_filter(only_lib):
       # filt_q = filt_q & Q('term', paper_version=1)
     return filt_q
 
+
+
 def extract_query_params(query_info):
   query_info = sanitize_query_object(query_info)
   search = Search(using=es, index='arxiv_pointer')
@@ -356,9 +378,11 @@ def extract_query_params(query_info):
     queries.append(get_sim_to_query(sim_to_ids, tune_dict = tune_dict, weights = weights))
 
   if query_text:
+    # search = search.sort('_score')
+    # print("sorting by score")  
     if len(queries) > 0:
       q = Q("bool", must=get_simple_search_query(query_text), should = queries)
-      search = search.query(q)
+      search = search.query(q)   
     else:
       q = get_simple_search_query(query_text)
       search = search.query(q)
@@ -370,6 +394,7 @@ def extract_query_params(query_info):
       else:
         q = Q("bool", should = queries)
       search = search.query(q)
+      
     else:
       search = search.sort('-updated')
       
@@ -389,8 +414,8 @@ def extract_query_params(query_info):
 
   #   q = Q("bool", must=get_simple_search_query(query_text), should = queries, disable_coord =True)
   #   search = search.query(q)
-  print('search dict:')
-  print(search.to_dict())
+  # print('search dict:')
+  # print(search.to_dict())
 
   # get filters
   Q_lib = Q()
@@ -499,14 +524,21 @@ def build_slow_meta_query(query_info):
   sampler_agg = A('sampler', shard_size=200)
 
   auth_agg = A('significant_terms', field='authors')
-
   search.aggs.bucket('sig_filt', sig_filt).bucket('sampler_agg', sampler_agg).bucket('auth_agg', auth_agg)
 
-  keywords_agg = A('significant_terms', field='abstract')
-  
-  search.aggs['sig_filt']['sampler_agg'].bucket('keywords_agg', keywords_agg)
+  # keywords_agg = A('significant_terms', field='abstract')
+  # search.aggs['sig_filt']['sampler_agg'].bucket('keywords_agg', keywords_agg)
 
   return search
+
+def build_explain_query(query_info, id):
+  search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
+  if search:
+    search = search.extra(explain=True)
+    search = search.filter('term', _id=id)
+  return search
+
+
 
 def build_meta_query(query_info):
   search, Q_cat, Q_prim, Q_time, Q_v1, Q_lib = extract_query_params(query_info)
@@ -579,7 +611,48 @@ def get_meta_from_response(response):
         num_results=buck.doc_count
         time_filter_data[time_range] = num_results
       meta["time_filter_data"] = time_filter_data
+
   return meta
+
+@app.route('/_explainscore', methods=['POST'])
+def _getexplanation():
+    data = request.get_json()
+    query_info = data['query']
+    search = build_explain_query(query_info, id)
+    if not search:
+      return jsonify({})
+    search.source(includes=[])
+    search = search[0:1]
+    results = search.execute()
+    print(results)
+    try:
+      hit = results.hits[0]
+      expl =  hit.meta['explanation']
+    except Exception:
+      print("no hits for explain query")
+      expl = {}
+
+    print('expl:')
+    print(expl)
+    return jsonify(expl)
+
+def testexpl(query_info, id):
+    search = build_explain_query(query_info, id)
+    if not search:
+      return jsonify({})
+    search.source(includes=[])
+    search = search[0:1]
+    results = search.execute()
+    print(results)
+    try:
+      hit = results.hits[0]
+      expl =  hit.meta['explanation']
+    except Exception:
+      print("no hits for explain query")
+      expl = {}
+
+    print('expl:')
+    print(expl)
 
 @app.route('/_getmeta', methods=['POST'])
 def _getmeta():
@@ -594,14 +667,15 @@ def _getmeta():
 
 @app.route('/_getslowmeta', methods=['POST'])
 def _getslowmeta():
-    # data = request.get_json()
-    # query_info = data['query']
-    # search = build_slow_meta_query(query_info)
-    # if not search:
-    #   return jsonify({})
-    # search = search[0:0]
-    # papers, meta = getResults(search)
-    meta = {'abc' : 'def'}
+    data = request.get_json()
+    query_info = data['query']
+    search = build_slow_meta_query(query_info)
+    if not search:
+      return jsonify({})
+    search = search[0:0]
+    papers, meta = getResults(search)
+    print("slow meta arrived")
+    # meta = {'abc' : 'def'}
     
     return jsonify(meta)
 
@@ -638,7 +712,7 @@ def _getpapers():
   search = search.source(includes=['havethumb','rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
   search.search_type="dfs_query_then_fetch"
-
+  search = search.extra(explain=True)
   tot_num_papers = search.count()
   # print(tot_num_papers)
   log_dict = {}
@@ -655,23 +729,27 @@ def _getpapers():
     user_log.info('User fired search', extra=dict(search =search.to_dict(), uid = uid, library = ids_from_library() ))
   
   # access_log.info(msg="ip %s sent ES search fired: %s" % search.to_dict())
+  print(search.to_dict())
   papers, meta = getResults(search)
-  scored_papers = 0
-  tot_score = 0
-  max_score = 0
-  for p in papers:
-    if "score" in p:
-      scored_papers +=1
-      tot_score += p["score"]
-      if p["score"] > max_score:
-        max_score = p["score"]
-  if scored_papers > 0:
-    avg_score = tot_score/scored_papers
-    print("avg_score")
-    print(avg_score)
-    print("max_score")
-    print(max_score)
-  print('done papers')
+
+  # testexpl(query_info,papers[0]['rawpid'])
+  # scored_papers = 0
+  # tot_score = 0
+  # max_score = 0
+  # for p in papers:
+  #   if "score" in p:
+  #     scored_papers +=1
+  #     tot_score += p["score"]
+  #     if p["score"] > max_score:
+  #       max_score = p["score"]
+  # if scored_papers > 0:
+  #   avg_score = tot_score/scored_papers
+  #   print("avg_score")
+  #   print(avg_score)
+  #   print("max_score")
+  #   print(max_score)
+  # print('done papers')
+
   # testmeta(query_info)
   # testslowmeta(query_info)
   return jsonify(dict(papers=papers,dynamic=dynamic, start_at=start, num_get=number, tot_num_papers=tot_num_papers))
@@ -899,15 +977,79 @@ def make_hash(o):
   return hash(tuple(frozenset(sorted(new_o.items()))))
 
 
+def getExplainSentence(explanation):
+  if explanation['description'] == 'ConstantScore(*:*)^0.0':
+    return ""
+  else:
+    tot_score = explanation['value']
+    reasons = []
+    sentfrags = []
+    sentfrags, reasons  = parseItem(explanation, sentfrags, reasons, '')
+    sentfrags.sort(key=lambda tup : tup[0], reverse=True)
+    sl = [ x[1] for x in sentfrags ]
+    m = 4
+    if len(sl) > m:
+      sl = sl[:m-1]
+      sl.append("...")
+    if len(sl) >= 1:
+      it = sl[0]
+      it = it[1:]
+      sl[0] = it
+    # if len(sl)==0:
+      # return None
+    return "{0:.2f}".format(tot_score) + ' = ' + ' '.join(sl)
+
+def parseItem(item, sentfrags, reasons, op):
+  if item is None:
+    return sentfrags, reasons
+  try:
+    desc = item['description']
+  except Exception:
+    return sentfrags, reasons
+  if desc == 'sum of:' or desc == 'max of:':
+    if desc == 'sum of:':
+      op = '+'
+    else:
+      op = 'v'
+    for subitem in item["details"]:
+      sentfrags, reasons = parseItem(subitem, sentfrags, reasons, op)
+  else:
+    value = item['value']
+    newfrags, newreasons = parseReasons(desc,value, op)
+    reasons = reasons + newreasons
+    sentfrags = sentfrags  + newfrags
+  return sentfrags, reasons
+
+def parseReasons(desc, value, op):
+  sentfrags = []
+  reasons = []
+  try:
+    match_obj = re.search(r'weight\(\w+?:.+? in', desc)
+    if match_obj:
+      match_str = match_obj.group(0)
+      get_rid_of_weight = match_str[len('weight('):]
+      field = get_rid_of_weight.split(":")[0]
+      word = get_rid_of_weight.split(":")[1][:-1*len(' in')]
+      sentfrag = ( value , op + ' ' + "{0:.2f}".format(value) + ' (for occurrences of ' + word + ' in the ' + field + ')' )
+      reasons.append({'word' : word, "field" : field, "value" : value})
+      sentfrags.append(sentfrag)
+  except Exception:
+    print("error")
+  return sentfrags, reasons
+
 
 def process_query_to_cache(query_hash, es_response, meta):
-  list_of_ids = []
+  list_of_ids = {}
 
   for record in es_response:
-    
+    score_object = {}
     _id = record.meta.id
-
-    list_of_ids.append(_id)
+    if "score" in record.meta:
+      score_object["score"] = record.meta.score
+    
+    if "explanation" in record.meta:
+      score_object["explain_sentence"] = getExplainSentence(record.meta.explanation)
+    list_of_ids[_id] = score_object
     with cached_docs_lock:
       if _id not in cached_docs:
         cached_docs[_id] = encode_hit(record)
@@ -1061,8 +1203,7 @@ def review():
     return 'FAIL' # fail... (not logged in). JS should prevent from us getting here.
   data = request.get_json()
   idvv = data['pid'] # includes version
-  if not isvalidid(idvv):
-    return 'FAIL' # fail, malformed id. weird.
+  
   pid = strip_version(idvv)
   if not isvalid(pid):
     return 'FAIL' # we don't know this paper. wat
@@ -1302,10 +1443,10 @@ if __name__ == "__main__":
   args = parser.parse_args()
   print(args)
 
-  if not os.path.isfile(Config.database_path):
+  if not os.path.isfile(database_path):
     print('did not find as.db, trying to create an empty database from schema.sql...')
     print('this needs sqlite3 to be installed!')
-    os.system('sqlite3 ' + Config.database_path + ' < schema.sql')
+    os.system('sqlite3 ' + database_path + ' < ' + schema_path)
     # os.system('chmod a+rwx as.db')
     
 

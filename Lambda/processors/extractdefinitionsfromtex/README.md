@@ -1,0 +1,1 @@
+Extract definitions, lemmas, theorems and corollaries from a TeX file using regular expressions.

@@ -21,9 +21,8 @@ const c = {
 "blue": {bg:"#357edd", dark : false},
 "lightblue": {bg:"#96ccff", dark : true},
 "lightestblue": {bg:"#cdecff", dark : true},
-"washedblue": {bg:"#f6fffe", dark : true},
-"washedgreen": {bg:"#e8fdf5", dark : true},
-"washedyellow": {bg:"#fffceb", dark : true},
+"washedblue": {bg:"#a6ccfe", dark : true},
+"washedgreen": {bg:"#b8f9c5", dark : true},
 "washedred": {bg:"#ffdfdf", dark : true},
 "black" : {bg : "#000000", dark : false},
 "grey" : {bg : "#999999", dark : false},
@@ -65,7 +64,7 @@ export const cat_col = (cat : category) => {
   }
   return {bg : "grey", dark : false}
 }
-export const all_categories : {c : category, d : string}[] = require("../shared/all_categories.json")
+export const all_categories : {c : category, d : string}[] = require("../../shared/all_categories.json")
 let desc_table = {};
 for (let {c,d} of all_categories) {
   desc_table[c] = d;

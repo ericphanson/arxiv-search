@@ -1,7 +1,7 @@
 module.exports = {
     paths : {
-        watched : ["client"],
-        public: "static"
+        watched : ["src"],
+        public: "../static"
     },
     npm : {
         styles : {
@@ -14,9 +14,9 @@ module.exports = {
     },
     files: {
         javascripts: {
-            entryPoints: {'client/main.tsx' : {
-                "bundle.js" : [/^client/],
-                "vendor.js" : /^(?!client)/
+            entryPoints: {'src/main.tsx' : {
+                "bundle.js" : [/^src/],
+                "vendor.js" : /^(?!src)/
             }}
         },
         stylesheets : {
@@ -34,7 +34,7 @@ module.exports = {
     },
     modules: {
 		autoRequire: {
-			'bundle.js': ['client/main.tsx']
+			'bundle.js': ['src/main.tsx']
 		}
 	}
 }

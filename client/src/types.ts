@@ -81,6 +81,7 @@ export interface paper {
     /** Extra comments about the paper; truncated to 100 characters + ... */
     comment? : string
     score? : number
+    explain_sentence? : string
     title : string
     /**ArXiv id. Eg `1802.02400v2` */
     pid : string
