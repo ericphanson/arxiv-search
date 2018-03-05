@@ -7,3 +7,5 @@ node_modules
 static
 .vscode
 nfsrunserve.sh
+senv/
+package-lock.json
