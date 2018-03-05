@@ -1203,8 +1203,7 @@ def review():
     return 'FAIL' # fail... (not logged in). JS should prevent from us getting here.
   data = request.get_json()
   idvv = data['pid'] # includes version
-  if not isvalidid(idvv):
-    return 'FAIL' # fail, malformed id. weird.
+  
   pid = strip_version(idvv)
   if not isvalid(pid):
     return 'FAIL' # we don't know this paper. wat
