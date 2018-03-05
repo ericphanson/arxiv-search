@@ -17,7 +17,7 @@ const updateHave = (pid, field, callback) => {
     }, callback);
 };
 
-export const WatchIncomingLambda = (event, context, callback) => {
+export const handler = (event, context, callback) => {
     let rawKey = event.Records[0].s3.object.key;
     let srcKey = decodeURIComponent(rawKey).replace(/\+/g, ' ');
     console.log("rawKey=",rawKey);

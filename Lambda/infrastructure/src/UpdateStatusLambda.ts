@@ -182,6 +182,6 @@ async function fromAPI(event) {
 }
 
 
-exports.handler = function (event, context, callback) {
+export const handler = function (event, context, callback) {
     fromOAI(event).then(r => callback(null, r)).catch(e => callback(e));
 }

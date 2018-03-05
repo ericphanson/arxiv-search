@@ -186,7 +186,7 @@ async function handleError(event : errorEvent) {
 }
 
 /** Called by AWS */
-exports.handler = (http_resp, context, callback) => {
+export const handler = (http_resp, context, callback) => {
     let event : event = JSON.parse(http_resp.body)
     // try {
     // event = JSON.parse(JSON.parse(http_resp.body));
@@ -209,7 +209,6 @@ exports.handler = (http_resp, context, callback) => {
         return;
     }
     promise.then(r =>  end_eval(null,r,callback)).catch(e => end_eval(e,null,callback));
-
 };
 
 /**

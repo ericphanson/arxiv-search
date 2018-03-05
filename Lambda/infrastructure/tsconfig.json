@@ -3,6 +3,7 @@
         "target": "es6",
         "lib": [ "es2015"],
         "moduleResolution": "node",
-        "outDir": "out"
+        "outDir": "out",
+        "allowJs": true,
     }
 }
