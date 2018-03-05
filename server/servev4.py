@@ -1203,7 +1203,7 @@ def review():
     return 'FAIL' # fail... (not logged in). JS should prevent from us getting here.
   data = request.get_json()
   idvv = data['pid'] # includes version
-  
+
   pid = strip_version(idvv)
   if not isvalid(pid):
     return 'FAIL' # we don't know this paper. wat
@@ -1289,9 +1289,9 @@ def logout():
   # flash('You were logged out')
   return redirect(url_for('intmain'))
 
-@app.route('/static/<path:path>')
-def send_static(path):
-    return send_from_directory('static', path)
+# @app.route('/static/<path:path>')
+# def send_static(path):
+#     return send_from_directory('static', path)
 
 
 
