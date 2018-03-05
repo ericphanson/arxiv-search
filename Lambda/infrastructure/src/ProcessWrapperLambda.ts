@@ -39,10 +39,17 @@ const Lambdas = {
 };
 */
 
-type resource_dict = {[resource : string] : {bucket : string, subdir : string, ext : string}};
-type bucket_key_dict = {[resource : string] : {"Bucket" :  string, "Key" : string}};
+type resource_dict = { [resource: string]: { bucket: string, subdir: string, ext: string } };
+type bucket_key_dict = { [resource: string]: { "Bucket": string, "Key": string } };
 
-exports.handler = (event, context, callback) => {
+interface event {
+    idvv: string,
+    resources: resource_dict,
+    outputs: resource_dict,
+    lambda_name: string
+}
+
+exports.handler = (event: event, context, callback) => {
     let idvv = event.idvv
     let resources = event.resources
     let outputs = event.outputs
@@ -73,8 +80,8 @@ exports.handler = (event, context, callback) => {
         }
     } 
     that can be fed into s3 commands.*/
-    function make_bucket_key_dict(resource_dict : resource_dict) : bucket_key_dict {
-        let buck_key_dict : bucket_key_dict = {}
+    function make_bucket_key_dict(resource_dict: resource_dict): bucket_key_dict {
+        let buck_key_dict: bucket_key_dict = {}
         for (let k of Object.getOwnPropertyNames(resource_dict)) {
             let r = resource_dict[k];
             let Key = r.subdir ? (r.subdir + "/" + idvv + r.ext) : (idvv + r.ext);
@@ -87,23 +94,21 @@ exports.handler = (event, context, callback) => {
     }
 
     /** Given a bucket-key dictionary, check that each key has a valid document. */
-    function validate(bk_dict : bucket_key_dict) {
+    function validate(bk_dict: bucket_key_dict) {
         return Promise.all(Object.getOwnPropertyNames(bk_dict).map(k => s3.headObject(bk_dict[k]).promise()));
     }
     let bk_res = make_bucket_key_dict(resources)
     let bk_outs = make_bucket_key_dict(outputs)
-
     // 1. Validate resources
     validate(bk_res).catch((err) => {
         callback(null, "Resource validation failed. Had error " + err);
     });
-
     // 2. Fire lambda
     let lambda = new AWS.Lambda();
     let Payload = {
         'resources': bk_res,
         'outputs': bk_outs,
-        'region' : REGION
+        'region': REGION
     };
     let params = {
         FunctionName: lambda_name, // the lambda function we are going to invoke
@@ -112,14 +117,11 @@ exports.handler = (event, context, callback) => {
         Payload
     }
     console.log("firing " + lambda_name + " with payload=" + Payload);
-
     lambda.invoke(params).promise().then((resp) => {
         validate(bk_outs).catch((err) => {
-
             // console.log("The lambda " + lambda_name + " returned without error, but the outputs don't exist where they should.")
             call_db('error');
             callback(null, "The lambda " + lambda_name + " returned without error, but the outputs don't exist where they should.")
-
         }).then(() => {
             console.log("The lambda " + lambda_name + 'returned without error, and the outputs exit.')
             // update dictionary
@@ -127,42 +129,25 @@ exports.handler = (event, context, callback) => {
         });
     }).catch((err) => {
         call_db('error');
-        callback(null,"The lambda " + lambda_name + ' returned with error '+ err)
+        callback(null, "The lambda " + lambda_name + ' returned with error ' + err)
     })
-
     // 3. Update db
     function call_db(value) {
-        let expr = (r) => "SET " + r + " = :v"
-        let dict_reducer = (accumulator, currentValue) => {
-            return accumulator + ', ' + currentValue
-        }
-        let UpdateExpression = outputs.keys().map(expr).reduce(dict_reducer)
-        console.log(UpdateExpression)
+        let UpdateExpression = Object.getOwnPropertyNames(outputs).map(r => "SET " + r + " = :v").join(", ");
+        console.log(UpdateExpression);
         db.updateItem({
             TableName: "papers-status",
-            Key: {
-                "idvv": {
-                    "S": idvv
-                }
-            },
-            ExpressionAttributeValues: {
-                ":h": {
-                    "S": value
-                }
-            },
+            Key: { "idvv": { "S": idvv } },
+            ExpressionAttributeValues: { ":v": { "S": value } },
             UpdateExpression,
             ReturnValues: "NONE"
         }).promise().then(
             () => {
-                callback(null,"Successfully updated the dynamodb")
-                return;
+                callback(null, "Successfully updated the dynamodb")
             }
         ).catch((err) => {
             console.log("Error updating the dynamodb. Wanted set the outputs to " + value + ".")
             callback(err)
-            return;
         })
     }
-
-
 }
