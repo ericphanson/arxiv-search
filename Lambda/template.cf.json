@@ -16,6 +16,14 @@
                 }
             }
         },
+        
+        "PrivateBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "Private",
+                "BucketName": "arxiv-private"
+            }
+        },
         "CodeBucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
@@ -96,6 +104,44 @@
                 "Timeout": 3,
                 "Runtime": "nodejs6.10"
             }
-        }
+        },
+        "ProcessWrapperLambda":{        
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName" : "ProcessWrapperLambda",
+                "Description": "Wraps a processor lambda and updates the table after it executes.",
+                "Code": {
+                    "S3Bucket": {"Fn::GetAtt" : ["CodeBucket", "Arn"]},
+                    "S3Key": "infrastructure.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "STATUS_TABLE": {"Fn::GetAtt" : ["StatusTable", "Arn"]}
+                    }
+                },
+                "MemorySize": 128,
+                "Handler": "index.ProcessWrapperLambda",
+                "Role": "arn:aws:iam::351532156193:role/lambda_everything",
+                "Timeout": 3,
+                "Runtime": "nodejs6.10"
+            }
+        },
+
+        "MakeThumbLambda":{        
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName" : "MakeThumbLambda",
+                "Description": "Makes a thumbnail given a pdf using imagemagick", 
+                "Code": {
+                    "S3Bucket": {"Fn::GetAtt" : ["CodeBucket", "Arn"]},
+                    "S3Key": "makethumb.zip"
+                },
+                "MemorySize": 128,
+                "Handler": "index.handler",
+                "Role": "arn:aws:iam::351532156193:role/lambda_everything",
+                "Timeout": 90,
+                "Runtime": "nodejs6.10"
+            }
+        },
     }
 }

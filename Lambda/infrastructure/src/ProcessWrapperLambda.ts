@@ -1,7 +1,8 @@
 'use strict';
 
-const AWS = require("aws-sdk");
-const REGION = 'us-east-1'
+import * as AWS from "aws-sdk";
+import * as path from 'path';
+const REGION = 'us-east-1';
 AWS.config.region = REGION;
 
 const db = new AWS.DynamoDB({
@@ -38,9 +39,11 @@ const Lambdas = {
 };
 */
 
+type resource_dict = {[resource : string] : {bucket : string, subdir : string, ext : string}};
+type bucket_key_dict = {[resource : string] : {"Bucket" :  string, "Key" : string}};
+
 exports.handler = (event, context, callback) => {
     let idvv = event.idvv
-
     let resources = event.resources
     let outputs = event.outputs
     let lambda_name = event.lambda_name
@@ -70,43 +73,29 @@ exports.handler = (event, context, callback) => {
         }
     } 
     that can be fed into s3 commands.*/
-    function make_buck_key_dict(resource_dict) {
-        let buck_key_dict = {}
-        for (let k in resource_dict) {
-            let r = resource_dict[k]
-            let key
-            if (r['subdir'])
-            {
-                key = r['subdir'] + '/' + idvv + r['ext']
-            } else {
-                key = idvv + r['ext']
-            }
+    function make_bucket_key_dict(resource_dict : resource_dict) : bucket_key_dict {
+        let buck_key_dict : bucket_key_dict = {}
+        for (let k of Object.getOwnPropertyNames(resource_dict)) {
+            let r = resource_dict[k];
+            let Key = r.subdir ? (r.subdir + "/" + idvv + r.ext) : (idvv + r.ext);
             buck_key_dict[k] = {
-                Bucket: r['bucket'],
-                Key: key
+                Bucket: r.bucket,
+                Key
             }
         }
+        return buck_key_dict;
     }
 
     /** Given a bucket-key dictionary, check that each key has a valid document. */
-    function validate(bk_dict) {
-        let promises = []
-        for (let k in bk_dict) {
-            console.log('Considering resource ' + k)
-            promises.push(s3.headObject(bk_dict[k]).promise())
-        }
-        return Promise.all(promises)
+    function validate(bk_dict : bucket_key_dict) {
+        return Promise.all(Object.getOwnPropertyNames(bk_dict).map(k => s3.headObject(bk_dict[k]).promise()));
     }
-
-
-    let bk_res = make_buck_key_dict(resources)
-
-    let bk_outs = make_buck_key_dict(outputs)
+    let bk_res = make_bucket_key_dict(resources)
+    let bk_outs = make_bucket_key_dict(outputs)
 
     // 1. Validate resources
     validate(bk_res).catch((err) => {
-        callback(null, "Resource validation failed. Had error " + err)
-        return;
+        callback(null, "Resource validation failed. Had error " + err);
     });
 
     // 2. Fire lambda
@@ -116,7 +105,6 @@ exports.handler = (event, context, callback) => {
         'outputs': bk_outs,
         'region' : REGION
     };
-
     let params = {
         FunctionName: lambda_name, // the lambda function we are going to invoke
         InvocationType: 'RequestResponse',
@@ -142,18 +130,14 @@ exports.handler = (event, context, callback) => {
         callback(null,"The lambda " + lambda_name + ' returned with error '+ err)
     })
 
-
     // 3. Update db
     function call_db(value) {
         let expr = (r) => "SET " + r + " = :v"
-
-
         let dict_reducer = (accumulator, currentValue) => {
             return accumulator + ', ' + currentValue
         }
         let UpdateExpression = outputs.keys().map(expr).reduce(dict_reducer)
         console.log(UpdateExpression)
-
         db.updateItem({
             TableName: "papers-status",
             Key: {
@@ -168,7 +152,6 @@ exports.handler = (event, context, callback) => {
             },
             UpdateExpression,
             ReturnValues: "NONE"
-
         }).promise().then(
             () => {
                 callback(null,"Successfully updated the dynamodb")
