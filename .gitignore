@@ -15,3 +15,4 @@ packages-lock.json
 **/ts-compiled
 .map
 nfs-update-script.sh
+*.log
