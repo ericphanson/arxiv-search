@@ -1454,34 +1454,28 @@ if __name__ == "__main__":
 
   print('connecting to elasticsearch...')
   context = elasticsearch.connection.create_ssl_context(cafile=certifi.where())  
+
+
   es = Elasticsearch(
-   ["https://%s:%s@%s:9243" % (ES_USER,ES_PASS,es_host)], scheme="https", ssl_context=context) 
+   ["https://%s:%s@%s:9243" % (ES_USER,ES_PASS,es_host)], scheme="https", ssl_context=context, timeout=30) 
 
   # print(es.info())
   # m = Mapping.from_es('arxiv', 'paper', using=es)
   # print(m.authors)
 
 
-  APP_NAME = 'Python Server'
+  # APP_NAME = 'Python Server'
+  # ES_LOG_USER = open(key_dir('ES_LOG_USER.txt'), 'r').read().strip()
+  # ES_LOG_PASS = open(key_dir('ES_LOG_PASS.txt'), 'r').read().strip()
+  # es_host = '0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io'
+  # ES_log_handler = CMRESHandler(hosts=[{'host': es_host, 'port': 9243}],
+  #                           auth_type=CMRESHandler.AuthType.BASIC_AUTH,
+  #                           auth_details=(ES_LOG_USER,ES_LOG_PASS),
+  #                           es_index_name="python_logger",
+  #                           index_name_frequency=CMRESHandler.IndexNameFrequency.MONTHLY,
+  #                           es_additional_fields={'App': APP_NAME},
+  #                           use_ssl=True)
 
-  ES_LOG_USER = open(key_dir('ES_LOG_USER.txt'), 'r').read().strip()
-  ES_LOG_PASS = open(key_dir('ES_LOG_PASS.txt'), 'r').read().strip()
-  es_host = '0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io'
-  ES_log_handler = CMRESHandler(hosts=[{'host': es_host, 'port': 9243}],
-                            auth_type=CMRESHandler.AuthType.BASIC_AUTH,
-                            auth_details=(ES_LOG_USER,ES_LOG_PASS),
-                            es_index_name="python_logger",
-                            es_additional_fields={'App': APP_NAME},
-                            use_ssl=True)
-
-  # ES_log_handler = CMRESHandler(hosts=[{'host': es_host, 'port': 80}],
-                          #  auth_type=CMRESHandler.AuthType.AWS_SIGNED_AUTH, aws_access_key= log_AWS_ACCESS_KEY,
-                          #  aws_secret_key=log_AWS_SECRET_KEY,aws_region='us-east-1',index_name_frequency=CMRESHandler.IndexNameFrequency.MONTHLY,
-                          #  es_index_name="logs")
-  comments = []
-  tags_collection = []
-  goaway_collection = []
-  follow_collection = []
   cached_docs = {}
   cached_queries = {}
   max_connections = 2
@@ -1525,17 +1519,18 @@ if __name__ == "__main__":
   access_log = logging.getLogger("tornado.access")
   access_log.setLevel(logging.INFO)
   user_log = logging.getLogger("user_log")
-  access_log.addHandler(ES_log_handler)
-  # watchtower_request_handler.setFormatter(formatter)
+
+  user_fh = logging.FileHandler('user_info.log')
+  user_log.addHandler(user_fh)
+
+  # access_log.addHandler(ES_log_handler)
 
   app_log = logging.getLogger("tornado.application")
   gen_log = logging.getLogger("tornado.general")
-
-  # access_log.addHandler(watchtower_handler)
-  # access_log.addHandler(watchtower_request_handler)
-  app_log.addHandler(ES_log_handler)
-  gen_log.addHandler(ES_log_handler)
-  user_log.addHandler(ES_log_handler)
+  
+  # app_log.addHandler(ES_log_handler)
+  # gen_log.addHandler(ES_log_handler)
+  # user_log.addHandler(ES_log_handler)
 
   http_server = HTTPServer(WSGIContainer(app))
   http_server.listen(args.port, address='127.0.0.1')
