@@ -362,7 +362,8 @@ def extract_query_params(query_info):
   if 'sim_to' in query_info:
     sim_to_ids = query_info['sim_to']
 
- 
+  if (not sim_to_ids) and (not rec_lib):
+    search = search.extra(explain=True)
 
   queries = []
 
@@ -398,9 +399,9 @@ def extract_query_params(query_info):
     else:
       search = search.sort('-updated')
       
-    if rec_lib and lib_ids:
-      re_q = get_sim_to_query(lib_ids, tune_dict = {'max_query_terms' : 500, 'minimum_should_match': '1%'})
-      search = search.extra(rescore={'window_size': 500, "query": {"rescore_query": re_q.to_dict()}})
+    # if rec_lib and lib_ids:
+      # re_q = get_sim_to_query(lib_ids, tune_dict = {'max_query_terms' : 25, 'minimum_should_match': '1%'})
+      # search = search.extra(rescore={'window_size': 100, "query": {"rescore_query": re_q.to_dict()}})
       
   # print('%s queries' % len(queries))
   # if not (queries):
@@ -667,15 +668,18 @@ def _getmeta():
 
 @app.route('/_getslowmeta', methods=['POST'])
 def _getslowmeta():
-    data = request.get_json()
-    query_info = data['query']
-    search = build_slow_meta_query(query_info)
-    if not search:
-      return jsonify({})
-    search = search[0:0]
-    papers, meta = getResults(search)
-    print("slow meta arrived")
-    # meta = {'abc' : 'def'}
+    slow_meta = False
+    if slow_meta:
+      data = request.get_json()
+      query_info = data['query']
+      search = build_slow_meta_query(query_info)
+      if not search:
+        return jsonify({})
+      search = search[0:0]
+      papers, meta = getResults(search)
+      print("slow meta arrived")
+    else:
+      meta = {'Sorry I turned off slow meta' : "it's to slow..."}
     
     return jsonify(meta)
 
@@ -712,7 +716,6 @@ def _getpapers():
   search = search.source(includes=['havethumb','rawid','paper_version','title','primary_cat', 'authors', 'link', 'abstract', 'cats', 'updated', 'published','arxiv_comment'])
   search = search[start:start+number]
   search.search_type="dfs_query_then_fetch"
-  search = search.extra(explain=True)
   tot_num_papers = search.count()
   # print(tot_num_papers)
   log_dict = {}
