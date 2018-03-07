@@ -16,12 +16,12 @@
                 }
             }
         },
-        
         "PrivateBucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
                 "AccessControl": "Private",
-                "BucketName": "arxiv-private"
+                "BucketName": "arxiv-private",
+                "Description" : "Bucket containing objects that we don't want to expose to the public, eg pdfs, text files etc."
             }
         },
         "CodeBucket": {
@@ -77,6 +77,15 @@
                     "S3Bucket": {"Fn::GetAtt" : ["CodeBucket", "Arn"]},
                     "S3Key": "infrastructure.zip"
                 },
+                "Environment": {
+                    "Variables": {
+                        "StatusTable": {"Fn::GetAtt" : ["StatusTable", "Arn"]},
+                        "ProcessWrapperLambda" : {"Fn::GetAtt" : ["ProcessWrapperLambda", "Arn"]},
+                        "MakeThumbLambda" : {"Fn::GetAtt" : ["MakeThumbLambda", "Arn"]},
+                        "IncomingBucket" : {"Fn::GetAtt" : ["IncomingBucket", "Arn"]},
+                        "PublicBucket" : {"Fn::GetAtt" : ["PublicBucket", "Arn"]}
+                    }
+                },
                 "MemorySize": 128,
                 "Handler": "index.WatchStatusLambda",
                 "Role": "arn:aws:iam::351532156193:role/lambda_everything",
@@ -95,7 +104,7 @@
                 },
                 "Environment": {
                     "Variables": {
-                        "STATUS_TABLE": {"Fn::GetAtt" : ["StatusTable", "Arn"]}
+                        "StatusTable": {"Fn::GetAtt" : ["StatusTable", "Arn"]}
                     }
                 },
                 "MemorySize": 128,
@@ -116,7 +125,7 @@
                 },
                 "Environment": {
                     "Variables": {
-                        "STATUS_TABLE": {"Fn::GetAtt" : ["StatusTable", "Arn"]}
+                        "StatusTable": {"Fn::GetAtt" : ["StatusTable", "Arn"]}
                     }
                 },
                 "MemorySize": 128,
@@ -142,6 +151,6 @@
                 "Timeout": 90,
                 "Runtime": "nodejs6.10"
             }
-        },
+        }
     }
 }

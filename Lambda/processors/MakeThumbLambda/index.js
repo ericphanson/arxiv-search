@@ -3,13 +3,10 @@ const AWS = require("aws-sdk");
 const fs = require("fs");
 const {spawn} = require("child_process");
 
-
 exports.handler = (event, context, callback) => {
     const s3 = new AWS.S3();
     let get_params = event.resources.pdf
     let put_params = event.outputs.thumb
-
-    
     s3.getObject(get_params, (err, data) => {
         if (err) { 
             callback(err);
@@ -38,7 +35,6 @@ exports.handler = (event, context, callback) => {
                         return;
                     }
                     else {
-                        console.log("setting `thumb` to `have`.");
                         callback(null,"Success.");
                         return;
                     }

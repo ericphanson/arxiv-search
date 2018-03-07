@@ -3,13 +3,12 @@ const s3 = new S3();
 const db = new DynamoDB({ apiVersion: '2012-08-10' });
 
 //TODO set these using AWS Lambda environment variables.
-const Bucket = "arxiv-incoming";
-const TableName = "papers-status";
+const {IncomingBucket, StatusTable} = process.env;
 
 const updateHave = (pid, field, callback) => {
     let UpdateExpression = `SET ${field} = :h, thumb = :w`; 
     db.updateItem({
-        TableName,
+        TableName : StatusTable,
         Key: { "idvv": { "S": pid } },
         ExpressionAttributeValues: { ":h": { "S": "have" }, ":w" : {"S":"want"} },
         UpdateExpression,
@@ -23,15 +22,16 @@ export const handler = (event, context, callback) => {
     console.log("rawKey=",rawKey);
     console.log("srcKey=", srcKey);
     if (rawKey !== srcKey) {
+        //perform a rename if the key is dodgy. (eg contains slashes).
         let sanitisedKey = srcKey.replace(/[^!#$&-;=?-\[\]_a-z~]/g, "_");
         console.log(`renaming '${srcKey}' to '${sanitisedKey}'`);
         s3.copyObject({
-            Bucket, 
-            CopySource : Bucket + "/" + rawKey, 
+            Bucket : IncomingBucket, 
+            CopySource : IncomingBucket + "/" + rawKey, 
             Key : sanitisedKey
         }, () => {
             console.log("deleting");
-            s3.deleteObject({Bucket, Key: srcKey}, callback);
+            s3.deleteObject({Bucket : IncomingBucket, Key: srcKey}, callback);
         });
         return;
     }

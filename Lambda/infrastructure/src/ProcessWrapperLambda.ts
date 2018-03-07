@@ -146,6 +146,6 @@ async function run(event: event, context) {
     }
 }
 
-exports.handler = (event: event, context, callback) => {
+export const handler = (event: event, context, callback) => {
     run(event, context).then(() => callback(null)).catch((err) => callback(err));
 }
