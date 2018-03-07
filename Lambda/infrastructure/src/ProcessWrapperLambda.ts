@@ -111,11 +111,11 @@ async function run(event: event, context) {
     }
     // 2. Fire lambda
     let lambda = new AWS.Lambda();
-    let Payload = {
+    let Payload = JSON.stringify({
         'resources': bk_res,
         'outputs': bk_outs,
         'region': REGION
-    };
+    });
     let params = {
         FunctionName: lambda_name, // the lambda function we are going to invoke
         InvocationType: 'RequestResponse',

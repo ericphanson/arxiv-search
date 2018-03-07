@@ -16,27 +16,8 @@ interface process {
 
 const incomingBucket = process.env["IncomingBucket"] || "arxivincomingbucket"
 
-const thumbs: process = {
-    'resources': {
-        'pdf': {
-            'bucket': incomingBucket,
-            'ext': '.pdf'
-        }
-    },
-    'outputs': {
-        'thumb': {
-            'bucket': process.env["PublicBucket"],
-            'subdir': 'thumbs',
-            'ext': '.jpg'
-        }
-    },
-    'lambda_name': process.env["MakeThumbLambda"]
-};
 
-
-const Lambdas = [thumbs]
-
-function have_all_resources(res : process["resources"], image) {
+function have_all_resources(res: process["resources"], image) {
     let have_all_res = true;
     for (let k of Object.getOwnPropertyNames(res)) {
         if (image[k] === undefined) {
@@ -48,7 +29,7 @@ function have_all_resources(res : process["resources"], image) {
     return have_all_res;
 }
 
-function want_any_output(outputs : process["outputs"], image) {
+function want_any_output(outputs: process["outputs"], image) {
     let want_any_output = false;
     for (let o of Object.getOwnPropertyNames(outputs)) {
         if (image[o] != undefined) {
@@ -60,35 +41,52 @@ function want_any_output(outputs : process["outputs"], image) {
     return want_any_output;
 }
 
-function shouldFire(lambda_db_params : process, image) {
+function shouldFire(lambda_db_params: process, image) {
     let have_resources = have_all_resources(lambda_db_params.resources, image);
     let want = want_any_output(lambda_db_params.outputs, image);
     return have_resources && want;
 }
 
 interface record {
-    eventName : "INSERT" | "MODIFY" | string,
-    eventID : string,
-    eventVersion : string,
-    eventSource : string,
-    awsRegion : string,
-    eventSourceARN : string
-    dynamodb : {
-        "ApproximateCreationDateTime" : number,
-        Keys : {"idvv" : {"S" : string}},
-        NewImage : {[key : string] : any},
-        OldImage?: {[key : string] : any},
-        SequenceNumber : string,
-        SizeBytes : 32,
-        StreamViewType : string,
+    eventName: "INSERT" | "MODIFY" | string,
+    eventID: string,
+    eventVersion: string,
+    eventSource: string,
+    awsRegion: string,
+    eventSourceARN: string
+    dynamodb: {
+        "ApproximateCreationDateTime": number,
+        Keys: { "idvv": { "S": string } },
+        NewImage: { [key: string]: any },
+        OldImage?: { [key: string]: any },
+        SequenceNumber: string,
+        SizeBytes: 32,
+        StreamViewType: string,
     }
 }
 interface event {
-    Records : record[]
+    Records: record[]
 }
 
-async function run(event : event, context) {
+async function run(event: event, context) {
     console.log(`Environment= ${JSON.stringify(process.env)}`);
+    const thumbs: process = {
+        'resources': {
+            'pdf': {
+                'bucket': incomingBucket,
+                'ext': '.pdf'
+            }
+        },
+        'outputs': {
+            'thumb': {
+                'bucket': process.env["PublicBucket"].split("arn:aws:s3:::")[1],
+                'subdir': 'thumbs',
+                'ext': '.jpg'
+            }
+        },
+        'lambda_name': process.env["MakeThumbLambda"]
+    };
+    const processors = [thumbs]
     let lambdas_fired = 0;
     for (let record of event.Records) {
         console.log(`Stream record: ${JSON.stringify(record, undefined, 2)}`);
@@ -96,9 +94,9 @@ async function run(event : event, context) {
             let NewImage = record.dynamodb.NewImage;
             let OldImage = record.dynamodb.OldImage;
             let idvv = NewImage.idvv.S;
-            for (let i = 0; i < Lambdas.length; i++) {
-                let p = Lambdas[i];
-                let {lambda_name, resources, outputs} = p;
+            for (let i = 0; i < processors.length; i++) {
+                let p = processors[i];
+                let { lambda_name, resources, outputs } = p;
                 // only fire a lambda function if the old record wasn't ready, but the new record is
                 let fire =
                     (OldImage === undefined)
@@ -126,7 +124,7 @@ async function run(event : event, context) {
                         FunctionName: ProcessWrapperLambda, // the lambda function we are going to invoke
                         InvocationType: 'Event',
                         LogType: 'None',
-                        Payload : JSON.stringify({...Lambdas[i], idvv})
+                        Payload: JSON.stringify({ ...processors[i], idvv })
                     };
                     console.log(`Firing ${lambda_name} for idvv=${idvv}.`);
                     lambdas_fired++;

@@ -6,7 +6,9 @@ const {spawn} = require("child_process");
 exports.handler = (event, context, callback) => {
     const s3 = new AWS.S3();
     let get_params = event.resources.pdf;
+    console.log(JSON.stringify(get_params));
     let put_params = event.outputs.thumb;
+    console.log(JSON.stringify(put_params));
     s3.getObject(get_params, (err, data) => {
         if (err) { 
             callback(err);

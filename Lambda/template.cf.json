@@ -63,7 +63,7 @@
                 "MemorySize": 128,
                 "Handler": "out/index.WatchStatusLambda",
                 "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
-                "Timeout": 3,
+                "Timeout": 60,
                 "Runtime": "nodejs6.10"
             }
         },
@@ -97,7 +97,7 @@
                 "MemorySize": 128,
                 "Handler": "out/index.ProcessWrapperLambda",
                 "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
-                "Timeout": 3,
+                "Timeout": 300,
                 "Runtime": "nodejs6.10"
             }
         },
@@ -110,7 +110,7 @@
                 "MemorySize": 128,
                 "Handler": "index.handler",
                 "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
-                "Timeout": 90,
+                "Timeout": 100,
                 "Runtime": "nodejs6.10"
             }
         }
