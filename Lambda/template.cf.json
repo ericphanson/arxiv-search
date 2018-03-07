@@ -1,22 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
     "Resources": {
-        "IncomingBucket": {
-            "Type": "AWS::S3::Bucket",
-            "Properties": {
-                "NotificationConfiguration": {
-                    "LambdaConfigurations": [
-                        {
-                            "Function": {"Fn::GetAtt": [ "WatchIncomingLambda", "Arn"  ] },
-                            "Event": "s3:ObjectCreated:*"
-                        }
-                    ]
-                }
-            },
-            "DependsOn": [
-                "WatchIncomingLambda"
-            ]
-        },
         "PrivateBucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
@@ -44,13 +28,15 @@
                 "ProvisionedThroughput": {
                     "ReadCapacityUnits": "5",
                     "WriteCapacityUnits": "5"
+                },
+                "StreamSpecification" : {
+                    "StreamViewType" : "NEW_AND_OLD_IMAGES"
                 }
             }
         },
         "StatusEventSourceMapping" : {
             "Type" : "AWS::Lambda::EventSourceMapping",
             "Properties" : {
-                "Description" : "The source of truth for the processing status of the papers.",
                 "EventSourceArn" : {"Fn::GetAtt" : ["StatusTable", "StreamArn"]},
                 "FunctionName" : {"Fn::GetAtt" : ["WatchStatusLambda", "Arn"]},
                 "BatchSize" : 100,
@@ -71,7 +57,6 @@
                         "StatusTable": {"Fn::GetAtt" : ["StatusTable", "Arn"]},
                         "ProcessWrapperLambda" : {"Fn::GetAtt" : ["ProcessWrapperLambda", "Arn"]},
                         "MakeThumbLambda" : {"Fn::GetAtt" : ["MakeThumbLambda", "Arn"]},
-                        "IncomingBucket" : {"Fn::GetAtt" : ["IncomingBucket", "Arn"]},
                         "PublicBucket" : {"Fn::GetAtt" : ["PublicBucket", "Arn"]}
                     }
                 },

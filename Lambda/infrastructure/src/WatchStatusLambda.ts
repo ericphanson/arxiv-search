@@ -1,5 +1,6 @@
 'use strict';
 import * as AWS from 'aws-sdk';
+import { processors } from 'xml2js';
 AWS.config.region = 'us-east-1';
 const db = new AWS.DynamoDB({
     apiVersion: '2012-08-10'
@@ -13,10 +14,12 @@ interface process {
     lambda_name: string
 }
 
+const incomingBucket = process.env["IncomingBucket"] || "arxivincomingbucket"
+
 const thumbs: process = {
     'resources': {
         'pdf': {
-            'bucket': process.env["IncomingBucket"],
+            'bucket': incomingBucket,
             'ext': '.pdf'
         }
     },
@@ -33,21 +36,21 @@ const thumbs: process = {
 
 const Lambdas = [thumbs]
 
-function have_all_resources(res, image) {
+function have_all_resources(res : process["resources"], image) {
     let have_all_res = true;
-    for (let r of res) {
-        if (image[r] === undefined) {
+    for (let k of Object.getOwnPropertyNames(res)) {
+        if (image[k] === undefined) {
             have_all_res = false;
-        } else if (!(image[r].S === 'have')) {
+        } else if (!(image[k].S === 'have')) {
             have_all_res = false;
         }
     }
     return have_all_res;
 }
 
-function want_any_output(outputs, image) {
+function want_any_output(outputs : process["outputs"], image) {
     let want_any_output = false;
-    for (let o of outputs) {
+    for (let o of Object.getOwnPropertyNames(outputs)) {
         if (image[o] != undefined) {
             if (image[o].S === 'want') {
                 want_any_output = true;
@@ -57,18 +60,35 @@ function want_any_output(outputs, image) {
     return want_any_output;
 }
 
-function shouldFire(lambda_name, image) {
-    let lambda_db_params = Lambdas[lambda_name];
+function shouldFire(lambda_db_params : process, image) {
     let have_resources = have_all_resources(lambda_db_params.resources, image);
     let want = want_any_output(lambda_db_params.outputs, image);
     return have_resources && want;
 }
 
+interface record {
+    eventName : "INSERT" | "MODIFY" | string,
+    eventID : string,
+    eventVersion : string,
+    eventSource : string,
+    awsRegion : string,
+    eventSourceARN : string
+    dynamodb : {
+        "ApproximateCreationDateTime" : number,
+        Keys : {"idvv" : {"S" : string}},
+        NewImage : {[key : string] : any},
+        OldImage?: {[key : string] : any},
+        SequenceNumber : string,
+        SizeBytes : 32,
+        StreamViewType : string,
+    }
+}
 interface event {
-    Records
+    Records : record[]
 }
 
 async function run(event : event, context) {
+    console.log(`Environment= ${JSON.stringify(process.env)}`);
     let lambdas_fired = 0;
     for (let record of event.Records) {
         console.log(`Stream record: ${JSON.stringify(record, undefined, 2)}`);
@@ -77,19 +97,20 @@ async function run(event : event, context) {
             let OldImage = record.dynamodb.OldImage;
             let idvv = NewImage.idvv.S;
             for (let i = 0; i < Lambdas.length; i++) {
-                let {lambda_name, resources, outputs} = Lambdas[i];
+                let p = Lambdas[i];
+                let {lambda_name, resources, outputs} = p;
                 // only fire a lambda function if the old record wasn't ready, but the new record is
                 let fire =
                     (OldImage === undefined)
-                        ? shouldFire(lambda_name, NewImage)
-                        : (!(shouldFire(lambda_name, OldImage)) && shouldFire(lambda_name, NewImage));
+                        ? shouldFire(p, NewImage)
+                        : (!(shouldFire(p, OldImage)) && shouldFire(p, NewImage));
                 if (!fire) {
                     if (want_any_output(outputs, NewImage)) {
                         let resource_keys = Object.getOwnPropertyNames(resources);
                         for (let k of resource_keys) {
                             if (NewImage[k] === undefined) {
                                 await db.updateItem({
-                                    TableName: process.env["StatusTable"],
+                                    TableName: process.env["StatusTable"].split("/")[1],
                                     Key: { "idvv": { "S": idvv } },
                                     ExpressionAttributeValues: { ":w": { "S": "want" } },
                                     UpdateExpression: `SET ${k} = :w`,
@@ -105,7 +126,7 @@ async function run(event : event, context) {
                         FunctionName: ProcessWrapperLambda, // the lambda function we are going to invoke
                         InvocationType: 'Event',
                         LogType: 'None',
-                        Payload : Lambdas[i]
+                        Payload : JSON.stringify({...Lambdas[i], idvv})
                     };
                     console.log(`Firing ${lambda_name} for idvv=${idvv}.`);
                     lambdas_fired++;

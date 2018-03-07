@@ -50,6 +50,7 @@ interface event {
 }
 
 async function run(event: event, context) {
+    console.log(`Running on event ${JSON.stringify(event)}`)
     let idvv = event.idvv
     let resources = event.resources
     let outputs = event.outputs
@@ -83,11 +84,12 @@ async function run(event: event, context) {
         let buck_key_dict: bucket_key_dict = {}
         for (let k of Object.getOwnPropertyNames(resource_dict)) {
             let r = resource_dict[k];
+            if (r === undefined) {throw new Error("need to specify a bucket");}
             let Key = r.subdir ? (r.subdir + "/" + idvv + r.ext) : (idvv + r.ext);
             buck_key_dict[k] = {
-                Bucket: r.bucket,
-                Key
-            }
+                "Bucket": r.bucket,
+                "Key" : Key
+            };
         }
         return buck_key_dict;
     }
@@ -95,10 +97,13 @@ async function run(event: event, context) {
     let bk_outs = make_bucket_key_dict(outputs);
     /** Given a bucket-key dictionary, check that each key has a valid document. */
     function validate(bk_dict: bucket_key_dict) {
-        return Promise.all(Object.getOwnPropertyNames(bk_dict).map(k => s3.headObject(bk_dict[k]).promise()));
+        return Promise.all(Object.getOwnPropertyNames(bk_dict).map(k => {
+            return s3.headObject(bk_dict[k]).promise();
+        }));
     }
     // 1. Validate resources
     try {
+        console.log(`Validating ${JSON.stringify(bk_res)}`)
         await validate(bk_res);
     } catch (err) {
         console.error("Resource validation failed.")
@@ -133,7 +138,7 @@ async function run(event: event, context) {
         console.log(UpdateExpression);
         try {
             await db.updateItem({
-                TableName: "papers-status",
+                TableName: process.env["StatusTable"].split("/")[1],
                 Key: { "idvv": { "S": idvv } },
                 ExpressionAttributeValues: { ":v": { "S": value } },
                 UpdateExpression,
@@ -146,6 +151,7 @@ async function run(event: event, context) {
     }
 }
 
-export const handler = (event: event, context, callback) => {
+export const handler = (event, context, callback) => {
+    if (typeof event === "string") {event = JSON.parse(event);}
     run(event, context).then(() => callback(null)).catch((err) => callback(err));
 }
