@@ -1,7 +1,6 @@
 import * as http from 'http';
 import { DynamoDB } from 'aws-sdk';
 let db = new DynamoDB({ apiVersion: '2012-08-10' });
-const TableName = "papers-status";
 
 
 import * as request from 'request';
@@ -53,6 +52,8 @@ async function fromOAI(event) {
     const base_url = `http://export.arxiv.org/oai2?`;
     const query = `verb=ListRecords&metadataPrefix=arXivRaw&from=${fromDate}`;
     const DONT_WRITE_TO_DB = false;
+    const ONLY_GENERATE_THIS_MANY_ENTRIES = 50; //set to undefined in production mode TODO make this an env variable.
+    const LATEST_ONLY = true;
     let resumptionToken : undefined | string = undefined;
     while(true) {
         let url = base_url + (resumptionToken === undefined ? query : `verb=ListRecords&resumptionToken=${resumptionToken}`);
@@ -87,7 +88,11 @@ async function fromOAI(event) {
                 let header = record.header[0];
                 let meta = record.metadata[0].arXivRaw[0];
                 let id = meta.id[0];
-                for (let v of meta.version) {
+                let vNumbers = meta.version.map(v => Number(v.$.version.substr(1)));
+                let maxVNumber = Math.max(...vNumbers);
+                let versions = LATEST_ONLY ? [meta.version[vNumbers.findIndex(x => x === maxVNumber)]] : meta.version;
+                for (let v of versions) {
+                    if (v === undefined) {continue;}
                     total++;
                     let vv = v.$.version;
                     let date = v.date[0]; //in format "Thu, 21 Jun 2007 14:27:55 GMT"
@@ -103,6 +108,10 @@ async function fromOAI(event) {
                             return;
                         }
                         haveCount++;
+                    }
+                    if (ONLY_GENERATE_THIS_MANY_ENTRIES !== undefined && (total - haveCount) >= ONLY_GENERATE_THIS_MANY_ENTRIES) {
+                        console.log(`Only generating ${ONLY_GENERATE_THIS_MANY_ENTRIES} entries because the constant 'ONLY_GENERATE_THIS_MANY_ENTRIES' is not undefined.`);
+                        return;
                     }
                 }
             }
@@ -124,7 +133,7 @@ async function addToDB(idvv_with_slash: string) {
     try {
         console.log(`adding ${idvv_with_slash} to database.`);
         await db.putItem({
-            TableName,
+            TableName : process.env["StatusTable"].split("/")[1],
             Item: {
                 "idvv": { "S": idvv },
                 "pdf": { "S": "want" },
@@ -180,7 +189,6 @@ async function fromAPI(event) {
         await timeoutAsync(1001);
     }
 }
-
 
 export const handler = function (event, context, callback) {
     fromOAI(event).then(r => callback(null, r)).catch(e => callback(e));

@@ -203,16 +203,28 @@
                 "Code": "./infrastructure",
                 "Environment": {
                     "Variables": {
-                        "StatusTable": {
-                            "Fn::GetAtt": [
-                                "StatusTable",
-                                "Arn"
-                            ]
-                        }
+                        "StatusTable": {  "Fn::GetAtt": [ "StatusTable", "Arn" ]  }
                     }
                 },
                 "MemorySize": 128,
                 "Handler": "out/index.ProcessWrapperLambda",
+                "Role": {"Fn::GetAtt" : ["InfrastructureLambdaRole", "Arn"]},
+                "Timeout": 300,
+                "Runtime": "nodejs6.10"
+            }
+        },
+        "UpdateStatusLambda": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Updates the status table with new entries and (TODO) updates elastic search.",
+                "Code": "./infrastructure",
+                "Environment": {
+                    "Variables": {
+                        "StatusTable": {  "Fn::GetAtt": [ "StatusTable", "Arn" ]  }
+                    }
+                },
+                "MemorySize": 128,
+                "Handler": "out/index.UpdateStatusLambda",
                 "Role": {"Fn::GetAtt" : ["InfrastructureLambdaRole", "Arn"]},
                 "Timeout": 300,
                 "Runtime": "nodejs6.10"
