@@ -105,6 +105,21 @@
                 "AccessControl": "PublicRead"
             }
         },
+        "IncomingBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+            }
+        },
+        "IncomingBucketPermission" : {
+            "Type" : "AWS::Lambda::Permission", 
+            "Properties" : {
+                "Action" : "lambda:InvokeFunction",
+                "FunctionName" : {"Fn::GetAtt" : ["WatchIncomingLambda", "Arn"]},
+                "Principal" : "s3.amazonaws.com",
+                "SourceAccount": {"Ref": "AWS::AccountId"},
+                "SourceArn" : {"Fn::GetAtt" : ["IncomingBucket", "Arn"]}
+            }
+        },
         "StatusTable": {
             "Type": "AWS::DynamoDB::Table",
             "Properties": {
