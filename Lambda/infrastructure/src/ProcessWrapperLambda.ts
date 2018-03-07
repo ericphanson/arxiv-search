@@ -96,19 +96,22 @@ async function run(event: event, context) {
     let bk_res = make_bucket_key_dict(resources);
     let bk_outs = make_bucket_key_dict(outputs);
     /** Given a bucket-key dictionary, check that each key has a valid document. */
-    function validate(bk_dict: bucket_key_dict) {
-        return Promise.all(Object.getOwnPropertyNames(bk_dict).map(k => {
-            return s3.headObject(bk_dict[k]).promise();
-        }));
+    async function validate(bk_dict: bucket_key_dict) {
+        for (let k of Object.getOwnPropertyNames(bk_dict)) {
+            try {
+                await s3.headObject(bk_dict[k]).promise();
+            } catch (err) {
+                if (err.errorType === "Forbidden") {
+                    throw new Error(`Forbidden access the needed bucket ${k}: ${JSON.stringify(bk_dict[k])}. ${err}`);
+                } 
+                else {
+                    throw new Error(`Failed to find the resource for key ${k}: ${JSON.stringify(bk_dict[k])}. ${err}`);
+                }
+            }
+        }
     }
     // 1. Validate resources
-    try {
-        console.log(`Validating ${JSON.stringify(bk_res)}`)
-        await validate(bk_res);
-    } catch (err) {
-        console.error("Resource validation failed.")
-        throw err;
-    }
+    await validate(bk_res);
     // 2. Fire lambda
     let lambda = new AWS.Lambda();
     let Payload = JSON.stringify({
@@ -131,6 +134,7 @@ async function run(event: event, context) {
         await call_db("have");
     } catch (err) {
         await call_db("error");
+        throw err;
     }
     // 3. Update db
     async function call_db(value) {

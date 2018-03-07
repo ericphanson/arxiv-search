@@ -1,6 +1,54 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Resources": {
+    "Resources": { 
+        "InfrastructureLambdaPolicy" : {
+            "Type" : "AWS::IAM::Policy",
+            "Properties" : {
+                "PolicyName" : "InfrastructureLambdaPolicy",
+                "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [
+                            {
+                                "Effect" : "Allow",
+                                "Action" : "*",
+                                "Resource": [
+                                    {"Fn::Join":["/",[{ "Fn::GetAtt": [ "PrivateBucket", "Arn" ] }, "*"]]},
+                                    {"Fn::Join":["/",[{ "Fn::GetAtt": [ "PublicBucket", "Arn" ]  }, "*"]]},
+                                    {"Fn::Join":["/",["arn:aws:s3:::arxivincomingbucket", "*"]]},
+                                    { "Fn::GetAtt": [ "StatusTable", "Arn" ]  },
+                                    { "Fn::GetAtt": [ "StatusTable", "StreamArn" ]  },
+                                    { "Fn::GetAtt": [ "ProcessWrapperLambda", "Arn" ]  },
+                                    { "Fn::GetAtt": [ "MakeThumbLambda", "Arn" ]  }
+                                ]
+                            },
+                            {
+                                "Action": [
+                                    "logs:CreateLogGroup",
+                                    "logs:CreateLogStream",
+                                    "logs:PutLogEvents"
+                                ],
+                                "Effect": "Allow",
+                                "Resource": "arn:aws:logs:*:*:*"
+                            }
+                        ]
+                },
+                "Roles" : [{"Ref" : "InfrastructureLambdaRole"}]
+            }
+        },
+        "InfrastructureLambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                            "Effect": "Allow",
+                            "Action": ["sts:AssumeRole"],
+                            "Principal" : {"Service" : ["lambda.amazonaws.com"]}
+                    }]
+                },
+                "Path" : "/"
+            }
+        },
         "PrivateBucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
@@ -16,96 +64,102 @@
         "StatusTable": {
             "Type": "AWS::DynamoDB::Table",
             "Properties": {
-                "AttributeDefinitions" : [
-                    {"AttributeName" : "idvv", "AttributeType" : "S"}
-                ],
-                "KeySchema": [
-                    {
-                        "AttributeName": "idvv",
-                        "KeyType": "HASH"
-                    }
-                ],
+                "AttributeDefinitions": [  {  "AttributeName": "idvv", "AttributeType": "S" }  ],
+                "KeySchema": [ { "AttributeName": "idvv", "KeyType": "HASH" } ],
                 "ProvisionedThroughput": {
                     "ReadCapacityUnits": "5",
                     "WriteCapacityUnits": "5"
                 },
-                "StreamSpecification" : {
-                    "StreamViewType" : "NEW_AND_OLD_IMAGES"
-                }
+                "StreamSpecification": {  "StreamViewType": "NEW_AND_OLD_IMAGES" }
             }
         },
-        "StatusEventSourceMapping" : {
-            "Type" : "AWS::Lambda::EventSourceMapping",
-            "Properties" : {
-                "EventSourceArn" : {"Fn::GetAtt" : ["StatusTable", "StreamArn"]},
-                "FunctionName" : {"Fn::GetAtt" : ["WatchStatusLambda", "Arn"]},
-                "BatchSize" : 100,
-                "StartingPosition" : "TRIM_HORIZON"
+        "StatusEventSourceMapping": {
+            "Type": "AWS::Lambda::EventSourceMapping",
+            "Properties": {
+                "EventSourceArn": { "Fn::GetAtt": [ "StatusTable",  "StreamArn" ] },
+                "FunctionName": { "Fn::GetAtt": [ "WatchStatusLambda", "Arn" ] },
+                "BatchSize": 100,
+                "StartingPosition": "TRIM_HORIZON"
             },
             "DependsOn": [
                 "WatchStatusLambda",
-                "StatusTable"
+                "StatusTable",
+                "InfrastructureLambdaPolicy",
+                "InfrastructureLambdaRole"
             ]
         },
-        "WatchStatusLambda":{        
+        "WatchStatusLambda": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "Description": "Watches changes to the database and determines if it is possible to perform any processing on the papers.",
                 "Code": "./infrastructure",
                 "Environment": {
                     "Variables": {
-                        "StatusTable": {"Fn::GetAtt" : ["StatusTable", "Arn"]},
-                        "ProcessWrapperLambda" : {"Fn::GetAtt" : ["ProcessWrapperLambda", "Arn"]},
-                        "MakeThumbLambda" : {"Fn::GetAtt" : ["MakeThumbLambda", "Arn"]},
-                        "PublicBucket" : {"Fn::GetAtt" : ["PublicBucket", "Arn"]}
+                        "StatusTable": { "Fn::GetAtt": [ "StatusTable",  "Arn"  ]  },
+                        "ProcessWrapperLambda": {  "Fn::GetAtt": [ "ProcessWrapperLambda", "Arn" ]  },
+                        "MakeThumbLambda": { "Fn::GetAtt": [  "MakeThumbLambda", "Arn" ] },
+                        "PublicBucket": { "Fn::GetAtt": [ "PublicBucket",   "Arn" ]  }
                     }
                 },
                 "MemorySize": 128,
                 "Handler": "out/index.WatchStatusLambda",
-                "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
+                "Role": {"Fn::GetAtt" : ["InfrastructureLambdaRole", "Arn"]},
                 "Timeout": 60,
                 "Runtime": "nodejs6.10"
-            }
+            },
+            "DependsOn" : [
+                "InfrastructureLambdaRole",
+                "InfrastructureLambdaPolicy"
+            ]
         },
-        "WatchIncomingLambda":{        
+        "WatchIncomingLambda": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "Description": "Watches additions to the IncomingBucket and updates the corresponding entry on StatusTable.",
                 "Code": "./infrastructure",
                 "Environment": {
                     "Variables": {
-                        "StatusTable": {"Fn::GetAtt" : ["StatusTable", "Arn"]}
+                        "StatusTable": {
+                            "Fn::GetAtt": [
+                                "StatusTable",
+                                "Arn"
+                            ]
+                        }
                     }
                 },
                 "MemorySize": 128,
                 "Handler": "out/index.WatchIncomingLambda",
-                "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
+                "Role": {"Fn::GetAtt" : ["InfrastructureLambdaRole", "Arn"]},
                 "Timeout": 3,
                 "Runtime": "nodejs6.10"
             }
         },
-        "ProcessWrapperLambda":{        
+        "ProcessWrapperLambda": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "Description": "Wraps a processor lambda and updates the table after it executes.",
                 "Code": "./infrastructure",
                 "Environment": {
                     "Variables": {
-                        "StatusTable": {"Fn::GetAtt" : ["StatusTable", "Arn"]}
+                        "StatusTable": {
+                            "Fn::GetAtt": [
+                                "StatusTable",
+                                "Arn"
+                            ]
+                        }
                     }
                 },
                 "MemorySize": 128,
                 "Handler": "out/index.ProcessWrapperLambda",
-                "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
+                "Role": {"Fn::GetAtt" : ["InfrastructureLambdaRole", "Arn"]},
                 "Timeout": 300,
                 "Runtime": "nodejs6.10"
             }
         },
-
-        "MakeThumbLambda":{        
+        "MakeThumbLambda": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
-                "Description": "Makes a thumbnail given a pdf using imagemagick", 
+                "Description": "Makes a thumbnail given a pdf using imagemagick",
                 "Code": "./processors/MakeThumbLambda",
                 "MemorySize": 128,
                 "Handler": "index.handler",
