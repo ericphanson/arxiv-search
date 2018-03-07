@@ -1,5 +1,5 @@
 #!/bin/bash
-CODE_BUCKET=${1:arxiv-search-lambda-code}
+CODE_BUCKET=${1-arxiv-search-lambda-code}
 set -e;
 echo "(0/4) Finding all package.json files and running `yarn install` for each one..."
 find . -type f -name "package.json" -not -path "*/node_modules/*" -execdir yarn install \; 
