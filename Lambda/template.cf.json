@@ -49,6 +49,50 @@
                 "Path" : "/"
             }
         },
+        "ProcessorLambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [{
+                            "Effect": "Allow",
+                            "Action": ["sts:AssumeRole"],
+                            "Principal" : {"Service" : ["lambda.amazonaws.com"]}
+                    }]
+                },
+                "Path" : "/"
+            }
+        },
+        "ProcessorLambdaPolicy" : {
+            "Type" : "AWS::IAM::Policy",
+            "Properties" : {
+                "PolicyName" : "ProcessorLambdaPolicy",
+                "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [
+                            {
+                                "Effect" : "Allow",
+                                "Action" : ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListObjects", "s3:ReplicateObject"],
+                                "Resource": [
+                                    {"Fn::Join":["/",[{ "Fn::GetAtt": [ "PrivateBucket", "Arn" ] }, "*"]]},
+                                    {"Fn::Join":["/",[{ "Fn::GetAtt": [ "PublicBucket", "Arn" ]  }, "*"]]},
+                                    {"Fn::Join":["/",["arn:aws:s3:::arxivincomingbucket", "*"]]}
+                                ]
+                            },
+                            {
+                                "Action": [
+                                    "logs:CreateLogGroup",
+                                    "logs:CreateLogStream",
+                                    "logs:PutLogEvents"
+                                ],
+                                "Effect": "Allow",
+                                "Resource": "arn:aws:logs:*:*:*"
+                            }
+                        ]
+                },
+                "Roles" : [{"Ref" : "ProcessorLambdaRole"}]
+            }
+        },
         "PrivateBucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
@@ -163,7 +207,7 @@
                 "Code": "./processors/MakeThumbLambda",
                 "MemorySize": 128,
                 "Handler": "index.handler",
-                "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
+                "Role": {"Fn::GetAtt" : ["ProcessorLambdaRole", "Arn"]},
                 "Timeout": 100,
                 "Runtime": "nodejs6.10"
             }
