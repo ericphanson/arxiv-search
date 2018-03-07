@@ -4,8 +4,6 @@
         "IncomingBucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
-                "BucketName" : "arxiv-incoming",
-                "Description": "Bucket that paper retrievers can upload papers' source files and pdfs to.",
                 "NotificationConfiguration": {
                     "LambdaConfigurations": [
                         {
@@ -14,35 +12,26 @@
                         }
                     ]
                 }
-            }
+            },
+            "DependsOn": [
+                "WatchIncomingLambda"
+            ]
         },
         "PrivateBucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
-                "AccessControl": "Private",
-                "BucketName": "arxiv-private",
-                "Description" : "Bucket containing objects that we don't want to expose to the public, eg pdfs, text files etc."
-            }
-        },
-        "CodeBucket": {
-            "Type": "AWS::S3::Bucket",
-            "Properties": {
-                "BucketName" : "arxiv-search-lambda-code",
-                "Description": "Repository for lambda code."
+                "AccessControl": "Private"
             }
         },
         "PublicBucket": {
             "Type": "AWS::S3::Bucket",
             "Properties": {
-                "AccessControl": "PublicRead",
-                "Description": "Public facing bucket containing thumbs, assets and so on. ",
-                "BucketName" : "arxiv-static"
+                "AccessControl": "PublicRead"
             }
         },
         "StatusTable": {
             "Type": "AWS::DynamoDB::Table",
             "Properties": {
-                "TableName" : "papers-status",
                 "AttributeDefinitions" : [
                     {"AttributeName" : "idvv", "AttributeType" : "S"}
                 ],
@@ -66,17 +55,17 @@
                 "FunctionName" : {"Fn::GetAtt" : ["WatchStatusLambda", "Arn"]},
                 "BatchSize" : 100,
                 "StartingPosition" : "TRIM_HORIZON"
-            }
+            },
+            "DependsOn": [
+                "WatchStatusLambda",
+                "StatusTable"
+            ]
         },
         "WatchStatusLambda":{        
             "Type": "AWS::Lambda::Function",
             "Properties": {
-                "FunctionName" : "WatchStatusLambda",
                 "Description": "Watches changes to the database and determines if it is possible to perform any processing on the papers.",
-                "Code": {
-                    "S3Bucket": {"Fn::GetAtt" : ["CodeBucket", "Arn"]},
-                    "S3Key": "infrastructure.zip"
-                },
+                "Code": "./infrastructure",
                 "Environment": {
                     "Variables": {
                         "StatusTable": {"Fn::GetAtt" : ["StatusTable", "Arn"]},
@@ -87,8 +76,8 @@
                     }
                 },
                 "MemorySize": 128,
-                "Handler": "index.WatchStatusLambda",
-                "Role": "arn:aws:iam::351532156193:role/lambda_everything",
+                "Handler": "out/index.WatchStatusLambda",
+                "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
                 "Timeout": 3,
                 "Runtime": "nodejs6.10"
             }
@@ -96,20 +85,16 @@
         "WatchIncomingLambda":{        
             "Type": "AWS::Lambda::Function",
             "Properties": {
-                "FunctionName" : "WatchIncomingLambda",
                 "Description": "Watches additions to the IncomingBucket and updates the corresponding entry on StatusTable.",
-                "Code": {
-                    "S3Bucket": {"Fn::GetAtt" : ["CodeBucket", "Arn"]},
-                    "S3Key": "infrastructure.zip"
-                },
+                "Code": "./infrastructure",
                 "Environment": {
                     "Variables": {
                         "StatusTable": {"Fn::GetAtt" : ["StatusTable", "Arn"]}
                     }
                 },
                 "MemorySize": 128,
-                "Handler": "index.WatchIncomingLambda",
-                "Role": "arn:aws:iam::351532156193:role/lambda_everything",
+                "Handler": "out/index.WatchIncomingLambda",
+                "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
                 "Timeout": 3,
                 "Runtime": "nodejs6.10"
             }
@@ -117,20 +102,16 @@
         "ProcessWrapperLambda":{        
             "Type": "AWS::Lambda::Function",
             "Properties": {
-                "FunctionName" : "ProcessWrapperLambda",
                 "Description": "Wraps a processor lambda and updates the table after it executes.",
-                "Code": {
-                    "S3Bucket": {"Fn::GetAtt" : ["CodeBucket", "Arn"]},
-                    "S3Key": "infrastructure.zip"
-                },
+                "Code": "./infrastructure",
                 "Environment": {
                     "Variables": {
                         "StatusTable": {"Fn::GetAtt" : ["StatusTable", "Arn"]}
                     }
                 },
                 "MemorySize": 128,
-                "Handler": "index.ProcessWrapperLambda",
-                "Role": "arn:aws:iam::351532156193:role/lambda_everything",
+                "Handler": "out/index.ProcessWrapperLambda",
+                "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
                 "Timeout": 3,
                 "Runtime": "nodejs6.10"
             }
@@ -139,15 +120,11 @@
         "MakeThumbLambda":{        
             "Type": "AWS::Lambda::Function",
             "Properties": {
-                "FunctionName" : "MakeThumbLambda",
                 "Description": "Makes a thumbnail given a pdf using imagemagick", 
-                "Code": {
-                    "S3Bucket": {"Fn::GetAtt" : ["CodeBucket", "Arn"]},
-                    "S3Key": "makethumb.zip"
-                },
+                "Code": "./processors/MakeThumbLambda",
                 "MemorySize": 128,
                 "Handler": "index.handler",
-                "Role": "arn:aws:iam::351532156193:role/lambda_everything",
+                "Role": "arn:aws:iam::822003976223:role/service-role/lambda_basic_execution",
                 "Timeout": 90,
                 "Runtime": "nodejs6.10"
             }

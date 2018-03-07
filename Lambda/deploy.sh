@@ -5,8 +5,8 @@ find . -type f -name "package.json" -not -path "*/node_modules/*" -execdir "yarn
 echo "(1/4) Running tsc to compile TypeScript files..."
 find . -type f -name "tsconfig.json" -not -path "*/node_modules/*" -execdir tsc \;
 echo "(2/4) Preparing package and uploading to S3..."
-aws cloudformation package --template-file lambdas.yaml --output-template-file serverless-output.yaml --s3-bucket arxiv-search-lambda-code
+aws cloudformation package --template-file template.cf.json --output-template-file output.yaml --s3-bucket arxiv-search-code-bucket
 echo "(3/4) Deploying to AWS CloudFormation..."
-aws cloudformation deploy --template-file serverless-output.yaml --stack-name lambda
-rm serverless-output.yaml
+aws cloudformation deploy --template-file output.yaml --stack-name arxiv-search-stack
+rm output.yaml
 echo "(4/4) Deployment of all lambdas done."

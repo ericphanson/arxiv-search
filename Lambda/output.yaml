@@ -1,0 +1,135 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  IncomingBucket:
+    DependsOn:
+    - WatchIncomingLambda
+    Properties:
+      NotificationConfiguration:
+        LambdaConfigurations:
+        - Event: s3:ObjectCreated:*
+          Function:
+            Fn::GetAtt:
+            - WatchIncomingLambda
+            - Arn
+    Type: AWS::S3::Bucket
+  MakeThumbLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-code-bucket
+        S3Key: 639a871966ad995ac8b4245d547a195c
+      Description: Makes a thumbnail given a pdf using imagemagick
+      Handler: index.handler
+      MemorySize: 128
+      Role: arn:aws:iam::822003976223:role/service-role/lambda_basic_execution
+      Runtime: nodejs6.10
+      Timeout: 90
+    Type: AWS::Lambda::Function
+  PrivateBucket:
+    Properties:
+      AccessControl: Private
+    Type: AWS::S3::Bucket
+  ProcessWrapperLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-code-bucket
+        S3Key: f5a1092908228050365e2f2e32d246ab
+      Description: Wraps a processor lambda and updates the table after it executes.
+      Environment:
+        Variables:
+          StatusTable:
+            Fn::GetAtt:
+            - StatusTable
+            - Arn
+      Handler: out/index.ProcessWrapperLambda
+      MemorySize: 128
+      Role: arn:aws:iam::822003976223:role/service-role/lambda_basic_execution
+      Runtime: nodejs6.10
+      Timeout: 3
+    Type: AWS::Lambda::Function
+  PublicBucket:
+    Properties:
+      AccessControl: PublicRead
+    Type: AWS::S3::Bucket
+  StatusEventSourceMapping:
+    DependsOn:
+    - WatchStatusLambda
+    - StatusTable
+    Properties:
+      BatchSize: 100
+      Description: The source of truth for the processing status of the papers.
+      EventSourceArn:
+        Fn::GetAtt:
+        - StatusTable
+        - StreamArn
+      FunctionName:
+        Fn::GetAtt:
+        - WatchStatusLambda
+        - Arn
+      StartingPosition: TRIM_HORIZON
+    Type: AWS::Lambda::EventSourceMapping
+  StatusTable:
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: idvv
+        AttributeType: S
+      KeySchema:
+      - AttributeName: idvv
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+    Type: AWS::DynamoDB::Table
+  WatchIncomingLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-code-bucket
+        S3Key: f5a1092908228050365e2f2e32d246ab
+      Description: Watches additions to the IncomingBucket and updates the corresponding
+        entry on StatusTable.
+      Environment:
+        Variables:
+          StatusTable:
+            Fn::GetAtt:
+            - StatusTable
+            - Arn
+      Handler: out/index.WatchIncomingLambda
+      MemorySize: 128
+      Role: arn:aws:iam::822003976223:role/service-role/lambda_basic_execution
+      Runtime: nodejs6.10
+      Timeout: 3
+    Type: AWS::Lambda::Function
+  WatchStatusLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-code-bucket
+        S3Key: f5a1092908228050365e2f2e32d246ab
+      Description: Watches changes to the database and determines if it is possible
+        to perform any processing on the papers.
+      Environment:
+        Variables:
+          IncomingBucket:
+            Fn::GetAtt:
+            - IncomingBucket
+            - Arn
+          MakeThumbLambda:
+            Fn::GetAtt:
+            - MakeThumbLambda
+            - Arn
+          ProcessWrapperLambda:
+            Fn::GetAtt:
+            - ProcessWrapperLambda
+            - Arn
+          PublicBucket:
+            Fn::GetAtt:
+            - PublicBucket
+            - Arn
+          StatusTable:
+            Fn::GetAtt:
+            - StatusTable
+            - Arn
+      Handler: out/index.WatchStatusLambda
+      MemorySize: 128
+      Role: arn:aws:iam::822003976223:role/service-role/lambda_basic_execution
+      Runtime: nodejs6.10
+      Timeout: 3
+    Type: AWS::Lambda::Function
