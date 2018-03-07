@@ -14,7 +14,7 @@ interface process {
     lambda_name: string
 }
 
-const incomingBucket = process.env["IncomingBucket"] || "arxivincomingbucket"
+const incomingBucket = (process.env["IncomingBucket"] && process.env["IncomingBucket"].split("arn:aws:s3:::")[1])|| "arxivincomingbucket"
 
 
 function have_all_resources(res: process["resources"], image) {
@@ -69,7 +69,6 @@ interface event {
 }
 
 async function run(event: event, context) {
-    console.log(`Environment= ${JSON.stringify(process.env)}`);
     const thumbs: process = {
         'resources': {
             'pdf': {

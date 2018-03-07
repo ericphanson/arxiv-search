@@ -14,7 +14,7 @@
                                 "Resource": [
                                     {"Fn::Join":["/",[{ "Fn::GetAtt": [ "PrivateBucket", "Arn" ] }, "*"]]},
                                     {"Fn::Join":["/",[{ "Fn::GetAtt": [ "PublicBucket", "Arn" ]  }, "*"]]},
-                                    {"Fn::Join":["/",["arn:aws:s3:::arxivincomingbucket", "*"]]},
+                                    {"Fn::Join":["/",[{ "Fn::GetAtt": [ "IncomingBucket", "Arn" ]  }, "*"]]},
                                     { "Fn::GetAtt": [ "StatusTable", "Arn" ]  },
                                     { "Fn::GetAtt": [ "StatusTable", "StreamArn" ]  },
                                     { "Fn::GetAtt": [ "ProcessWrapperLambda", "Arn" ]  },
@@ -76,7 +76,7 @@
                                 "Resource": [
                                     {"Fn::Join":["/",[{ "Fn::GetAtt": [ "PrivateBucket", "Arn" ] }, "*"]]},
                                     {"Fn::Join":["/",[{ "Fn::GetAtt": [ "PublicBucket", "Arn" ]  }, "*"]]},
-                                    {"Fn::Join":["/",["arn:aws:s3:::arxivincomingbucket", "*"]]}
+                                    {"Fn::Join":["/",[{ "Fn::GetAtt": [ "IncomingBucket", "Arn" ]  }, "*"]]}
                                 ]
                             },
                             {
@@ -163,6 +163,7 @@
                         "StatusTable": { "Fn::GetAtt": [ "StatusTable",  "Arn"  ]  },
                         "ProcessWrapperLambda": {  "Fn::GetAtt": [ "ProcessWrapperLambda", "Arn" ]  },
                         "MakeThumbLambda": { "Fn::GetAtt": [  "MakeThumbLambda", "Arn" ] },
+                        "IncomingBucket": { "Fn::GetAtt": [  "IncomingBucket", "Arn" ] },
                         "PublicBucket": { "Fn::GetAtt": [ "PublicBucket",   "Arn" ]  }
                     }
                 },
@@ -184,12 +185,7 @@
                 "Code": "./infrastructure",
                 "Environment": {
                     "Variables": {
-                        "StatusTable": {
-                            "Fn::GetAtt": [
-                                "StatusTable",
-                                "Arn"
-                            ]
-                        }
+                        "StatusTable": { "Fn::GetAtt": [  "StatusTable", "Arn" ]  }
                     }
                 },
                 "MemorySize": 128,
