@@ -115,7 +115,8 @@
                             "Function": {"Fn::GetAtt": [  "WatchIncomingLambda", "Arn"]}
                     }]
                 }
-            }
+            },
+            "DependsOn" : ["IncomingBucketPermission"]
         },
         "IncomingBucketPermission" : {
             "Type" : "AWS::Lambda::Permission", 
@@ -123,8 +124,7 @@
                 "Action" : "lambda:InvokeFunction",
                 "FunctionName" : {"Fn::GetAtt" : ["WatchIncomingLambda", "Arn"]},
                 "Principal" : "s3.amazonaws.com",
-                "SourceAccount": {"Ref": "AWS::AccountId"},
-                "SourceArn" : {"Fn::GetAtt" : ["IncomingBucket", "Arn"]}
+                "SourceAccount": {"Ref": "AWS::AccountId"}
             }
         },
         "StatusTable": {
