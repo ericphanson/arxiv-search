@@ -1,5 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
+    "Description" : "The full stack for the paper processing pipeline of Arxiv-Search. ",
     "Resources": { 
         "InfrastructureLambdaPolicy" : {
             "Type" : "AWS::IAM::Policy",
