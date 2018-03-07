@@ -49,12 +49,11 @@ interface event {
     lambda_name: string
 }
 
-exports.handler = (event: event, context, callback) => {
+async function run(event: event, context) {
     let idvv = event.idvv
     let resources = event.resources
     let outputs = event.outputs
     let lambda_name = event.lambda_name
-
     /** Given a dictionary of resources, like
     {
         'pdf': {
@@ -92,17 +91,19 @@ exports.handler = (event: event, context, callback) => {
         }
         return buck_key_dict;
     }
-
+    let bk_res = make_bucket_key_dict(resources);
+    let bk_outs = make_bucket_key_dict(outputs);
     /** Given a bucket-key dictionary, check that each key has a valid document. */
     function validate(bk_dict: bucket_key_dict) {
         return Promise.all(Object.getOwnPropertyNames(bk_dict).map(k => s3.headObject(bk_dict[k]).promise()));
     }
-    let bk_res = make_bucket_key_dict(resources)
-    let bk_outs = make_bucket_key_dict(outputs)
     // 1. Validate resources
-    validate(bk_res).catch((err) => {
-        callback(null, "Resource validation failed. Had error " + err);
-    });
+    try {
+        await validate(bk_res);
+    } catch (err) {
+        console.error("Resource validation failed.")
+        throw err;
+    }
     // 2. Fire lambda
     let lambda = new AWS.Lambda();
     let Payload = {
@@ -117,37 +118,34 @@ exports.handler = (event: event, context, callback) => {
         Payload
     }
     console.log("firing " + lambda_name + " with payload=" + Payload);
-    lambda.invoke(params).promise().then((resp) => {
-        validate(bk_outs).catch((err) => {
-            // console.log("The lambda " + lambda_name + " returned without error, but the outputs don't exist where they should.")
-            call_db('error');
-            callback(null, "The lambda " + lambda_name + " returned without error, but the outputs don't exist where they should.")
-        }).then(() => {
-            console.log("The lambda " + lambda_name + 'returned without error, and the outputs exit.')
-            // update dictionary
-            call_db('have');
-        });
-    }).catch((err) => {
-        call_db('error');
-        callback(null, "The lambda " + lambda_name + ' returned with error ' + err)
-    })
+    try {
+        let resp = await lambda.invoke(params).promise();
+        console.log(`The lambda ${lambda_name}returned without error`);
+        await validate(bk_outs);
+        console.log(`The lambda created the correct outputs.`);
+        await call_db("have");
+    } catch (err) {
+        await call_db("error");
+    }
     // 3. Update db
-    function call_db(value) {
+    async function call_db(value) {
         let UpdateExpression = Object.getOwnPropertyNames(outputs).map(r => "SET " + r + " = :v").join(", ");
         console.log(UpdateExpression);
-        db.updateItem({
-            TableName: "papers-status",
-            Key: { "idvv": { "S": idvv } },
-            ExpressionAttributeValues: { ":v": { "S": value } },
-            UpdateExpression,
-            ReturnValues: "NONE"
-        }).promise().then(
-            () => {
-                callback(null, "Successfully updated the dynamodb")
-            }
-        ).catch((err) => {
+        try {
+            await db.updateItem({
+                TableName: "papers-status",
+                Key: { "idvv": { "S": idvv } },
+                ExpressionAttributeValues: { ":v": { "S": value } },
+                UpdateExpression,
+                ReturnValues: "NONE"
+            }).promise();
+        } catch (err) {
             console.log("Error updating the dynamodb. Wanted set the outputs to " + value + ".")
-            callback(err)
-        })
+            throw err;
+        }
     }
+}
+
+exports.handler = (event: event, context, callback) => {
+    run(event, context).then(() => callback(null)).catch((err) => callback(err));
 }
