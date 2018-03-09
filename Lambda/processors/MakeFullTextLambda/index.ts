@@ -1,10 +1,18 @@
 'use strict';
-import * as  AWS from "aws-sdk"
-import * as  fs from "fs"
-import { PDFJSStatic } from 'pdfjs-dist';
+import * as AWS from "aws-sdk"
+import * as fs from "fs"
+import {
+    PDFJSStatic
+} from 'pdfjs-dist';
 const PDFJS: PDFJSStatic = require('pdfjs-dist');
 
-type bucket_key_dict = { [resource: string]: { "Bucket": string, "Key": string } };
+
+type bucket_key_dict = {
+    [resource: string]: {
+        "Bucket": string,
+        "Key": string
+    }
+};
 
 
 export const handler = (event, context, callback) => {
@@ -25,45 +33,47 @@ export const handler = (event, context, callback) => {
 
         // do something to write output file
 
-        function gettext(file : string){
+        function gettext(file: string) {
             var pdf = PDFJS.getDocument(file);
-            return pdf.then(function(pdf) { // get all pages text
-                 var maxPages = pdf.pdfInfo.numPages;
-                 var countPromises = []; // collecting all page promises
-                 for (var j = 1; j <= maxPages; j++) {
+            return pdf.then(function (pdf) { // get all pages text
+                var maxPages = pdf.numPages;
+                var countPromises = []; // collecting all page promises
+                for (var j = 1; j <= maxPages; j++) {
                     var page = pdf.getPage(j);
-            
+
                     var txt = "";
-                    countPromises.push(page.then(function(page) { // add page promise
+                    countPromises.push(page.then(function (page) { // add page promise
                         var textContent = page.getTextContent();
-                        return textContent.then(function(text){ // return content promise
-                            return text.items.map(function (s) { return s.str; }).join(''); // value page text 
-            
+                        return textContent.then(function (text) { // return content promise
+                            return text.items.map(function (s) {
+                                return s.str;
+                            }).join(''); // value page text 
+
                         });
                     }));
-                 }
-                 // Wait for all pages and join text
-                 return Promise.all(countPromises).then(function (texts) {
-                   
-                   return texts.join('');
-                 });
+                }
+                // Wait for all pages and join text
+                return Promise.all(countPromises).then(function (texts) {
+                    return texts.join('');
+                });
             });
-            }
+        }
 
-        put_params['Body'] = fs.readFileSync(outputFile);
-        put_params['ContentType'] = "text/plain";
-        console.log(`Text successfully extracted, writing to S3: ${put_params['Key']}`);
-        s3.putObject(put_params, (err, result) => {
-            if (err) {
-                console.error("couldn't put to S3 bucket: ", err);
-                callback(err);
-                return;
-            } else {
-                callback(null, "Success.");
-                return;
-            }
+        gettext(inputFile).then( (text)=>{
+            fs.writeFileSync(outputFile, text)
+            put_params['Body'] = fs.readFileSync(outputFile);
+            put_params['ContentType'] = "text/plain";
+            console.log(`Text successfully extracted, writing to S3: ${put_params['Key']}`);
+            s3.putObject(put_params, (err, result) => {
+                if (err) {
+                    console.error("couldn't put to S3 bucket: ", err);
+                    callback(err);
+                    return;
+                } else {
+                    callback(null, text);
+                    return;
+                }
+            });
         });
-
-
     });
 };
