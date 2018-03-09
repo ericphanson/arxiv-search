@@ -27,7 +27,7 @@ async function run(event: event) {
             let Key = {"idvv" : item.idvv};
             for (let r of resources) {
                 if (event[r]) {
-                    let itemStatus = item[r] ? "unset" : item[r].S;
+                    let itemStatus = item[r] ? item[r].S : "unset";
                     let setTo = event[r]["*"] || event[r][itemStatus]
                     if (setTo !== undefined) {
                         if (setTo === "unset") {
