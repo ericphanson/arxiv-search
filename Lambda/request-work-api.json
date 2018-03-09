@@ -6,26 +6,16 @@
   },
   "host": "d93p49z8ua.execute-api.us-east-1.amazonaws.com",
   "basePath": "/dev",
-  "schemes": [
-    "https"
-  ],
+  "schemes": ["https" ],
   "paths": {
     "/testprocesswork": {
       "post": {
-        "produces": [
-          "application/json"
-        ],
+        "produces": ["application/json"],
         "responses": {
           "200": {
             "description": "200 response",
-            "schema": {
-              "$ref": "#/definitions/Empty"
-            },
-            "headers": {
-              "Access-Control-Allow-Origin": {
-                "type": "string"
-              }
-            }
+            "schema": {"$ref": "#/definitions/Empty" },
+            "headers": {"Access-Control-Allow-Origin": {"type": "string"  } }
           }
         },
         "x-amazon-apigateway-integration": {
@@ -45,28 +35,16 @@
         }
       },
       "options": {
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
         "responses": {
-          "200": {
+          "200": { 
             "description": "200 response",
-            "schema": {
-              "$ref": "#/definitions/Empty"
-            },
+            "schema": {"$ref": "#/definitions/Empty"},
             "headers": {
-              "Access-Control-Allow-Origin": {
-                "type": "string"
-              },
-              "Access-Control-Allow-Methods": {
-                "type": "string"
-              },
-              "Access-Control-Allow-Headers": {
-                "type": "string"
-              }
+              "Access-Control-Allow-Origin": {"type": "string"},
+              "Access-Control-Allow-Methods": {"type": "string"},
+              "Access-Control-Allow-Headers": {"type": "string"}
             }
           }
         },
@@ -81,9 +59,7 @@
               }
             }
           },
-          "requestTemplates": {
-            "application/json": "{\"statusCode\": 200}"
-          },
+          "requestTemplates": {"application/json": "{\"statusCode\": 200}"},
           "passthroughBehavior": "when_no_match",
           "type": "mock"
         }
