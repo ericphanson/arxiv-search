@@ -232,6 +232,23 @@
                 "Runtime": "nodejs6.10"
             }
         },
+        "BatchEditStatusTableLambda": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "A lambda to be manually run to edit the status table. Shouldn't be invokable from other lambdas etc. ",
+                "Code": "./infrastructure",
+                "Environment": {
+                    "Variables": {
+                        "StatusTable": {  "Fn::GetAtt": [ "StatusTable", "Arn" ]  }
+                    }
+                },
+                "MemorySize": 128,
+                "Handler": "out/index.BatchEditStatusTableLambda",
+                "Role": {"Fn::GetAtt" : ["InfrastructureLambdaRole", "Arn"]},
+                "Timeout": 300,
+                "Runtime": "nodejs6.10"
+            }
+        },
         "MakeThumbLambda": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
