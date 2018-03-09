@@ -241,6 +241,24 @@
                 "Timeout": 100,
                 "Runtime": "nodejs6.10"
             }
+        },
+        "ProcessFilesLambda": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Process files passed through the API to workers.",
+                "Code": "./infrastructure",
+                "Environment": {
+                    "Variables": {
+                        "StatusTable": {  "Fn::GetAtt": [ "StatusTable", "Arn" ]  },
+                        "IncomingBucket": { "Fn::GetAtt": [  "IncomingBucket", "Arn" ] }
+                    }
+                },
+                "MemorySize": 128,
+                "Handler": "out/index.ProcessFilesLambda",
+                "Role": {"Fn::GetAtt" : ["InfrastructureLambdaRole", "Arn"]},
+                "Timeout": 300,
+                "Runtime": "nodejs6.10"
+            }
         }
     }
 }

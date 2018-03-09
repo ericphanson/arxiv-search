@@ -12,9 +12,8 @@ const rp = require("request-promise-native");
 const fs = require("fs");
 const request = require("request");
 var api_vals = require('./aws-api-key.json');
-const uri = 'https://d93p49z8ua.execute-api.us-east-1.amazonaws.com/dev/testprocesswork';
 var options = {
-    uri,
+    uri: 'https://z9m8rwiox4.execute-api.us-east-1.amazonaws.com/Prod/process-work',
     headers: {
         'x-api-key': api_vals.key,
         'User-Agent': 'Request-Promise'
@@ -31,7 +30,9 @@ let succ = [];
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-function awaitEvent(item, eventName) { return new Promise((resolve, reject) => item.on(eventName, resolve)); }
+function awaitEvent(item, eventName) {
+    return new Promise((resolve, reject) => { item.on(eventName, resolve); });
+}
 /**
  * Attempts to download the paper up to MAX_TRIES number of times.
  * Returns a promise which resolves when the download completes, or rejects if the maximum number of attempts was reached.
@@ -39,38 +40,44 @@ function awaitEvent(item, eventName) { return new Promise((resolve, reject) => i
  * @param filename filename to place the document
  */
 function downloadPaper(url, filename) {
-    return __awaiter(this, void 0, void 0, function* () {
-        let try_again;
-        let attempts = 0;
-        do {
-            attempts++;
-            let r = request.get({
-                'uri': url,
-                headers: {
-                    "User-Agent": "request"
-                }
-            });
-            r.pause();
-            // wait for the response
-            let dl_response = yield awaitEvent(r, "response");
-            if (dl_response.statusCode === 200) {
-                let file = r.pipe(fs.createWriteStream(filename)); //pipe to where you want it to go
-                r.resume();
-                let e = yield awaitEvent(file, 'finish');
-                return e;
+    function getValidRequest(res, rej, count) {
+        var r = request.get({
+            'uri': url,
+            headers: {
+                "User-Agent": "request"
+            }
+        });
+        r.pause();
+        r.on('response', function (resp) {
+            if (resp.statusCode === 200) {
+                console.log("calling res");
+                res(r);
             }
             else {
-                console.log(`Got status ${dl_response.statusCode} on attempt ${attempts}`);
-                if (attempts < MAX_TRIES) {
-                    try_again = true;
+                if (count < MAX_TRIES) {
+                    rej();
                 }
                 else {
-                    try_again = false;
-                    throw new Error(`Failed on MAX_TRIES (${MAX_TRIES}) download attempts, so moving on...`);
+                    console.log("trying again");
+                    // sleep(1000).then(()=> getValidRequest(res, rej, count + 1))
+                    setTimeout(() => getValidRequest(res, rej, count + 1), 10000);
                 }
             }
-        } while (try_again);
+        });
+    }
+    let validRequestPromise = new Promise((resolve, reject) => {
+        getValidRequest(resolve, reject, 0);
     });
+    return validRequestPromise.then((r) => {
+        return new Promise((res, rej) => {
+            console.log("validRequestPromise.then triggered");
+            let p = r.pipe(fs.createWriteStream(filename)); //pipe to where you want it to go
+            r.resume();
+            p.on("finish", res);
+            p.on("error", rej);
+        });
+    }).then((r) => { console.log("done"); })
+        .catch((err) => console.log("Error " + err));
 }
 function uploadPaper(url, filename) {
     let stats = fs.statSync(filename);
@@ -109,8 +116,11 @@ rp.post(options)
         console.log(`Got response of length ${resp.length}`);
         for (let paper of resp) {
             let filename = paper.idvv + "." + paper.field;
+            console.log(`Starting with ${filename}`);
             try {
-                yield downloadPaper(paper.fetch, filename);
+                console.log(`starting DL`);
+                let dP = downloadPaper(paper.fetch, filename);
+                yield dP;
                 console.log(`Downloaded ${filename}`);
             }
             catch (e) {
@@ -146,4 +156,4 @@ rp.post(options)
     console.log("Request error!");
     console.log(err);
 });
-//# sourceMappingURL=index.js.map
+//# sourceMappingURL=v2.js.map
