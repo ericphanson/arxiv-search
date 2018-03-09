@@ -271,6 +271,13 @@
                 }
             }
         },
+        "RestApiDeployment": {
+            "Type": "AWS::ApiGateway::Deployment",
+            "Properties": {
+                "RestApiId": { "Ref": "RequestWorkAPI"},
+                "StageName": "v1"
+            }
+        },
         "RequestWorkAPI" : {
             "Type" : "AWS::ApiGateway::RestApi",
             "Properties" : {

@@ -11,7 +11,7 @@ type api_params = {
 var api_vals: api_params = require('./aws-api-key.json');
 
 
-const uri = 'https://mzxgmdsvuf.execute-api.us-east-1.amazonaws.com/asdf/testprocesswork'
+const uri = 'https://mzxgmdsvuf.execute-api.us-east-1.amazonaws.com/myStage/testprocesswork'
 var options = {
     uri,
     headers: {
