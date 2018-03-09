@@ -93,7 +93,7 @@ async function run(event: event, context) {
             }
         },
         'outputs': {
-            'thumb': {
+            'fulltext': {
                 'bucket': process.env["PublicBucket"].split("arn:aws:s3:::")[1],
                 'subdir': 'fulltexts',
                 'ext': '.txt'
