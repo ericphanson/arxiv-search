@@ -4,7 +4,8 @@
   "description": "A script to run on a host machine (e.g. DigitalOcean or your personal server) which requests papers.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build" : "tsc"
   },
   "author": "",
   "license": "ISC",
