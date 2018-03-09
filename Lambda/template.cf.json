@@ -260,6 +260,17 @@
                 "Runtime": "nodejs6.10"
             }
         },
+        "ProcessFilesLambdaPermission" : {
+            "Type" : "AWS::Lambda::Permission",
+            "Properties" : {
+                "Action" : "lambda:InvokeFunction",
+                "FunctionName" : {"Fn::GetAtt" : ["ProcessFilesLambda", "Arn"]},
+                "Principal" : "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RequestWorkAPI}/*/POST/*"
+                }
+            }
+        },
         "RequestWorkAPI" : {
             "Type" : "AWS::ApiGateway::RestApi",
             "Properties" : {
