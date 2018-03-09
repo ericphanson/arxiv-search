@@ -241,6 +241,14 @@
                 "Timeout": 100,
                 "Runtime": "nodejs6.10"
             }
+        },
+        "InfrastructureAPI": {
+            "Type": "AWS::ApiGateway::RestApi",
+            "Properties": {
+              "Name": "Infrastructure API",
+              "Description": "API used for adding papers to the arxiv-seach infrastructure.",
+              "FailOnWarnings": true
+            }
+          }
         }
-    }
 }

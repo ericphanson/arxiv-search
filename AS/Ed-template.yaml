@@ -1,0 +1,283 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'The full stack for the paper processing pipeline of Arxiv-Search. '
+Resources:
+  InfrastructureLambdaPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: InfrastructureLambdaPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: '*'
+            Resource:
+              - !Join 
+                - /
+                - - !GetAtt 
+                    - PrivateBucket
+                    - Arn
+                  - '*'
+              - !Join 
+                - /
+                - - !GetAtt 
+                    - PublicBucket
+                    - Arn
+                  - '*'
+              - !Join 
+                - /
+                - - !GetAtt 
+                    - IncomingBucket
+                    - Arn
+                  - '*'
+              - !GetAtt 
+                - StatusTable
+                - Arn
+              - !GetAtt 
+                - StatusTable
+                - StreamArn
+              - !GetAtt 
+                - ProcessWrapperLambda
+                - Arn
+              - !GetAtt 
+                - MakeThumbLambda
+                - Arn
+          - Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+            Effect: Allow
+            Resource: 'arn:aws:logs:*:*:*'
+      Roles:
+        - !Ref InfrastructureLambdaRole
+  InfrastructureLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'sts:AssumeRole'
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Path: /
+  ProcessorLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'sts:AssumeRole'
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Path: /
+  ProcessorLambdaPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: ProcessorLambdaPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:GetObject'
+              - 's3:PutObject'
+              - 's3:DeleteObject'
+              - 's3:ListObjects'
+              - 's3:ReplicateObject'
+            Resource:
+              - !Join 
+                - /
+                - - !GetAtt 
+                    - PrivateBucket
+                    - Arn
+                  - '*'
+              - !Join 
+                - /
+                - - !GetAtt 
+                    - PublicBucket
+                    - Arn
+                  - '*'
+              - !Join 
+                - /
+                - - !GetAtt 
+                    - IncomingBucket
+                    - Arn
+                  - '*'
+          - Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+            Effect: Allow
+            Resource: 'arn:aws:logs:*:*:*'
+      Roles:
+        - !Ref ProcessorLambdaRole
+  PrivateBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: Private
+  PublicBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: PublicRead
+  IncomingBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Function: !GetAtt 
+              - WatchIncomingLambda
+              - Arn
+    DependsOn:
+      - IncomingBucketPermission
+  IncomingBucketPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt 
+        - WatchIncomingLambda
+        - Arn
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+  StatusTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: idvv
+          AttributeType: S
+      KeySchema:
+        - AttributeName: idvv
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  StatusEventSourceMapping:
+    Type: 'AWS::Lambda::EventSourceMapping'
+    Properties:
+      EventSourceArn: !GetAtt 
+        - StatusTable
+        - StreamArn
+      FunctionName: !GetAtt 
+        - WatchStatusLambda
+        - Arn
+      BatchSize: 100
+      StartingPosition: TRIM_HORIZON
+    DependsOn:
+      - WatchStatusLambda
+      - StatusTable
+      - InfrastructureLambdaPolicy
+      - InfrastructureLambdaRole
+  WatchStatusLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Description: >-
+        Watches changes to the database and determines if it is possible to
+        perform any processing on the papers.
+      Code: ./infrastructure
+      Environment:
+        Variables:
+          StatusTable: !GetAtt 
+            - StatusTable
+            - Arn
+          ProcessWrapperLambda: !GetAtt 
+            - ProcessWrapperLambda
+            - Arn
+          MakeThumbLambda: !GetAtt 
+            - MakeThumbLambda
+            - Arn
+          IncomingBucket: !GetAtt 
+            - IncomingBucket
+            - Arn
+          PublicBucket: !GetAtt 
+            - PublicBucket
+            - Arn
+      MemorySize: 128
+      Handler: out/index.WatchStatusLambda
+      Role: !GetAtt 
+        - InfrastructureLambdaRole
+        - Arn
+      Timeout: 60
+      Runtime: nodejs6.10
+    DependsOn:
+      - InfrastructureLambdaRole
+      - InfrastructureLambdaPolicy
+  WatchIncomingLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Description: >-
+        Watches additions to the IncomingBucket and updates the corresponding
+        entry on StatusTable.
+      Code: ./infrastructure
+      Environment:
+        Variables:
+          StatusTable: !GetAtt 
+            - StatusTable
+            - Arn
+      MemorySize: 128
+      Handler: out/index.WatchIncomingLambda
+      Role: !GetAtt 
+        - InfrastructureLambdaRole
+        - Arn
+      Timeout: 3
+      Runtime: nodejs6.10
+  ProcessWrapperLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Description: Wraps a processor lambda and updates the table after it executes.
+      Code: ./infrastructure
+      Environment:
+        Variables:
+          StatusTable: !GetAtt 
+            - StatusTable
+            - Arn
+      MemorySize: 128
+      Handler: out/index.ProcessWrapperLambda
+      Role: !GetAtt 
+        - InfrastructureLambdaRole
+        - Arn
+      Timeout: 300
+      Runtime: nodejs6.10
+  UpdateStatusLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Description: >-
+        Updates the status table with new entries and (TODO) updates elastic
+        search.
+      Code: ./infrastructure
+      Environment:
+        Variables:
+          StatusTable: !GetAtt 
+            - StatusTable
+            - Arn
+      MemorySize: 128
+      Handler: out/index.UpdateStatusLambda
+      Role: !GetAtt 
+        - InfrastructureLambdaRole
+        - Arn
+      Timeout: 300
+      Runtime: nodejs6.10
+  MakeThumbLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Description: Makes a thumbnail given a pdf using imagemagick
+      Code: ./processors/MakeThumbLambda
+      MemorySize: 128
+      Handler: index.handler
+      Role: !GetAtt 
+        - ProcessorLambdaRole
+        - Arn
+      Timeout: 100
+      Runtime: nodejs6.10
+  InfrastructureAPI:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: Infrastructure API
+      Description: API used for adding papers to the arxiv-seach infrastructure.
+      FailOnWarnings: true

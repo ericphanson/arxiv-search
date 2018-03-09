@@ -10,9 +10,10 @@ type api_params = {
 };
 var api_vals: api_params = require('./aws-api-key.json');
 
+let url = 'https://d93p49z8ua.execute-api.us-east-1.amazonaws.com/dev'
 
 var options = {
-    uri: 'https://z9m8rwiox4.execute-api.us-east-1.amazonaws.com/Prod/process-work',
+    uri: url,
     headers: {
         'x-api-key': api_vals.key,
         'User-Agent': 'Request-Promise'
