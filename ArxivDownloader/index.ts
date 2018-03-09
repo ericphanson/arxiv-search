@@ -10,7 +10,8 @@ type api_params = {
 };
 var api_vals: api_params = require('./aws-api-key.json');
 
-const client_id = 'arxiv-downloader'
+const client_id = process.env['CLIENT_ID']
+
 const uri = 'https://k83jynyecj.execute-api.us-east-1.amazonaws.com/v1/testprocesswork'
 var options = {
     uri,
