@@ -82,10 +82,10 @@ async function fromOAI(event) {
             let listRecords = oai["OAI-PMH"].ListRecords[0];
             resumptionToken = listRecords.resumptionToken[0]._;
             let oaiRecords = listRecords.record;
-            //let haveCount = 0;
-            //let haves_in_a_row = 0;
-            //let total = 0;
-            //let wait_for_these = [];
+            if (ONLY_GENERATE_THIS_MANY_ENTRIES !== undefined) {
+                let needThisMany = Math.max(0, ONLY_GENERATE_THIS_MANY_ENTRIES - grandTotal)
+                oaiRecords = oaiRecords.slice(0, needThisMany);
+            }
             let wasANewPaper = await Promise.all(oaiRecords.map(record => {
                 let header = record.header[0];
                 let meta = record.metadata[0].arXivRaw[0];
