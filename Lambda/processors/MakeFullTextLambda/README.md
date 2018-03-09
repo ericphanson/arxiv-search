@@ -1,0 +1,1 @@
+Takes a pdf file and extracts the fulltext using PDF.js.

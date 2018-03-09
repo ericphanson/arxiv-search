@@ -242,6 +242,18 @@
                 "Runtime": "nodejs6.10"
             }
         },
+        "MakeFullTextLambda": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Extracts the fulltext given a pdf using PDF.js",
+                "Code": "./processors/MakeFullTextLambda",
+                "MemorySize": 128,
+                "Handler": "index.handler",
+                "Role": {"Fn::GetAtt" : ["ProcessorLambdaRole", "Arn"]},
+                "Timeout": 100,
+                "Runtime": "nodejs6.10"
+            }
+        },
         "ProcessFilesLambda": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
