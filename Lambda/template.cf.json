@@ -19,7 +19,8 @@
                                     { "Fn::GetAtt": [ "StatusTable", "Arn" ]  },
                                     { "Fn::GetAtt": [ "StatusTable", "StreamArn" ]  },
                                     { "Fn::GetAtt": [ "ProcessWrapperLambda", "Arn" ]  },
-                                    { "Fn::GetAtt": [ "MakeThumbLambda", "Arn" ]  }
+                                    { "Fn::GetAtt": [ "MakeThumbLambda", "Arn" ]  },
+                                    { "Fn::GetAtt": [ "MakeFullTextLambda", "Arn" ]  }
                                 ]
                             },
                             {
@@ -164,6 +165,7 @@
                         "StatusTable": { "Fn::GetAtt": [ "StatusTable",  "Arn"  ]  },
                         "ProcessWrapperLambda": {  "Fn::GetAtt": [ "ProcessWrapperLambda", "Arn" ]  },
                         "MakeThumbLambda": { "Fn::GetAtt": [  "MakeThumbLambda", "Arn" ] },
+                        "MakeFullTextLambda": { "Fn::GetAtt": [  "MakeFullTextLambda", "Arn" ] },
                         "IncomingBucket": { "Fn::GetAtt": [  "IncomingBucket", "Arn" ] },
                         "PublicBucket": { "Fn::GetAtt": [ "PublicBucket",   "Arn" ]  }
                     }

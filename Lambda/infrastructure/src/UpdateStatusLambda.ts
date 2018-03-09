@@ -130,6 +130,7 @@ async function addToDB(idvv_with_slash: string) {
             Item: {
                 "idvv": { "S": idvv },
                 "pdf": { "S": "want" },
+                "fulltext": { "S": "want" },                
                 "thumb": { "S": "want" },
                 "pdf_url": { "S": `https://export.arxiv.org/pdf/${idvv_with_slash}.pdf` },
                 "src": { "S": "want" },
