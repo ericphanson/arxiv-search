@@ -46,10 +46,12 @@ async function run(event: event) {
             if (setterKeys.length === 0 && unset.length === 0) {return Promise.resolve(false);}
             let setExpression = (setterKeys.length === 0) ? "" : ("SET " + setterKeys.map((pn, i) => `${pn}=:val${i}`).join(", "));
             let removeExpression = (unset.length === 0) ? "" : ("REMOVE " + unset.join(", "));
+            
             let ExpressionAttributeValues = {};
             for (let i = 0; i < setterKeys.length; i++) {
                 ExpressionAttributeValues[`:val${i}`] = {"S" : setters[setterKeys[i]]};
             }
+            if (setterKeys.length === 0) {ExpressionAttributeValues = undefined;}
             return db.updateItem({
                 TableName,
                 Key,
