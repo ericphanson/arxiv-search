@@ -10,8 +10,6 @@ const s3 = new AWS.S3({
     signatureVersion: 'v4'
 });
 
-/** The bucket to make URLs for placing downloads in */
-const BUCKET = 'arxiv-incoming';
 
 /**
  * Simple function to flatten arrays.
@@ -45,9 +43,14 @@ type event = errorEvent | requestEvent;
 const MAX_NUM_TO_DOWNLOAD = 20;
 const url_keys = ["src_url", "pdf_url"];
 const status_keys = ["src", "pdf"];
-const TableName = "papers-status";
+let TableName;
 
 async function handleRequest(event: requestEvent) {
+    const incomingBucket = (process.env["IncomingBucket"] && process.env["IncomingBucket"].split("arn:aws:s3:::")[1])|| "arxivincomingbucket"
+    /** The bucket to make URLs for placing downloads in */
+    const BUCKET = incomingBucket;
+    TableName = process.env["StatusTable"].split("/")[1];
+
     if (event.client_id===undefined){ return Promise.reject("client_id undefined.") }
     // the API should pass through a client_id
     const send_string = "sent_to_client=" + event.client_id;
@@ -186,7 +189,7 @@ async function handleError(event : errorEvent) {
 }
 
 /** Called by AWS */
-exports.handler = (http_resp, context, callback) => {
+export const handler = (http_resp, context, callback) => {
     let event : event = JSON.parse(http_resp.body)
     // try {
     // event = JSON.parse(JSON.parse(http_resp.body));
