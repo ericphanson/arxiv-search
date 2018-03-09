@@ -10,7 +10,7 @@ type api_params = {
 };
 var api_vals: api_params = require('./aws-api-key.json');
 
-
+const client_id = 'arxiv-downloader'
 const uri = 'https://mzxgmdsvuf.execute-api.us-east-1.amazonaws.com/myStage/testprocesswork'
 var options = {
     uri,
@@ -19,7 +19,7 @@ var options = {
     },
     body: {
         'kind': 'request',
-        'client_id': 'arxiv-downloader'
+        client_id 
     },
     json: true // Automatically parses the JSON string in the response
 };
@@ -115,6 +115,13 @@ function deleteFile(filename) {
     });
 }
 
+type errorEvent = {
+    kind: "error",
+    client_id : string,
+    errors: { idvv : string, field : string }[]
+};
+
+
 rp.post(options)
     .then(async function (resp: paper_data[]) {
 
@@ -154,7 +161,19 @@ rp.post(options)
         }
         console.log("Succeeded papers: " + succ)
         if (fails) {
-            console.log("Failed papers: " + JSON.stringify(fails));
+            let body : errorEvent = {
+                client_id,
+                errors : fails,
+                kind : "error"
+            } 
+            let new_options = {...options, body : fails}
+            rp.post(new_options).then( () => {
+                console.log("Submitted failed papers: " + JSON.stringify(fails));
+            }).catch((err) => {
+                console.log("Submitting errors failed.")
+                console.log(err)
+                console.log("Fails: " + JSON.stringify(fails))
+            } );
         }
     }).catch(
         (err)  => {
