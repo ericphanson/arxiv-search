@@ -11,7 +11,7 @@ type api_params = {
 var api_vals: api_params = require('./aws-api-key.json');
 
 const client_id = 'arxiv-downloader'
-const uri = 'https://mzxgmdsvuf.execute-api.us-east-1.amazonaws.com/myStage/testprocesswork'
+const uri = 'https://k83jynyecj.execute-api.us-east-1.amazonaws.com/v1/testprocesswork'
 var options = {
     uri,
     headers: {
@@ -35,7 +35,7 @@ type failed_paper = {
     idvv: string,
     field: string
 };
-const MAX_TRIES = 5;
+const MAX_TRIES = 2;
 
 let fails: failed_paper[] = [];
 let succ: string[] = [];
@@ -79,6 +79,7 @@ async function downloadPaper(url, filename): Promise < request.Response > {
                     throw new Error(`Failed on MAX_TRIES (${MAX_TRIES}) download attempts, so moving on...`);
                 }
             }
+            await sleep(5000);
         } while (try_again)
 }
 
@@ -166,7 +167,7 @@ rp.post(options)
                 errors : fails,
                 kind : "error"
             } 
-            let new_options = {...options, body : fails}
+            let new_options = {...options, body}
             rp.post(new_options).then( () => {
                 console.log("Submitted failed papers: " + JSON.stringify(fails));
             }).catch((err) => {
