@@ -7,7 +7,7 @@ exports.handler = (event, context, callback) => {
     const s3 = new AWS.S3();
     let get_params = event.resources["pdf"];
     console.log(JSON.stringify(get_params));
-    let put_params = event.outputs["thumb"];
+    let put_params = event.outputs["fulltext"];
     console.log(JSON.stringify(put_params));
     s3.getObject(get_params, (err, data) => {
         if (err) {
@@ -16,7 +16,7 @@ exports.handler = (event, context, callback) => {
         }
         let inputFile = `/tmp/inputFile.pdf`;
         fs.writeFileSync(inputFile, data.Body);
-        let outputFile = `/tmp/text.text`;
+        let outputFile = `/tmp/text.txt`;
         // do something to write output file
         function gettext(file) {
             var pdf = PDFJS.getDocument(file);
@@ -27,7 +27,8 @@ exports.handler = (event, context, callback) => {
                     var page = pdf.getPage(j);
                     var txt = "";
                     countPromises.push(page.then(function (page) {
-                        var textContent = page.getTextContent();
+                        //@ts-ignore
+                        var textContent = page.getTextContent({ normalizeWhitespace: true });
                         return textContent.then(function (text) {
                             return text.items.map(function (s) {
                                 return s.str;

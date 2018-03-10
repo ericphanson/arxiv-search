@@ -19,7 +19,7 @@ export const handler = (event, context, callback) => {
     const s3 = new AWS.S3();
     let get_params = (event.resources as bucket_key_dict)["pdf"];
     console.log(JSON.stringify(get_params));
-    let put_params = (event.outputs as bucket_key_dict)["thumb"];
+    let put_params = (event.outputs as bucket_key_dict)["fulltext"];
 
     console.log(JSON.stringify(put_params));
     s3.getObject(get_params, (err, data) => {
@@ -29,7 +29,7 @@ export const handler = (event, context, callback) => {
         }
         let inputFile = `/tmp/inputFile.pdf`;
         fs.writeFileSync(inputFile, data.Body);
-        let outputFile = `/tmp/text.text`;
+        let outputFile = `/tmp/text.txt`;
 
         // do something to write output file
 
@@ -43,7 +43,8 @@ export const handler = (event, context, callback) => {
 
                     var txt = "";
                     countPromises.push(page.then(function (page) { // add page promise
-                        var textContent = page.getTextContent();
+                        //@ts-ignore
+                        var textContent = page.getTextContent({normalizeWhitespace : true});
                         return textContent.then(function (text) { // return content promise
                             return text.items.map(function (s) {
                                 return s.str;

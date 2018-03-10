@@ -10,7 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "@types/pdfjs-dist": "^0.1.2",
-    "aws-sdk": "^2.207.0"
+    "aws-sdk": "^2.207.0",
+    "pdfjs-dist": "^2.0.426"
   },
   "devDependencies": {
     "@types/node": "^9.4.7"
