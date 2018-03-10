@@ -167,7 +167,8 @@
                         "MakeThumbLambda": { "Fn::GetAtt": [  "MakeThumbLambda", "Arn" ] },
                         "MakeFullTextLambda": { "Fn::GetAtt": [  "MakeFullTextLambda", "Arn" ] },
                         "IncomingBucket": { "Fn::GetAtt": [  "IncomingBucket", "Arn" ] },
-                        "PublicBucket": { "Fn::GetAtt": [ "PublicBucket",   "Arn" ]  }
+                        "PublicBucket": { "Fn::GetAtt": [ "PublicBucket",   "Arn" ]  },
+                        "PrivateBucket": { "Fn::GetAtt": [ "PrivateBucket",   "Arn" ]  }
                     }
                 },
                 "MemorySize": 128,
