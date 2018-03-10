@@ -2,8 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const AWS = require("aws-sdk");
 const fs = require("fs");
+const child_process = require("child_process");
 const PDFJS = require('pdfjs-dist');
 exports.handler = (event, context, callback) => {
+    process.env["PATH"] = process.env["PATH"] + ":" + process.env["LAMBDA_TASK_ROOT"];
     const s3 = new AWS.S3();
     let get_params = event.resources["pdf"];
     console.log(JSON.stringify(get_params));
@@ -18,31 +20,44 @@ exports.handler = (event, context, callback) => {
         fs.writeFileSync(inputFile, data.Body);
         let outputFile = `/tmp/text.txt`;
         // do something to write output file
-        function gettext(file) {
-            var pdf = PDFJS.getDocument(file);
-            return pdf.then(function (pdf) {
-                var maxPages = pdf.numPages;
-                var countPromises = []; // collecting all page promises
-                for (var j = 1; j <= maxPages; j++) {
-                    var page = pdf.getPage(j);
-                    var txt = "";
-                    countPromises.push(page.then(function (page) {
-                        //@ts-ignore
-                        var textContent = page.getTextContent({ normalizeWhitespace: true });
-                        return textContent.then(function (text) {
-                            return text.items.map(function (s) {
-                                return s.str;
-                            }).join(''); // value page text 
-                        });
-                    }));
+        // function gettext(file: string) {
+        //     var pdf = PDFJS.getDocument(file);
+        //     return pdf.then(function (pdf) { // get all pages text
+        //         var maxPages = pdf.numPages;
+        //         var countPromises = []; // collecting all page promises
+        //         for (var j = 1; j <= maxPages; j++) {
+        //             var page = pdf.getPage(j);
+        //             var txt = "";
+        //             countPromises.push(page.then(function (page) { // add page promise
+        //                 //@ts-ignore
+        //                 var textContent = page.getTextContent({normalizeWhitespace : true});
+        //                 return textContent.then(function (text) { // return content promise
+        //                     return text.items.map(function (s) {
+        //                         return s.str;
+        //                     }).join(''); // value page text 
+        //                 });
+        //             }));
+        //         }
+        //         // Wait for all pages and join text
+        //         return Promise.all(countPromises).then(function (texts) {
+        //             return texts.join('');
+        //         });
+        //     });
+        // }
+        const execFile = (file, args, options) => new Promise((resolve, reject) => {
+            child_process.execFile(file, args, options, (error, stdout, stderr) => {
+                if (error) {
+                    reject(error);
                 }
-                // Wait for all pages and join text
-                return Promise.all(countPromises).then(function (texts) {
-                    return texts.join('');
+                resolve({
+                    stdout,
+                    stderr
                 });
             });
-        }
-        gettext(inputFile).then((text) => {
+        });
+        execFile("pdftotext", ["-enc", "UTF-8", "-layout", inputFile, "-"], {
+            encoding: "utf8"
+        }).then(({ stdout }) => stdout).then((text) => {
             fs.writeFileSync(outputFile, text);
             put_params['Body'] = fs.readFileSync(outputFile);
             put_params['ContentType'] = "text/plain";
