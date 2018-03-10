@@ -1,13 +1,7 @@
 'use strict';
 import * as AWS from "aws-sdk"
 import * as fs from "fs"
-import {
-    PDFJSStatic
-} from 'pdfjs-dist';
 const child_process = require("child_process");
-
-const PDFJS: PDFJSStatic = require('pdfjs-dist');
-
 
 type bucket_key_dict = {
     [resource: string]: {
@@ -15,7 +9,6 @@ type bucket_key_dict = {
         "Key": string
     }
 };
-
 
 export const handler = (event, context, callback) => {
     
