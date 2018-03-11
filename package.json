@@ -1,5 +1,9 @@
 {
   "dependencies": {
+    "elasticsearch": "^14.1.0",
     "pdfjs-dist": "^2.0.426"
+  },
+  "devDependencies": {
+    "@types/elasticsearch": "^5.0.22"
   }
 }

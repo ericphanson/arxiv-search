@@ -24,9 +24,10 @@ export const handler = (event, context, callback) => {
         let inputFile = `/tmp/inputFile.pdf`;
         fs.writeFileSync(inputFile, data.Body);
         let outputFile = `/tmp/text.txt`;
-        let writeStream = fs.createWriteStream(outputFile);
+        let writeStream = fs.createWriteStream(outputFile, "utf8");
         let onClose =  () => {
-            put_params['Body'] = fs.readFileSync(outputFile);
+            let text = fs.readFileSync(outputFile, "utf8");
+            put_params['Body'] = text
             put_params['ContentType'] = "text/plain";
             console.log(`Text successfully extracted, writing to S3: ${put_params['Key']}`);
             s3.putObject(put_params, (err, result) => {
@@ -34,7 +35,7 @@ export const handler = (event, context, callback) => {
                     console.error("couldn't put to S3 bucket: ", err);
                     callback(err);
                 } else {
-                    callback(null);
+                    callback(null, text);
                 }
             });};
 

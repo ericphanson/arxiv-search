@@ -2,6 +2,9 @@
 
 import * as AWS from "aws-sdk";
 import * as path from 'path';
+import { getClient } from "./es_connection";
+
+
 const REGION = 'us-east-1';
 AWS.config.region = REGION;
 
@@ -39,6 +42,18 @@ const Lambdas = {
 };
 */
 
+function uploadES(idvv: string, field: string, value: string) {
+    let es_client = getClient()
+    let id = idvv.split("v")[0]
+    console.log(`Setting ${field} to ${value.substring(0, 30) + "..."} for ${idvv} on ES.`)
+    let body = {}
+    body[field] = value;
+    es_client.index({
+        index: 'arxiv_pointer', type: 'paper', id, body
+    }).then( (resp) => console.log(`Response ${resp}`)).catch((err) => console.log(err))
+
+}
+
 type resource_dict = { [resource: string]: { bucket: string, subdir: string, ext: string } };
 type bucket_key_dict = { [resource: string]: { "Bucket": string, "Key": string } };
 
@@ -46,7 +61,8 @@ interface event {
     idvv: string,
     resources: resource_dict,
     outputs: resource_dict,
-    lambda_name: string
+    lambda_name: string,
+    ESfield?: string
 }
 
 async function run(event: event, context) {
@@ -55,6 +71,8 @@ async function run(event: event, context) {
     let resources = event.resources
     let outputs = event.outputs
     let lambda_name = event.lambda_name
+
+    let ESfield = event.ESfield || undefined
     /** Given a dictionary of resources, like
     {
         'pdf': {
@@ -84,11 +102,11 @@ async function run(event: event, context) {
         let buck_key_dict: bucket_key_dict = {}
         for (let k of Object.getOwnPropertyNames(resource_dict)) {
             let r = resource_dict[k];
-            if (r === undefined) {throw new Error("need to specify a bucket");}
+            if (r === undefined) { throw new Error("need to specify a bucket"); }
             let Key = r.subdir ? (r.subdir + "/" + idvv + r.ext) : (idvv + r.ext);
             buck_key_dict[k] = {
                 "Bucket": r.bucket,
-                "Key" : Key
+                "Key": Key
             };
         }
         return buck_key_dict;
@@ -103,7 +121,7 @@ async function run(event: event, context) {
             } catch (err) {
                 if (err.errorType === "Forbidden") {
                     throw new Error(`Forbidden access the needed bucket ${k}: ${JSON.stringify(bk_dict[k])}. ${err}`);
-                } 
+                }
                 else {
                     throw new Error(`Failed to find the resource for key ${k}: ${JSON.stringify(bk_dict[k])}. ${err}`);
                 }
@@ -126,8 +144,9 @@ async function run(event: event, context) {
         Payload
     }
     console.log("firing " + lambda_name + " with payload=" + Payload);
+    let resp;
     try {
-        let resp = await lambda.invoke(params).promise();
+        resp = await lambda.invoke(params).promise();
         console.log(`The lambda ${lambda_name}returned without error`);
         await validate(bk_outs);
         console.log(`The lambda created the correct outputs.`);
@@ -136,6 +155,13 @@ async function run(event: event, context) {
         await call_db("error");
         throw err;
     }
+    if (resp) {
+        // console.log(`Got response ${JSON.stringify(resp)} from the Lambda.`)
+        if (ESfield) {
+            uploadES(idvv, ESfield, resp.payload)
+        }
+    }
+
     // 3. Update db
     async function call_db(value) {
         let UpdateExpression = Object.getOwnPropertyNames(outputs).map(r => "SET " + r + " = :v").join(", ");
@@ -156,6 +182,6 @@ async function run(event: event, context) {
 }
 
 export const handler = (event, context, callback) => {
-    if (typeof event === "string") {event = JSON.parse(event);}
+    if (typeof event === "string") { event = JSON.parse(event); }
     run(event, context).then(() => callback(null)).catch((err) => callback(err));
 }

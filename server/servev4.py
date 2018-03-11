@@ -72,7 +72,7 @@ else:
 
 ES_USER = open(key_dir('ES_USER.txt'), 'r').read().strip()
 ES_PASS = open(key_dir('ES_PASS.txt'), 'r').read().strip()
-es_host = es_host = '0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io'
+es_host = '0638598f91a536280b20fd25240980d2.us-east-1.aws.found.io'
 
 
 

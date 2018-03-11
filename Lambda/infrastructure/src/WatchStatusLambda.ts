@@ -11,8 +11,10 @@ const ProcessWrapperLambda = process.env["ProcessWrapperLambda"];
 interface process {
     resources: { [name: string]: { bucket: string, ext: string, subdir?: string } },
     outputs: { [name: string]: { bucket: string, ext: string, subdir?: string } },
-    lambda_name: string
+    lambda_name: string,
+    ESfield?: string
 }
+
 
 const incomingBucket = (process.env["IncomingBucket"] && process.env["IncomingBucket"].split("arn:aws:s3:::")[1])|| "arxivincomingbucket"
 
@@ -99,6 +101,7 @@ async function run(event: event, context) {
                 'ext': '.txt'
             }
         },
+        'ESfield' : 'fulltext',
         'lambda_name': process.env["MakeFullTextLambda"]
     };
     const processors = [thumbs, fulltext]

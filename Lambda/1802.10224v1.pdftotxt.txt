@@ -1,0 +1,6509 @@
+Translucent windows: how uncertainty in competitive interactions
+impacts detection of community pattern
+Rafael D’Andrea1,∗ , Annette Ostling2,∗∗ & James O’Dwyer1,†
+1
+
+arXiv:1802.10224v1 [q-bio.PE] 28 Feb 2018
+
+2
+
+Dept. Plant Biology, University of Illinois at Urbana-Champaign, IL, USA
+Dept. Ecology & Evolutionary Biology, University of Michigan, Ann Arbor, MI, USA
+∗
+rdandrea@illinois.edu, ORCID 0000-0001-9687-6178
+∗∗
+aostling@umich.edu, † jodwyer@illinois.edu
+
+Abstract
+Trait variation and similarity among coexisting species can provide a window into the mechanisms that maintain their coexistence. Recent theoretical explorations suggest that competitive
+interactions will lead to groups, or clusters, of species with similar traits. However, theoretical
+predictions typically assume complete knowledge of the map between competition and measured
+traits. These assumptions limit the plausible application of these patterns for inferring competitive interactions in nature. Here we relax these restrictions and find that the clustering pattern
+is robust to contributions of unknown or unobserved niche axes. However, it may not be visible
+unless measured traits are close proxies for niche strategies. We conclude that patterns along
+single niche axes may reveal properties of interspecific competition in nature, but detecting these
+patterns requires natural history expertise firmly tying traits to niches.
+
+Keywords: Community structure, Competition, Functional traits, Noise, Uncertainty, Selforganized similarity, Species clusters, Trait pattern
+Corresponding author: Rafael D’Andrea, rdandrea@illinois.edu, (631) 645-5710, 172 Morrill
+Hall 505 S Goodwin Ave, Urbana, IL, 61801
+Data accessibility statement: This study made use of simulations. The code to generate and
+analyze the data is available on GitHub, https://github.com/rafaeldandrea/Translucent-windows2018-code.
+Statement of Authorship: RD, AO, and JD conceived the study. RD performed modeling
+work and analyzed output data. RD wrote the first draft of the manuscript, and all authors contributed substantially to revisions.
+This is the peer reviewed version of the following article: “Translucent windows:
+how uncertainty in competitive interactions impacts detection of community pattern”,
+which has been accepted for publication at Ecology Letters, DOI: 10.1111/ele.12946.
+This article may be used for non-commercial purposes in accordance with Wiley Terms
+and Conditions for Self-Archiving.
+
+1
+
+Introduction
+How does competition shape the distribution of species traits in nature? The classic answer, based
+on the idea that similarity breeds competition, is that coexisting species will be more different
+than expected by chance (MacArthur and Levins, 1967; Abrams, 1983). Although intuitive, this
+prediction of limiting similarity lacks widespread empirical support (Chase and Leibold, 2003;
+Götzenberger et al., 2012) despite extensive research (D’Andrea and Ostling, 2016). Recent studies
+have found that trait-mediated competition can actually lead to the emergence of clusters, or groups
+of similar species (Bonsall et al., 2004; Scheffer and van Nes, 2006; Hernández-Garcı́a et al., 2009;
+Sakavara et al., 2018). Although contradictory on the surface, clusters are a natural extension
+of limiting similarity. If left alone, competitive sorting culminates in maximally differentiated
+species, each occupying a niche. But an influx of new individuals and species due to speciation or
+immigration may keep the number of extant species above the number of local niches (D’Andrea
+et al., 2018). In that case, species whose traits place them near a niche will persist longer (Scranton
+and Vasseur, 2016; D’Andrea and Ostling, 2017), and species in between are quickly excluded as they
+are not well adapted to any niche (Barabás et al., 2013; Vergnon et al., 2013). The incorporation of
+species clusters to traditional trait-pattern theory may help explain the mixed evidence for limiting
+similarity, and may help understand coexistence in species-rich systems such as tropical forests.
+Nevertheless, clusters are not a widely observed phenomenon in nature outside specific communities (Scheffer and van Nes, 2006; Scheffer et al., 2015; Segura et al., 2011, 2013; Vergnon et al.,
+2009; Yan et al., 2012). While this can in part be due to clusters having only recently been connected with competition in the theoretical literature (D’Andrea and Ostling, 2016), it is not clear
+that clusters should occur outside idealized models. Theoretical studies typically make two critical
+assumptions that do not hold in real communities, thus limiting their applicability. First, they
+assume that species can be arranged on a line such that distances between their relative positions
+on the line determine how strongly they compete with one another (MacArthur and Levins, 1967).
+In reality, it is unlikely that positions along a single line can fully predict the degree of competition.
+For example, birds that eat very distinct foods may still compete strongly for nesting sites, or
+may be under apparent competition because they share predators or parasites. Knowledge of the
+birds’ diets will predict degree of competition better than chance, but the relationship will appear
+noisy because of the contribution of these other factors. In this study we will refer to the line as
+a niche axis, such that separation on that axis predicts the degree of competition between species.
+From the vantage point of the food-niche axis, the unknown contributions of the nesting site axis,
+predator axis, etc loosen the link between diet and competition. While there is theoretical evidence
+that multidimensional niche space may cause multidimensional niche clustering (Fort et al., 2010),
+it is unclear whether any pattern should be expected along a single niche axis in the presence of
+these other unobserved factors.
+The second assumption is that measurable traits such as body size and leaf tissue density are
+actual niche axes, so patterns driven by competition should be visible as patterns in the distribution
+of these traits. However, there is a conceptual distinction between aspects of phenotype directly
+responsible for competitive interactions and aspects of phenotype that are typically measured.
+The former may form niche axes, but are unlikely to perfectly coincide with easily measurable
+morphological or physiological traits (Appendix A). At best, measured functional traits are good
+predictors of the true causes of competitive interactions (McGill et al., 2006; Violle et al., 2007),
+but that map is inevitably noisy. For example, consider plant strategies regarding light capture
+and shade tolerance, or the “light-niche” axis. Leaf tissue density correlates with shade tolerance
+in forests, but will not fully predict the light-niche because the latter is also affected by many other
+plant traits, such as maximum plant height and wood density (Wright et al., 2010). Pattern in the
+2
+
+distribution of light strategies across species will translate into pattern in the distribution of leaf
+tissue density only to the extent that the latter reflects the former.
+Little is known about how this inevitable uncertainty might affect our ability to detect pattern
+in nature (Fig. 1). If the clusters predicted by theory are robust to uncertainty, then they are useful
+for diagnosing competition based on overlap in niche strategies. But if measuring an incomplete
+or inaccurate set of traits means we are unlikely to detect clusters, then there is little value in
+searching for them in nature.
+
+NATURE
+
+Figure 1: Causal links between traits and community structure. In nature (top), the full set of
+functional traits completely determines strategies in niche space; the latter in turn consists of multiple niche
+axes, the full set of which completely determines the competitive interactions between species; competition
+drives clustering in niche space, which translates as measurable clustering in trait space. A complete model
+of nature would require impossibly complete knowledge and measurement of all the relevant elements and
+links. An effective model (bottom) focuses on a subset of trait and niche axes, and treats the unmeasured/unmodeled contribution of all other factors as noise. As an example, we show an effective model
+where a single niche axis (light-related strategy) is an imperfect predictor of competitive interactions, with
+the unknown contribution of all other niche axes comprising process noise; in turn, a single functional trait
+(maximum height) is an imperfect predictor of the light-niche strategy, and the unknown contribution of all
+other functional traits enters as measurement noise.
+Full trait space
+
+Full niche space
+
+Maximum height
+
+Light
+
+Wood density
+
+Water
+
+Seed mass
+
+Herbivores
+
+Etc...
+
+Etc...
+
+Measured trait
+Maximum height
+
+EFFECTIVE MODEL
+
+determines
+
+predicts
+
+determines
+
+Modeled niche
+Light
+
++
+
++
+
+Measurement noise
+
+Process noise
+
+Wood density
+
+Water
+
+Seed mass
+
+Herbivores
+
+Etc...
+
+Etc...
+
+predicts
+
+Ecological force
+Competition
+
+Ecological force
+Competition
+
+drives
+
+Pattern
+Clustering
+
+drives
+
+Pattern
+Clustering
+
+Here we test this robustness. We start by asking what happens when only one of the niche
+axes responsible for competitive interactions is fully known. We find that pattern on one niche
+axis is surprisingly robust to the contributions of other niche axes. Next we ask whether this niche
+pattern translates well into trait pattern, given that traits are imperfect predictors of niches. We
+find that the pattern is quite sensitive to this error, and its detectability quickly fades as we loosen
+the link between niche axis and measured trait. We then show that measuring multiple traits
+can provide more accurate estimates and thus reduce measurement noise, but ultimately a tight
+functional relation between traits and niche strategies is key.
+
+3
+
+Materials and Methods
+Niche dynamics
+Many ecological communities consist of multiple species competing for resources, and often these
+resources are thought of as falling on a continuous gradient. One such example is seed-eating birds
+that may feed on seeds of various sizes. The species niche reflects its resource preferences within the
+gradient, so that similarity in niche values denotes the amount of overlap between those strategies
+(MacArthur and Levins, 1967; Leimar et al., 2013).
+We represent this scenario using a Lotka-Volterra model of competitive dynamics.
+
+
+X
+Nj 
+dNi
+= ri 1 −
+Aij
+Ni + mi
+dt
+Ki
+j
+
+where Ni , ri , Ki are the abundance, intrinsic (maximal) growth rate, and carrying capacity of species
+i, and the competition coefficients Aij quantify the per-capita competitive impact of species j on
+species i. Steady immigration mi maintains all abundances above zero.
+We use S = 200 species in our simulations, and let species differ only by niche strategy, affecting
+Aij . We set parameters r = 1, K = 100, and m = 0.2 immigrating individuals per species per year,
+identical across all species. These parameter choices lead to equilibrium community sizes between
+600 and 35,000 individuals. As a reference point, the 50-hectare forest plot in Barro Colorado Island
+has approximately 300 species, 20,000 trees, and an estimated m = 0.1 immigration event per birth
+(Hubbell, 2001). We verified that our results are robust to a four-fold change in immigration rates.
+All simulations are performed using library deSolve in the R language (R Core Team, 2017).
+
+Competition coefficients—the kernel
+We will refer to the matrix of competition coefficients Aij as the competition kernel, by analogy
+with continuous formulations. We set
+Aij = a0 exp(−d4ij )
+where dij is the distance in niche space between species i and j, and the scaling factor a0 is some
+constant. This quartic function is a generic monotonic shape commonly used in competition models
+(Pigolotti et al., 2010; Leimar et al., 2013). A plot of this function reveals two distinct zones: a
+plateau of intense competition between similar species, and a steep drop-off beyond a threshold
+niche distance (Fig. S3A). We refer to the inner region as the “core” of the kernel, and the outer
+region as its “tail”. As we will show, this core-tail structure is instrumental in pattern-formation.
+The threshold distance is somewhat arbitrary, and here we take it to be the niche distance where
+the kernel is equal to its mean value. Other choices do not qualitatively change our results.
+
+Process noise: competition in two-dimensional niche space
+Consider a case where competitive interactions are collectively determined by species strategies
+along two niche axes, e.g. two different types of resources such as food and nesting sites, or two
+different types of food such as seeds and insects. Suppose also we only have access to one such
+axis. The contributions of the unknown niche axis add randomness (i.e. noise) to the otherwise
+monotonic relationship between competition kernel and niche differences on the known axis (Fig. 2).
+We call this process noise.
+4
+
+●
+E
+
+●
+y−niche
+
+B
+●
+
+A
+●
+B
+●
+C
+●
+D
+●
+
+E
+●
+
+xy−distance to black
+
+A
+●
+
+C
+●
+x−niche
+
+C
+
+3 x
+1 ●
+2
+●
+●
+
+5
+4 ●
+●
+
+Competition with black
+
+D
+
+A1
+
+Process noise
+y
+
+D
+
+B
+Competition with black
+
+A
+
+sort(A2, decreasing = TRUE)
+
+Figure 2: Hidden niche dimensions add process noise; imperfect traits add measurement noise.
+Process noise A: Hypothetical niche space formed by two complementary niche axes, with species labeled
+in order of Euclidean xy-distance to the black species. B: Intensity of competition with black species has
+a monotonic relationship with the two-dimensional distance. C: Positions of the same species along the
+x-niche axis, with species labeled in order of x-distance to black. D: Plot of competitive interactions with
+black as a function of x-distance shows a non-monotonic relationship. The mismatch between B and D is
+process noise, which is commensurate with the relative importance of the unknown contributions of the yniche. Measurement noise E: Measured traits estimate unseen niche strategies, but the map is imperfect, and
+relative positions may switch between niche and trait axes. F: Arranging species in increasing order of nichedistance to species 1 gives a monotonic relationship with competition. G: Arranging species in increasing
+order of trait-distance to species 1 yields an overall decreasing but noisy relationship. The mismatch between
+F and G is measurement noise, which is commensurate with the imperfections in the niche-trait map.
+
+sort(d2)
+
+1
+●
+2
+●
+
+5
+●
+3
+●
+
+4
+●
+
+x−distance to black
+
+x−niche
+
+Niche axis
+A
+
+A ●
+B ●
+C ●●
+DE ●
+F ●●
+GH●
+I
+●
+
+d1
+
+A B
+●
+●
+C
+●
+
+D
+●
+E
+●
+F
+●
+G
+●
+
+H
+●
+●I
+
+Niche distance to A
+
+1 ●
+2
+●
+
+5 ●
+3●
+6 ●
+8●
+9
+7 ●
+4 ●
+●
+Trait axis
+
+Competition with 1
+
+G
+
+A
+
+0
+Measurement
+noise
+
+E
+
+Competition with A
+
+F
+
+dn
+
+1
+●
+
+4
+●
+2
+●
+3
+●
+6
+●
+7
+●
+5
+●
+
+Trait distance to 1
+
+5
+
+9
+●
+8
+●
+
+Two different niche axes can interact in various ways to determine niche overlap (Holt, 1987).
+For example, the two niche axes may reflect strategies for acquiring complementary resources. In
+this case, similarity on one niche axis (e.g. similar preferences in insect prey) can be compensated
+via differences along the other axis (foraging for very different seeds). Alternatively, the niche axes
+may represent fundamentally different needs such as food and nesting sites for birds, or water and
+light for plants. In this case, no amount of niche differences on one axis can compensate for similarity
+on the other. We term these scenarios complementary and essential niche axes, respectively.
+In our model, these different scenarios define the two-dimensional niche separation between
+species. In the case of complementary niche axes, we set
+s
+
+
+
+xi − xj 2
+yi − yj 2
+dij =
++
+wx
+wy
+where xi (xj ) is the x-niche strategy of species i (j), which can range from 0 to 1, wx is a scaling
+factor that weighs the x-niche difference relative to the y-niche difference, and vice-versa for y-based
+parameters. Notice that if niche differences on either axis are large, dij will be large, and therefore
+the competition coefficient will be small, regardless of differences on the other.
+In the essential niche axes case, we set
+
+
+xi − xj
+yi − yj
+dij = min
+,
+wx
+wy
+In this case, dij will be small if either the x- or y-niche separation is small, regardless of how large
+the other niche separation may be. Here species cannot compensate for similarity on one axis by
+dissimilarity on another, and the limiting resource is the one for which they compete the most.
+The constants wx and wy define the relative weight of each niche axis to the overall niche
+separation. In the complementary niche axes scenario, the y-contribution vanishes when wy is very
+large relative to wx , and dominates the coefficient when it is very small. In the essential niche axes
+scenario, the reverse is true. If we can measure the x-niche strategies of our species but have no
+access to the y-niche, we anticipate that pattern on the x-axis should be likely to the extent that
+the x-niche dominates competitive interactions—i.e. when the process noise from the perspective
+of the x-niche is sufficiently low. To quantify this, we fix wx = 0.1, and test the x-axis for species
+clustering as we dial wy up or down.
+Species x- and y-niche values are drawn from a uniform distribution between 0 and 1, with the
+latter being redrawn for every new run. We simulate 100 replicates of each scenario to ensure that
+results are robust. In each replicate we tune the scaling factor a0 to ensure that the community-wide
+average intensity of competition is the same in all our simulations.
+Lotka-Volterra equations approximate more complex dynamics near equilibrium (Schoener,
+1974, 1976), hence their widespread use in ecological theory. However, true consumer-resource
+interactions do not map trivially onto niche differences. We therefore tested our approach against
+models where species dynamics are explicitly based on their use of resources. Rather than prescribe
+the competition coefficients, we obtain them from simulation outcomes of the model, and then compare with distances in niche space. In Appendix B we present a resource-consumer model with two
+types of essential resources, such as different nutrients. The results confirm that the minimum
+niche distance is a good predictor of pairwise competitive impacts. In Appendix C we present a
+model of complementary niche axes: plants compete for space in a heterogeneous landscape, and
+high competition due to similar affinity for one environmental property (e.g. humidity) can be
+compensated by dissimilar affinities for another property (e.g. salinity). Results confirm that the
+Euclidean niche distance accurately predicts competitive interactions.
+6
+
+Measurement noise
+Even if niche space consists of a single niche axis, niche axes are typically not directly measurable;
+traits are. Whether clustering on a niche axis (e.g. competence in acquiring and processing light)
+translates as clustering on a measurable trait axis (e.g. maximum height) depends on how close
+is the relation between the trait and the niche axis (Fig. 2). We call the noise in this relation
+measurement noise.
+To examine the impact of this type of noise, here we assume a simpler niche space than above,
+consisting of a single niche axis. The niche axis fully determines competitive interactions (i.e. there
+is no process noise), and we now assume that competition coefficients are monotonically tied to
+niche differences. This leads to strong clustering along the niche axis.
+Knowing that the niche axis is clustered, we want to assess the probability of clustering along
+a measurable trait axis, given that the trait is statistically associated with the niche. We then
+arrange species on a proxy trait axis such that trait values are random variables correlated with
+the niche values (Fig. 5A-D). Because of measurement noise, species relative positions on the niche
+axis will not be entirely preserved on the trait axis. As a result, competition will not be a strictly
+monotonic function of trait separation (Fig. 5E-H), and the clustered niche pattern will be somewhat
+randomized on the trait axis. Mathematically, we write ti = xi + εi , where ti is the trait value
+of species i, xi is its niche value, and εi is the measurement noise between the two. The εi are
+normally distributed random variables with mean 0 and whose variance determines the magnitude
+of the noise. Note that trait noise does not affect species dynamics, as the noise here is at the level
+of how we measure species and not at the level of their interactions.
+
+Using multiple traits to mitigate measurement noise
+In nature, a single niche axis will correlate with multiple trait axes. For example, niche strategy
+regarding competition for light in forests will reflect on specific leaf area, leaf nitrogen content, twig
+length, maximum plant height, etc. Individually, each trait will be an imperfect predictor of the
+species’ light-related niche strategy, but together they may provide a better estimate. Combining
+multiple traits associated with the same niche axis may lead to a better estimate of the true niche
+values, and therefore clustering that is lost on any individual trait axis may appear on an aggregate
+axis.
+We test this idea using a simulated set of n proxy traits, and their first principal component as
+the aggregate axis. The trait value tai of species i on trait axis a (i = 1, 2, . . . , 200; a = 1, 2, . . . , n)
+is a random variable linearly related to its niche value xi . We then write tai = ba xi + ca + εai , where
+ba and ca are constants specific to trait axis a and εai is the measurement noise, which is normally
+distributed with mean 0 and variance σa2 . This variance can be different for different trait axes, as
+the niche axis may be more tightly linked to some traits than others—e.g. the light-niche may be
+more directly influenced by maximum height than wood density.
+Although we write the trait as a function of the niche, we are not assuming the latter determines
+the former, but merely that they are correlated (see discussion in Appendix E). We also distinguish
+between multidimensional niche space and the present scenario of a one-dimensional niche axis
+that maps to multiple traits. An example of the former is competition based on the combined
+overlap in strategies for capturing light and strategies for acquiring water, whereas an example
+of the latter is when the light-niche strategy fully determines competitive interactions (possibly
+because all species involved have identical strategies in all other niche axes), and maps to various
+traits such as maximum height and specific leaf area. Finally, we note that our multiple traits
+correlate with each other through their association with the niche strategy, as is common in nature
+
+7
+
+(Litchman and Klausmeier, 2008; Wright et al., 2010; Shoval et al., 2012), but we are assuming no
+further correlation between these traits. This leads to the best-case-scenario where every new trait
+adds maximal information about the niche; were there any further correlations between the traits,
+new traits added to the analysis could be partially predicted by the existing ones, and therefore we
+would gain less information by incorporating them.
+
+Quantifying the noise
+Without process or measurement noise, competition will be strong between similar species, and
+weak between dissimilar ones. We therefore quantify noise as the degree of departure from this
+ideal scenario. We do so using two summary statistics.
+Spearman’s rank correlation coefficient, ρ(A, d), quantifies the degree to which competition
+coefficients are monotonically related to pairwise distances on the niche or trait axis (McDonald,
+2009). The index ranges from −1 (perfectly monotonic relationship) to 0 (no relationship).
+As noted above, the kernel has a core (competition coefficients of species with small niche or
+trait differences) and a tail (large differences). We quantify the degree to which this core-tail
+structure predicts competitive relations by calculating the difference in proportion of tail and core
+elements that are greater than the kernel mean, π(A) = P (Atail > A) − P (Acore > A). In the
+noise-free scenario, the first proportion is 0 and the second is 1, leading to a difference of −1, while
+in a completely random matrix both proportions are the same and the expected difference is 0.
+As these metrics put both process and measurement noise in the same footing as degrees of
+kernel disorder, they allow comparison of the relative impact of each.
+
+Quantifying clustering
+To determine whether or not a species assemblage is clustered, we use a metric based on the kmeans clustering algorithm and the gap statistic method (MacQueen, 1967; Tibshirani et al., 2001).
+The metric takes into account the niche or trait values of each species as well as their abundances,
+and estimates the number of clusters that best fits our species assemblage by comparing each fit
+against randomized null assemblages. The fit itself is based on pairwise distances along the niche
+or trait axis between all species in the community, weighted by their abundances (we represent
+each species by its average niche/trait value). Upon comparing results between the assemblage of
+interest and the null assemblages, we obtain a z-score and a p-value, which tell us the degree to
+which the assemblage is clustered, and whether the result is statistically significant. We provide
+the mathematical details of the metric in Appendix F.
+
+Results
+Briefly, we found that the kernel’s core-tail structure is key for pattern emergence, and the clustering
+pattern is robust to a substantial amount of noise between competition and niche strategies (process
+noise). On the other hand, clustering is sensitive to noise between niche strategies and measured
+trait values (measurement noise); this is because measurement noise effectively reshuffles species
+along the axis, thus randomizing the community. Finally, a large set of functional traits may help
+circumvent the issue, as combined they serve as a more accurate window into the biological niche
+than an individual trait is likely to be.
+
+8
+
+Figure 3: Process noise. A, D: Competition coefficients between a focal species and all other species,
+plotted against the difference in x-niche values. Although competition strictly declines with distances in the
+xy-niche plane, the relationship with x-niche differences alone is noisy. In the complementary niche axes case
+(A), most of that noise is between similar species—i.e. the core of the kernel. Conversely, in the essential
+niche axes case (D), most of the noise is between distinct species—i.e. the tail of the kernel. B, E: Simulation
+outcomes plotted in the xy-niche plane. Each disk represents a species, with disk size proportional to species
+abundance. In both the complementary niche axes case (B) and the essential niche axes case (E), there is
+strong clustering, as evidenced by the standardized magnitude of the clustering metric (Z in the legend) and
+the significant p-value (P). C, F: Same outcomes plotted on the x-niche axis only, with loss of the y-niche.
+Clustering is still visible, although the number of clusters is smaller because some distinct clusters cannot
+be resolved without the y-dimension. Notice also the lower magnitude of the clustering metric.
+Kernel
+
+Pattern in xy − niche plane
+1.0
+
+●
+●
+●
+●
+
+●
+●
+
+C
+
+K = 21
+
+Z = 4.1
+
+●●
+●
+
+0.8
+
+● ●
+●
+
+1.5
+●
+
+1.0
+
+●
+
+●
+●
+
+●
+
+●
+●
+●
+
+0.5
+
+●
+●
+
+●
+●
+
+●●
+
+●
+
+●
+●
+
+●
+●
+●
+
+−0.2
+
+0.6
+0.4
+0.2
+
+●
+
+●
+●
+●●
+●●●
+●
+●
+●
+●● ●
+●
+●●
+● ●●
+●
+●●
+●
+●
+●
+●
+●● ●
+●●●●
+●●
+●●●
+●
+●●
+●
+●●
+●●
+●
+●
+●
+●●
+●
+●●●
+●●
+●
+●
+●
+●● ●●
+●
+●
+●
+●
+●●
+●
+●●
+●
+●●
+●
+●●
+●●
+●●
+●
+●
+●
+●
+●
+●●●
+●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●●●●●
+●
+
+−0.4
+
+0.0
+
+0.2
+
+0.0
+
+0.2
+
+0.4
+
+●
+
+0.4
+
+● ●●
+● ●
+
+0.8
+
+10
+5
+
+1.0
+
+0.0
+
+●
+
+0.3
+
+Z = 7.1
+
+30
+
+P < 0.01
+
+0.8
+
+●
+
+●
+
+●
+
+●
+●
+
+●
+●
+
+0.1
+●
+
+●
+●
+●
+
+●
+●
+●
+●●
+●
+●
+
+●
+
+●
+
+●
+●
+●
+● ●●
+●
+●
+●
+●
+●●
+●
+●● ●
+●●●●
+●● ●
+●
+●●●●●
+●●
+●●
+●
+●
+●
+●●
+●
+●●●●●
+
+●
+●
+●
+●
+●●●●●●
+● ●
+●●
+●●●
+●
+●●
+●●
+●●
+●
+●●
+●●
+●● ●●
+
+−0.4
+
+−0.2
+
+0.0
+
+0.4
+0.2
+
+●
+
+●
+
+●
+
+0.6
+
+●
+●
+
+●
+
+0.2
+
+0.6
+
+0.8
+
+1.0
+
+K=6
+
+Z = 3.4
+
+P < 0.01
+
+●
+
+●
+
+●
+
+●
+
+0.4
+
+F
+K=7
+
+●
+●
+
+0.2
+
+x−niche
+
+●
+●
+
+●
+
+0.2
+
+1.0
+
+●
+
+●
+
+●
+●
+
+0.0
+
+0.6
+
+Species abundance
+
+●
+
+P < 0.01
+
+15
+
+E
+●
+●
+●
+●
+● ●●
+●
+●
+●●
+●
+●
+●
+●● ●
+● ● ● ●● ● ● ●●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+
+y−niche
+
+Competition coefficient
+
+0.5
+
+Z = 3.5
+
+20
+
+x−niche
+
+D
+●
+
+K = 16
+
+25
+
+0
+
+0.0
+
+0.4
+
+x−niche difference
+
+Essential
+niche axes
+
+30
+
+P < 0.01
+
+●
+
+●●
+
+Species abundance
+
+2.0
+
+0.0
+
+Pattern on x − niche axis
+
+B
+
+y−niche
+
+Competition coefficient
+
+Complementary
+niche axes
+
+A
+
+0.4
+
+25
+20
+15
+10
+5
+0
+
+0.0
+0.0
+
+0.2
+
+0.4
+
+x−niche difference
+
+0.6
+
+x−niche
+
+0.8
+
+1.0
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+x−niche
+
+Process noise
+Fig. 3 shows an example of each kind of process noise. In the complementary niche axes case, the
+noise is concentrated in the core of the kernel (Fig. 3A). In other words, competition is consistently
+low at large x-niche distances, but noisy at small distances. This is because some species pairs
+at short x-niche distances are far apart on the y-niche axis, thus bringing down the competition
+coefficient which would otherwise be high. Our clustering metric confirms that species are distinctly
+clustered in the xy-niche plane (Fig. 3B), as expected. However, even when the y-niche dimension
+is lost, clustering is still visible on the x-niche axis (Fig. 3C). Some distinct clusters collapse onto
+each other with the loss of the y-dimension, leading to detection of a lower number of clusters, but
+the general clumpy structure is preserved despite the noise.
+The essential niche axes scenario has the opposite type of noisy kernel (Fig. 3D): competition
+between species in the core is reliably high, while the tail is noisy because some species pairs that
+are far apart on the x-axis are close on the y-axis, bringing competition up. Again the xy-niche
+
+9
+
+space is strongly clustered as expected (Fig. 3E), and again collapsing the y-dimension does not
+erase the clustering pattern, which is still visible from the x-niche axis alone (Fig. 3F).
+In both of these examples, the process noise onto the x-niche produced by the unacknowledged
+y-niche contributions is not sufficient to dissipate the pattern on the x-niche axis. However, as
+the contribution of the y-niche to the competitive relations increases, so does the process noise
+between the competition coefficients and distances on the x-niche axis, and the clustering on the
+x-axis weakens and eventually disappears (Fig. 4).
+As the rank correlation between competition coefficients and niche differences degrades from
+ρ = −1 (fully monotonic) to ρ = 0 (no correlation), the probability of clustering declines (Fig. 4A).
+In the case of complementary niche axes the drop is fast, but only reaches background levels near
+ρ = −0.5. With essential resource axes, clustering remains very likely until ρ ≈ −0.5, at which
+point it quickly falls off, but only drops to background levels near ρ = −0.2.
+The strength of the core-tail structure in the kernel predicts clustering in the face of process
+noise reasonably well, whether the niche axes are complementary or essential (Fig. 4B). In both
+scenarios, that probability drops below 50% when π ≈ −0.7 (Fig. 4B).
+
+% Runs with significant clustering
+
+Figure 4: Probability of clustering by magnitude of noise. The probability of clustering is estimated
+as the percentage of runs of each noise scenario where clustering was statistically significant (p ≤ 0.05), out
+of a total 100 replicates each. The noise is measured as the degree of randomness between the kernel and the
+x-niche axis (process noise) or the trait axis (measurement noise), using two indices: A: Monotonic decline of
+competition with species differences, measured with Spearman’s rank correlation coefficient ρ. B: Core-tail
+structure, defined as the difference between the proportion of tail and core elements that exceed the kernel
+mean. Scenarios shown are process noise with complementary niche axes (blue curves), process noise with
+essential niche axes (red), and measurement noise (black). Compare with Fig. S4.
+
+A
+100
+
+B
+
+●
+●
+
+●
+
+●
+
+100
+
+●
+●
+
+●● ●●
+●
+
+●
+
+●
+
+Process noise: Complem.
+Process noise: Essential
+Measurement noise
+
+●
+
+●
+
+80
+
+●
+
+●
+
+●
+
+●
+
+80
+
+●
+
+●
+
+●
+
+●
+
+60
+
+60
+●
+
+●
+
+40
+
+40
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+20
+
+●
+
+●
+
+●
+
+● ●
+●
+
+●
+
+0
+
+●
+
+●
+●
+
+●
+
+●
+
+●
+
+−1.0
+
+−0.8
+
+−0.6
+
+●
+
+●
+●
+●
+
+−0.4
+
+●
+
+●
+
+●
+●
+
+●
+
+●
+
+●
+
+●
+●
+●
+
+●
+
+●
+
+20
+
+●
+●
+
+●
+
+●
+●
+
+●
+●
+
+●
+●●
+●
+
+−0.2
+
+●
+
+●
+
+●
+●
+●
+●
+● ● ●●●●
+
+0
+0.0
+
+●
+
+●
+●
+
+●
+
+−1.0
+
+−0.8
+
+−0.6
+
+−0.4
+
+●
+●
+
+●
+
+●
+●
+●
+
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+● ●
+●
+●
+●
+●
+● ● ● ●●●
+
+−0.2
+
+0.0
+
+P(Atail > A) − P(Acore > A)
+
+Spearman's ρ(A, dx)
+
+In Appendix D we present a generalized process-noise model where we assume an indeterminate
+number of niche axes and other contributing factors adding noise to the relationship between
+competition and the known niche axis. We find similar results as the two-dimensional niche space
+model, indicating that higher niche dimensions add no qualitatively new phenomena.
+These results indicate that even when niche space is multidimensional and part of it is unknown,
+we can expect clustering along a single niche axis to the extent that, on average, species with high
+10
+
+niche similarity compete more than dissimilar species. A fully monotonic relationship between
+competition and niche difference is not strictly required.
+Figure 5: Measurement noise. A-D: Species niche values plotted against their proxy trait values.
+Measurement noise increases from A to D, leading to progressively lower coefficient of determination R2
+between niche and trait values. E-H: Competition coefficients between a focal species near the center
+of the niche axis (marked by the red dot in A-D) and all other species, plotted against trait difference
+between them. When niche and trait values are perfectly correlated, the kernel decreases monotonically
+with absolute trait differences (E); as the niche-trait connection loosens, the kernel becomes noisy (F to
+H). Legend numbers show the noise scores according to each of our two statistics, Spearman’s ρ(A, d), and
+π(A) = P (Atail > A) − P (Acore > A). I-L: Species abundance plotted against trait values. Distinct clusters
+are visible when niche and traits match (I), but the pattern quickly fades as R2 drops below 1 (J to L).
+Legend shows the estimated number of clusters and the z-score of the clustering statistic. Stars indicate
+statistical significance (∗∗ : p ≤ 0.01; ∗ : p ≤ 0.05).
+
+0.6
+
+●
+●●
+●●
+●●●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●●●
+●●
+●
+●
+●
+●
+●
+●
+●●
+●●
+
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●●●
+●●
+●●
+●●
+●
+
+●
+●
+●
+●●
+●
+●
+●
+●
+●●
+●●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+
+0.2
+
+0.0
+
+0.0
+0.2
+
+0.4
+
+0.6
+
+1.0
+
+●●
+●
+●● ●
+●● ●
+
+ρ = −1.00
+π = −0.97
+
+●
+●
+●
+●
+●
+
+0.8
+
+0.8
+
+1.0
+
+ρ = −0.98
+π = −0.86
+
+●
+●
+
+0.8
+
+1.0
+
+●
+
+R2 = 0.94
+
+0.0
+
+0.2
+
+0.6
+
+●
+
+0.0
+0.6
+
+0.8
+
+1.0
+
+0.0
+
+●
+●
+
+0.8
+
+ρ = −0.92
+π = −0.74
+
+●
+●
+
+0.2
+
+0.4
+
+H
+
+prox
+
+1.0
+
+●
+
+●
+
+0.6
+
+0.8
+
+1.0
+
+prox
+
+● ●
+●
+● ●
+● ●●●
+● ●●●
+●
+●
+●
+●●
+●
+●●
+●
+● ●
+
+1.0
+
+●
+●
+
+●
+●
+●
+
+●
+
+0.8
+
+●
+
+●
+●
+
+●
+
+0.2
+
+●
+●
+●
+●●
+● ●
+●●
+●
+●●
+●●
+●
+●
+●
+●
+●
+●
+●
+
+●
+
+●●●
+●
+● ● ●
+● ●
+●
+●
+●
+●
+●●
+●
+●
+●
+● ●
+●●●● ●
+●
+● ●
+●
+●●
+●
+●●
+● ●
+●
+●
+●
+●
+● ●●●
+●
+● ● ●
+●
+●
+●
+●
+●●
+● ●
+● ●●
+●
+●●● ● ●
+●●
+● ● ● ●●
+●
+●
+●
+●
+●
+● ●●●
+●● ●
+●
+● ● ●●
+● ●●
+●●
+●
+●
+●
+●●
+●
+● ●
+●
+●●
+● ● ● ●● ●
+●● ●
+● ●
+●●
+●
+● ●
+●● ●
+●
+●
+● ●●
+●
+●
+●
+●●
+
+●
+●
+●
+●●
+
+0.4
+
+0.4
+
+● ●●
+
+●● ●
+
+●
+●●
+●
+● ●●
+●● ●● ● ●
+● ●● ● ● ●
+●
+● ●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●● ●
+●
+●●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●● ●
+●
+●
+● ●● ●
+
+0.8
+
+● ●●
+●
+●●● ● ●
+●
+●
+●● ● ●
+●
+●
+● ●
+●
+● ●●●
+●● ●
+●
+● ●●●
+●●●
+●● ●
+●● ● ● ●
+●
+●● ● ●
+●
+● ● ●●
+●
+●
+● ●
+● ●
+●●
+●
+● ●
+●● ●
+●
+●
+● ● ●●
+●
+●
+●
+●●
+
+G
+
+●
+●
+
+●
+
+ρ = −0.80
+π = −0.58
+
+●
+
+●
+●
+●
+●
+●
+●
+●●
+
+●
+●
+
+●
+
+●
+
+●
+●
+
+0.4
+
+●
+●
+
+●
+
+●
+
+0.0
+
+−0.4
+
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●●
+●●
+●● ●●
+●
+●
+●
+●
+●
+●●
+●●●
+●
+●
+●●
+● ●●●●
+●
+●●
+●
+●●
+●●
+●
+●●●
+●●●
+●
+●
+●●
+● ●●
+●●
+
+−0.2
+
+I
+
+0.0
+
+0.2
+
+J
+
+K=7
+Z = 14.7 **
+
+−0.4
+
+K
+
+proxtrait − prox[ind]
+
+15
+
+K=7
+Z = 6.8 **
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+tmp$trait
+
+1.0
+
+0.0
+
+0.2
+
+0.2
+
+0.4
+
+0.6
+
+tmp$trait
+
+0.8
+
+1.0
+
+●
+
+●●
+
+●
+●●
+●
+●
+●
+●
+
+−0.4
+
+L
+
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●●
+●●
+●
+●●
+●
+● ●
+●●● ●
+●●
+●●
+●
+●
+●●●●
+●●
+●
+●●
+●
+●●
+●●
+●
+●●
+●●
+●
+●●
+●
+●●●● ●
+●● ●
+
+●
+
+●
+●
+●●
+●
+●
+●● ●
+●●
+●●
+●
+●●
+●●●
+●
+●●
+●●
+●
+●●
+●
+●
+●●●
+●●
+●●●●●●
+●●
+●●●●●
+●●
+
+−0.6
+
+K = 13
+Z=0
+
+●
+
+−0.2
+
+0.0
+
+0.2
+
+●●
+
+0.4
+
+proxtrait − prox[ind]
+
+15
+
+K = 13
+Z=0
+
+10
+
+5
+
+0
+0.0
+
+0.0
+
+0.4
+
+proxtrait − prox[ind]
+
+15
+
+●
+
+●
+
+●
+
+5
+
+0
+0.0
+
+●
+
+●
+●●
+●●
+● ●●●
+●
+●●
+●
+●
+●●
+●
+●
+●
+●●
+● ●●●
+●
+●
+●●●
+●
+●
+●●
+●
+●
+●●●
+●
+●●
+●
+●
+●●●●
+●●
+●●
+●●
+●
+● ●
+●
+●●● ● ●
+
+●
+
+−0.2
+
+●
+
+10
+
+5
+
+0
+
+●
+●●
+
+n
+
+10
+
+5
+
+0.0
+
+●
+
+●
+
+● ●
+
+●
+● ● ● ●
+●
+●●
+●●
+●●●
+●● ● ●●●
+●●
+●
+●
+●
+●
+●
+● ●
+●●●●●●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●● ●●●
+●
+●
+
+0.4
+
+n
+
+10
+
+0.2
+
+●
+
+●
+
+●
+
+0.2
+
+●
+●
+
+0.0
+
+●
+●
+
+●
+
+●
+
+−0.2
+
+●
+●
+●
+
+0.4
+
+0.2
+
+● ●
+●
+● ● ●
+●●
+●
+●●●●
+●
+●●
+●●
+●
+●
+●
+●
+●
+●
+●
+●●●
+●●●●
+●●
+●●
+●●
+●
+●
+●●
+●
+●
+●
+●●
+●●
+●
+●●
+●●●●●●● ●● ●
+
+●
+●
+● ●
+●●
+●●●
+●
+● ●●
+●●●
+●
+●●●
+●● ●
+●
+●●
+●●
+●●
+●
+●●● ●●
+●
+●
+●
+●●
+●●
+●●
+●
+
+−0.4
+
+proxtrait − prox[ind]
+
+15
+
+0.0
+
+0.4
+
+0.6
+
+●
+
+●
+
+●
+●
+●
+●
+
+●
+
+●
+
+●
+●
+
+0.4
+
+●
+
+●
+●
+●
+
+0.2
+
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●●●
+● ●
+●●●●●●
+●
+●●●
+●●● ●
+●
+●
+●
+●
+●●
+●
+●
+●●
+●●
+●●●
+●
+●
+●
+●
+●●
+●
+●
+● ●●
+
+●
+●
+●
+●
+●
+●
+●
+
+●
+
+●●
+
+●
+●●
+●
+●
+
+●
+
+0.2
+
+●
+
+●
+
+0.6
+
+n
+
+0.4
+
+0.6
+
+kernel
+
+●
+●
+
+kernel
+
+kernel
+
+●
+
+0.6
+
+●
+
+Abundance
+n
+
+0.2
+
+0.6
+
+●
+●
+●
+
+●
+
+●●
+●
+●
+● ●●
+●
+●
+●●
+●
+●●
+● ●
+● ● ●
+●●
+●●
+●●
+● ●
+●
+● ●
+●● ● ●
+●
+●
+● ●
+● ● ●●
+●
+●
+●
+●
+●
+●●
+●●
+
+●
+●
+
+●
+
+prox
+
+●
+●
+●
+● ●●●
+● ●●
+●
+●●
+●
+●
+●
+● ● ●
+●●
+●
+
+1.0
+
+●
+
+●
+
+0.4
+
+●
+●● ●
+● ●
+●● ●●● ●
+●● ●●
+●●
+●●●●
+●
+● ●
+●
+●
+●●
+● ●
+●● ●
+●
+●
+●●
+●
+●
+●
+●
+●
+●●
+●● ●
+●
+●
+● ●● ●
+
+●
+
+0.4
+
+0.0
+0.2
+
+D
+●●
+● ●
+●
+
+R2 = 0.98
+
+0.6
+
+●●
+●
+● ●
+●●
+●●●
+● ● ●
+●● ●
+●
+●
+● ●●
+
+0.0
+
+1.0
+
+0.8
+
+●●
+●
+●
+● ●
+● ●● ●
+● ●● ●
+●●
+●
+●● ●
+●●●●
+●●
+●
+● ● ●
+● ●●
+●●
+●
+● ●
+●●
+●●
+● ●●●
+●
+● ●
+●
+●
+●●● ●●
+●
+● ●●●
+●
+●●
+●● ●●
+●●●
+●
+● ●●
+●●●
+●
+●
+●
+●●
+●●
+●
+●
+●
+●
+●●
+●●● ● ●
+●●
+
+F
+
+prox
+
+●
+●●●
+●
+●
+●
+●
+●● ●
+●
+●
+●●
+●
+●
+●
+●
+
+1.0
+
+Kernel
+kernel
+
+0.8
+
+●●
+● ●
+●●●
+●
+●
+●●●●
+●●
+●
+●●
+● ●●
+●●
+●● ●
+●●
+●
+●●
+●●
+●
+●●●●●
+● ● ● ●
+●
+●
+●● ●
+●
+● ●●●
+
+●
+
+0.4
+
+0.2
+
+E
+
+C
+● ●● ●
+●
+●
+
+R2 = 0.99
+
+0.8
+
+●●
+●
+●
+●●
+●
+●●
+●
+●●
+●
+●
+●●
+●
+●●●
+
+0.0
+
+1.0
+
+0.6
+
+●
+
+0.4
+
+●
+●
+●
+
+trait
+
+0.8
+
+●
+●●●
+●
+●
+●
+●●
+●
+●●
+●
+●●
+●●
+●
+●
+●
+●
+●
+●
+●
+●●
+●●
+●●
+●
+●
+●●●
+●●
+●
+●
+●
+●
+●
+●●
+
+trait
+
+Species
+trait niche
+
+B
+R2 = 1
+
+trait
+
+A
+1.0
+
+0
+0.0
+
+Species trait
+
+0.2
+
+0.4
+
+0.6
+
+tmp$trait
+
+0.8
+
+1.0
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+tmp$trait
+
+Measurement noise
+When the noise is between niche strategies and measured trait values (measurement noise), the
+probability of clustering on the trait axis quickly drops to zero; faster in fact than with noise
+between competition and niche strategies (process noise), as one can see by comparing the black
+curve to the colored curves in Fig. 4. A glance at the correspondence between niche and trait values
+(Fig. 5A-D), compared with the pattern on the trait axis (Fig. 5I-L), shows that the pattern quickly
+fades to oblivion even while the coefficient of determination between niche and trait values is still
+very high (R2 > 0.9). This occurs not because species are not sorting into clusters, but because our
+imperfect access to their true niche values misaligns them on the x-axis (Fig. 5I-L). In doing so,
+
+11
+
+measurement noise effectively brings the species assemblage closer to the null model against which
+we compare it. Not only does statistical significance vanish, but the clustering metric also fails to
+recognize the true number of clusters (compare legend on Fig. 5I-L).
+This bodes ill for the prospects of finding niche-assembly patterns in nature, as the exact aspects
+of phenotype responsible for interactions are unlikely to be known or knowable, and proxy traits
+will often be our best resource to estimate them (Appendix A).
+We note that the plot of competition coefficients against trait differences (as opposed to niche
+differences) shows visible core-tail structure (Fig. 5E-H). Indeed, it resembles process noise with
+complementary niche axes (cf. Fig. 3A). And yet, the corresponding patterns are very different.
+A closer look reveals that the measurement-noise kernel is more structured than the core-noise
+kernel (Appendix G): unlike the process noise scenario, the matrix is symmetric and the noise is
+autocorrelated. In fact, the measurement-noise kernel contains the same set of elements as the
+noise-free kernel, and one can recover the latter via a permutation of the rows and columns of
+the former. We believe this non-random structure relative to the core-noise scenario is key to
+understanding the difference in the respective patterns, but at present we lack mathematical proof.
+
+Using multiple traits to estimate niche values
+When multiple traits are related to the niche axis and are otherwise uncorrelated with each other,
+their first principal component is a better proxy for the niche axis than most of the individual
+traits. Other things being equal, clustering on the first component is stronger as more traits are
+used (Fig. 6A), reflecting the fact that the quality of the first component as a proxy for the niche
+axis increases with the number of traits measured. However, the number of traits required for
+statistically significant clustering on the first component can be very high. Even when the average
+R2 between niche and trait values is as high as 0.9, we needed at least 5 traits for significant
+clustering at the p ≤ 0.1 level and 7 traits at the p ≤ 0.05 level. For lower R2 , denoting looser ties
+between trait and niche levels, that minimum number quickly rises (Fig. 6B).
+We note that although the first component is typically a better proxy than an individual trait
+axis, it will not necessarily be better than every single trait (see Fig. S5 in Appendix E). If one
+knows that a given trait is a much better proxy for species niche values than all other traits, it
+may be better to use that trait alone rather than to run principal component analysis on a set of
+traits. Realistically, however, such cases would be exceptional, as ecologists have only imperfect
+knowledge of the connection between measurable traits and niche strategies. Compared to traits
+with a moderate to high association with the niche axis, the first principal component has a higher
+chance of revealing niche pattern (Fig. S5); and the more traits, the higher that advantage. Of
+course, no number of traits is a substitute for high-quality traits, i.e. traits demonstrated to reflect
+species niche strategies. This is especially true given the high sensitivity of pattern to measurement
+noise, as seen above.
+In general, the number of traits required for detecting pattern will depend on their relation with
+the niche, which may be more complicated than presented here. Our linear model illustrates how
+even in a simple case, many traits may be necessary to parse the pattern.
+
+12
+
+Figure 6: Using multiple traits to mitigate measurement noise. A: Degree of clustering on a first
+principal component axis increases with the number of independent traits used in the principal component
+analysis (PCA). Curves represent scenarios with different degree of measurement noise, with an average R2
+between trait and niche values across species ranging from 0.5 (lightest shade of gray) to 0.9 (darkest), at
+intervals of approximately 0.05. Values shown are averaged across 100 runs of each scenario. Red line shows
+the clustering z-score on the niche axis. B: Lowest number of traits required to detect significant clustering
+on the first component axis, as a function of the average R2 between trait and niche values. Black and red
+curves show results using significance threshold α = 0.05 and 0.1, respectively. Values shown are averaged
+across 100 runs of each scenario.
+
+A
+
+Minimum number of traits for significance
+
+14
+
+Clustering z−score
+
+12
+10
+8
+6
+4
+2
+0
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+B
+100
+
+●
+
+●
+
+α = 0.05
+α = 0.10
+
+●
+
+80
+●
+
+60
+
+●
+●
+●
+●
+
+40
+
+●
+●
+●
+●
+
+20
+
+●
+●
+●
+
+●
+●
+
+0
+0.5
+
+0.6
+
+0.7
+
+0.8
+
+0.9
+
+Average R2
+
+Number of traits in the PCA
+
+Discussion
+Understanding how competition drives biodiversity patterns remains a challenge in ecology. The
+hypothesis of self-organized similarity or emergent neutrality (Scheffer and van Nes, 2006; Holt,
+2006) states that competing species may sort into groups of species with similar traits. This concept
+may generalize classical limiting similarity theory (D’Andrea and Ostling, 2016) and reconcile it
+with contrasting empirical findings (Chase and Leibold, 2003; Götzenberger et al., 2012). However,
+the relevance of these ideas for field ecologists is limited by assumptions idealizing the connection
+between competition and niche strategies, and between niche strategies and measurable traits. Here
+we tested how uncertainty in these connections impacts the prospects of detecting the pattern in
+nature.
+When we introduced noise in the link between competition and niches, we found considerable
+robustness. Clustering remains likely as long as the kernel has a distinctive core-tail structure. In
+other words, competition between species far apart on the niche axis must be on average lower
+than between those close together. That the required trend is statistical rather than strict makes
+clustering on a single niche axis a distinct possibility in nature, even when competition is the product
+of multiple niche axes. Of course, probing multiple niche axes will make any pattern even clearer
+as it should minimize process noise. However, this is not automatically achieved by measuring
+multiple traits. Trait space is constrained by traits’ roles in ecological performance (Shoval et al.,
+2012), and in fact a large set of traits may collapse into a single niche axis (Wright et al., 2004).
+13
+
+To properly assess multidimensional niche space, one must use traits related to different niche
+dimensions. Knowledge of these dimensions and their relationship to traits requires natural history
+expertise. Absent that, process noise is inevitable.
+In contrast, we found high sensitivity to measurement noise. This is because measurement noise
+randomizes species positions along the true niche axis. In doing so, it brings the data closer to
+the null model. One cannot connect the distribution of species along an axis to mechanism if that
+distribution is random. Therefore, to stand a chance at finding pattern one must keep measurement
+noise at a minimum. This requires a tight link between niche axes and the actual traits measured in
+field studies, such that the proxy traits provide high-accuracy estimates of species niche strategies.
+A large set of traits with a demonstrated role in niche strategies is better than a few traits with
+weak functional connections. Demonstrating such roles requires explicit theory (Pacala and Rees,
+1998; Kohyama, 2006), and extensive empirical work (Violle et al., 2007; Litchman and Klausmeier,
+2008; Sterck et al., 2011; Herben and Goldberg, 2014).
+The kernel contains all information about species interactions, and hence holds the key to
+pattern. Mathematical proofs connect kernel and trait patterns in simpler models lacking noise
+(Hernández-Garcı́a et al., 2009; Fort et al., 2009; Leimar et al., 2013). However, more general kernels are less amenable to analytical proofs, and as yet have only been studied via simulations. Our
+results indicate that core-tail kernel structure is critical for trait pattern, but a more complete theory predicting the pattern from the shape of the kernel is still missing. Providing a low-dimensional
+representation of the kernel that predicts pattern in realistic noisy systems remains an open challenge.
+Our study is a step towards more realistic models of trait-based patterns of niche assembly.
+Our results complement previous explorations of trait-based niche patterns that considered other
+forms of noise such as demographic or environmental stochasticity (Tilman, 2004; Gravel et al.,
+2006; Ernebjerg and Kishony, 2011; D’Andrea et al., 2018). Attempts at higher realism would also
+require dedicated multidimensional niche models. Multidimensional niche space, despite having
+long been recognized as part and parcel of niche theory (May, 1975; Tilman, 1982; Holt, 1987),
+remains understudied in theoretical ecology (but see Fort et al. 2010; Geange et al. 2011; Eklöf et al.
+2013), and essentially untouched in the trait pattern literature. Finally, our models neglect noncompetitive interactions, and require restorative forces such as immigration to replenish otherwise
+transient clusters. However, our results provide insight into the prospects of finding clusters in
+systems where both competition and dispersal are known to play a large role in community assembly,
+such as grasslands (Tilman, 1994) and tropical forests (Vellend, 2016).
+To our knowledge, we are the first to examine how uncertainty about the drivers of species
+interactions impacts ecologists’ ability to detect their effect on community structure. Our findings
+highlight that theoretical results are only useful to field work when they are robust to uncertainty.
+More broadly, our work can initiate a more general picture of this robustness or lack thereof across
+different patterns and processes.
+
+Acknowledgments
+J.OD. acknowledges the Simons Foundation Grant #376199 and McDonnell Foundation Grant
+#220020439. A.O. acknowledges the National Science Foundation Grant #1038678, Niche versus
+neutral structure in populations and communities funded by the Advancing Theory in Biology program, the Danish National Research Foundation Grant #DNRF96 through support of the Center
+of Macroecology, Evolution and Climate, and the Miller Institute for Basic Research in Science at
+the University of California, Berkeley.
+
+14
+
+References
+Abrams, P. (1983). The Theory of Limiting Similarity. Annual Review of Ecology and Systematics,
+14(1):359–376.
+Barabás, G., D’Andrea, R., Rael, R., Meszéna, G., and Ostling, A. M. (2013). Emergent Neutrality
+or Hidden Niches? Oikos, 122:1565–1572.
+Bonsall, M. B., Jansen, V. A. A., and Hassell, M. P. (2004). Life history trade-offs assemble
+ecological guilds. Science (New York, N.Y.), 306(5693):111–4.
+Chase, J. M. and Leibold, M. (2003). Ecological Niches: Linking Classical and Contemporary
+Approaches. The University of Chicago Press.
+D’Andrea, R. and Ostling, A. (2017). Biodiversity maintenance may be lower under partial niche
+differentiation than under neutrality. Ecology, 98(12):3211–3218.
+D’Andrea, R. and Ostling, A. M. (2016). Challenges in linking trait patterns to niche differentiation.
+Oikos, 125(10):1369–1385.
+D’Andrea, R., Riolo, M., and Ostling, A. M. (2018). Competition and immigration lead to clusters
+of similar species, not trait separation. bioRxiv, (doi: https://doi.org/10.1101/264606).
+Eklöf, A., Jacob, U., Kopp, J., Bosch, J., Castro-Urgal, R., Chacoff, N. P., Dalsgaard, B., de Sassi,
+C., Galetti, M., Guimarães, P. R., Lomáscolo, S. B., Martı́n González, A. M., Pizo, M. A., Rader,
+R., Rodrigo, A., Tylianakis, J. M., Vázquez, D. P., and Allesina, S. (2013). The dimensionality
+of ecological networks. Ecology Letters, 16(5):577–583.
+Ernebjerg, M. and Kishony, R. (2011). Dynamic phenotypic clustering in noisy ecosystems. PLoS
+computational biology, 7(3):e1002017.
+Fort, H., Scheffer, M., and van Nes, E. H. (2009). The paradox of the clumps mathematically
+explained. Theoretical Ecology, 2(3):171–176.
+Fort, H., Scheffer, M., and van Nes, E. H. (2010). The clumping transition in niche competition: a robust critical phenomenon. Journal of Statistical Mechanics: Theory and Experiment,
+2010(05):P05005.
+Geange, S. W., Pledger, S., Burns, K. C., and Shima, J. S. (2011). A unified analysis of niche
+overlap incorporating data of different types. Methods in Ecology and Evolution, 2(2):175–184.
+Götzenberger, L., de Bello, F., Bråthen, K. A., Davison, J., Dubuis, A., Guisan, A., Lepš, J.,
+Lindborg, R., Moora, M., Pärtel, M., Pellissier, L., Pottier, J., Vittoz, P., Zobel, K., and Zobel,
+M. (2012). Ecological assembly rules in plant communities-approaches, patterns and prospects.
+Biological Reviews, 87(1):111–127.
+Gravel, D., Canham, C. D., Beaudet, M., and Messier, C. (2006). Reconciling niche and neutrality:
+the continuum hypothesis. Ecology letters, 9(4):399–409.
+Herben, T. and Goldberg, D. E. (2014). Community assembly by limiting similarity vs. competitive
+hierarchies: Testing the consequences of dispersion of individual traits. Journal of Ecology,
+102(1):156–166.
+
+15
+
+Hernández-Garcı́a, E., López, C., Pigolotti, S., and Andersen, K. H. (2009). Species competition: coexistence, exclusion and clustering. Philosophical Transactions of the Royal Society A,
+367(1901):3183–95.
+Holt, R. (1987). On the Relation between Niche Overlap and Competition : The Effect of Incommensurable Niche Dimensions. Oikos, 48(1):110–114.
+Holt, R. D. (2006). Emergent neutrality. Trends in Ecology & Evolution, 21(10):531–3.
+Hubbell, S. P. (2001). The Unified Neutral Theory of Biodiversity and Biogeography. Princeton
+University Press, Princeton, NJ.
+Kohyama, T. (2006). The effect of patch demography on the community structure of forest trees.
+Ecological Research, 21(3):346–355.
+Leimar, O., Sasaki, A., Doebeli, M., and Dieckmann, U. (2013). Limiting similarity, species packing,
+and the shape of competition kernels. Journal of Theoretical Biology, 339:3–13.
+Litchman, E. and Klausmeier, C. A. (2008). Trait-Based Community Ecology of Phytoplankton.
+Annual Review of Ecology, Evolution, and Systematics, 39(1):615–639.
+MacArthur, R. H. and Levins, R. (1967). The Limiting Similarity, Convergence, and Divergence of
+Coexisting Species. The American Naturalist, 101(921):377–385.
+MacQueen, J. B. (1967). Some Methods for classification and Analysis of Multivariate Observations.
+5th Berkeley Symposium on Mathematical Statistics and Probability 1967, 1(233):281–297.
+May, R. M. (1975). Some Notes on Estimating the Competition Matrix. Ecology, 56(3):737–741.
+McDonald, J. H. (2009). Handbook of Biological Statistics. Sparky House Publishing, Baltimore,
+Maryland, USA, second edition.
+McGill, B. J., Enquist, B. J., Weiher, E., and Westoby, M. (2006). Rebuilding community ecology
+from functional traits. Trends in ecology & evolution, 21(4):178–85.
+Pacala, S. W. and Rees, M. (1998). Models suggesting field experiments to test two hypotheses
+explaining successional diversity. The American Naturalist, 152(5):729–37.
+Pigolotti, S., Lopez, C., Hernández-Garcı́a, E., and H., K. A. (2010). How Gaussian competition
+leads to lumpy or uniform species distributions. Theoretical Ecology, 3(2):89–96.
+R Core Team (2017). R: A Language and Environment for Statistical Computing.
+Sakavara, A., Tsirtsis, G., Roelke, D. L., Mancy, R., and Spatharis, S. (2018). Lumpy species
+coexistence arises robustly in fluctuating resource environments. Proceedings of the National
+Academy of Sciences.
+Scheffer, M. and van Nes, E. H. (2006). Self-organized similarity, the evolutionary emergence of
+groups of similar species. Proceedings of the National Academy of Sciences of the United States
+of America, 103(16):6230–6235.
+Scheffer, M., Vergnon, R., Van Nes, E. H., Cuppen, J. G., Peeters, E. T., Leijs, R., and Nilsson,
+A. N. (2015). The evolution of functionally redundant species; Evidence from beetles. PLoS
+ONE, 10(10):1–10.
+16
+
+Schoener, T. W. (1974). Resource partitioning in ecological communities. Science (New York,
+N.Y.), 185(4145):27–39.
+Schoener, T. W. (1976). Alternatives to Lotka-Volterra competition: models of intermediate complexity. Theoretical population biology, 10(3):309–33.
+Scranton, K. and Vasseur, D. A. (2016). Coexistence and emergent neutrality generate synchrony
+among competitors in fluctuating environments. Theoretical Ecology, 9(3):353–363.
+Segura, A. M., Calliari, D., Kruk, C., Conde, D., Bonilla, S., and Fort, H. (2011). Emergent
+neutrality drives phytoplankton species coexistence. Proceedings. Biological sciences / The Royal
+Society, 278(1716):2355–61.
+Segura, A. M., Kruk, C., Calliari, D., Garcı́a-Rodriguez, F., Conde, D., Widdicombe, C. E., and
+Fort, H. (2013). Competition Drives Clumpy Species Coexistence in Estuarine Phytoplankton.
+Scientific Reports, 3(1):1037.
+Shoval, O., Sheftel, H., Shinar, G., Hart, Y., Ramote, O., Mayo, A., Dekel, E., Kavanagh, K.,
+and Alon, U. (2012). Evolutionary trade-offs, pareto optimality, and the geometry of phenotype
+space. Science, 336(June):1157–1161.
+Sterck, F., Markesteijn, L., Schieving, F., and Poorter, L. (2011). Functional traits determine
+trade-offs and niches in a tropical forest community. Proceedings of the National Academy of
+Sciences of the United States of America, 108(51):20627–32.
+Tibshirani, R., Walther, G., and Hastie, T. (2001). Estimating the number of clusters in a data set
+via the gap statistic. Journal of the Royal Statistical Society: Series B (Statistical Methodology),
+63:411–423.
+Tilman, D. (1982). Resource competition and community structure. Princeton University Press,
+monographs edition.
+Tilman, D. (1994). Competition and Biodiversity in Spatially Structured Habitats. Ecology,
+75(1):2–16.
+Tilman, D. (2004). Niche tradeoffs, neutrality, and community structure: a stochastic theory of
+resource competition, invasion, and community assembly. Proceedings of the National Academy
+of Sciences of the United States of America, 101(30):10854–61.
+Vellend, M. (2016). The theory of ecological communities. Princeton University Press.
+Vergnon, R., Dulvy, N. K., and Freckleton, R. P. (2009). Niches versus neutrality: uncovering the
+drivers of diversity in a species-rich community. Ecology letters, 12(10):1079–90.
+Vergnon, R., van Nes, E. H., and Scheffer, M. (2013). Interpretation and predictions of the emergent
+neutrality model: A reply to Barabás et al. Oikos, 122(11):1573–1575.
+Violle, C., Navas, M.-L., Vile, D., Kazakou, E., Fortunel, C., Hummel, I., and Garnier, E. (2007).
+Let the concept of trait be functional! Oikos, 116(5):882–892.
+Wright, I. J., Reich, P. B., Westoby, M., Ackerly, D. D., Baruch, Z., Bongers, F., Cavender-Bares,
+J., Chapin, T., Cornelissen, J. H. C., Diemer, M., Flexas, J., Garnier, E., Groom, P. K., Gulias,
+J., Hikosaka, K., Lamont, B. B., Lee, T., Lee, W., Lusk, C., Midgley, J. J., Navas, M.-L.,
+17
+
+Niinemets, U., Oleksyn, J., Osada, N., Poorter, H., Poot, P., Prior, L., Pyankov, V. I., Roumet,
+C., Thomas, S. C., Tjoelker, M. G., Veneklaas, E. J., and Villar, R. (2004). The worldwide leaf
+economics spectrum. Nature, 428(6985):821–7.
+Wright, S. J., Kitajima, K., Kraft, N. J. B., Reich, P. B., Wright, I. J., Bunker, D. E., Condit,
+R., Dalling, J. W., Davies, S. J., Dı́az, S., Engelbrecht, B. M. J., Harms, K. E., Hunter, M. O.,
+Marks, C. O., Ruiz-Jaen, M. C., Salvador, C. M., and Zanne, A. E. (2010). Functional traits and
+the growth-mortality trade-off in tropical trees. Ecology, 91(12):3664–74.
+Yan, B., Zhang, J., Liu, Y., Li, Z., Huang, X., Yang, W., and Prinzing, A. (2012). Trait assembly
+of woody plants in communities across sub-alpine gradients: Identifying the role of limiting
+similarity. Journal of Vegetation Science, 23(4):698–708.
+
+18
+
+Appendices for Translucent windows: how uncertainty in
+competitive interactions impacts detection of community pattern
+Rafael D’Andrea1,∗ , Annette Ostling2,∗∗ & James O’Dwyer1,†
+1
+
+arXiv:1802.10224v1 [q-bio.PE] 28 Feb 2018
+
+2
+
+A
+
+Dept. Plant Biology, University of Illinois at Urbana-Champaign, IL, USA
+Dept. Ecology & Evolutionary Biology, University of Michigan, Ann Arbor, MI, USA
+∗
+rdandrea@illinois.edu, ∗∗ aostling@umich.edu, † jodwyer@illinois.edu
+
+Niche space
+
+Clusters emerge in models where species belong in a niche space, typically a one-dimensional line,
+and their competitive impact on one another is a function of their mutual distances in that space.
+The definition of niche space here is abstract and operational: it is the set of aspects of organism
+performance that affect competition; species sufficiently far apart in that space can stably coexist.
+For example, in a model of birds competing for two substitutable food types, say pollen and
+insects, a species’ niche is the amount of time it spends foraging for each food. Assuming the
+total foraging time is fixed, the niche space is a one-dimensional axis, with points on that axis
+indicating how long the species spend on one of the resources—the time spent on the other food is
+then set, as both times need to add to a fixed amount. If there are three substitutable resources,
+say pollen, insects, and seeds, then niche space is a two-dimensional plane, and so on. The classical
+MacArthur-Levins (1967) model assumes a continuous resource axis with an indefinite number of
+food types—say, seeds falling on a size continuum—which in principle makes niche space infinitedimensional. However, the number of dimensions drops if there are further constraints on the
+amount of time a bird can spend on each food. MacArthur and Levins (1967) considered the
+extreme scenario where the relative time spent on one of the resources fixes the time spent on all
+others: they assumed every species share a resource utilization curve that differs only by what
+resource it peaks on, i.e. the seed they eat the most. In that case, niche space collapses onto a
+single axis.
+Under this operational definition, a species’ niche is not necessarily a resource, measurable trait,
+or the environment where it lives. Those are only associated with the niche to the extent that they
+affect competition. In the example of birds competing for seeds falling on a size continuum, the
+assumption of same-shape resource utilization curves across all species means a species’ favorite
+resource suffices to determine its niche. In this case the niche itself can be equated with the favorite
+seed size. More generally the niche would be a list of numbers reflecting the amount of time spent
+on seeds of each size. A relevant trait such as beak size will correlate with its favorite food (Schluter
+and Grant, 1984), but even in this idealized example of a one-dimensional niche axis the correlation
+between niche and trait need not be one-to-one, as birds’ beaks are also shaped by other functions
+such as singing (Huber and Podos, 2006).
+
+1
+
+B
+
+Competition for essential resources leads to tail noise, and minimum distances in niche space are a good predictor of competitive interactions
+
+Consider a resource-consumer model with two resource axes. Resources grow logistically in the
+absence of consumers. Consumers niche strategies determine their resource preference along each
+resource axis, but they need resources from both axes to grow. One example is animals that thrive
+on a diet containing both plant and animal foods. We implement this by having consumer growth
+rates depend multiplicatively on resources from both axes (Saito et al., 2008):
+!
+R
+R
+X
+X
+dA
+= µ − mA +
+(1)
+ex γAXi Xi
+ey γAYi Yi A
+dt
+i=1
+
+i=1
+
+where A is the abundance of the consumer, m is its intrinsic mortality, µ is the immigration rate,
+R is the number of resources on each axis, Xi are the abundances of the x-resources, γAXi quantifies
+the consumer preference for the i-th x-resource, and ex is the conversion efficiency—similarly for
+the y resources. The product in the consumption derives from the law of mass action in chemistry,
+in this case representing a reaction that needs three components to occur (the consumer and the
+two resource types). In our biological context, the term reflects a situation where each resource
+type offers nutrients not found in the other type, and the consumption of both types are linked
+together because the consumer will lack the energy to forage if it lacks either.
+The corresponding resource equations are
+
+
+
+
+S
+S
+X
+X
+dXi
+Xi
+(2)
+= ν + Xi r 1 −
+−
+γN Xi N
+γN Yj Yj Xi
+dt
+K
+j=1
+N =1
+
+
+
+
+S
+S
+X
+X
+dYi
+Yi
+= ν + Yi r 1 −
+−
+γN Yi N
+γN Xj Xj Yi
+(3)
+dt
+K
+N =1
+
+j=1
+
+where r is the resource intrinsic growth rate, K the carrying capacity, ν the resource immigration
+rate, and S the number of consumers. Notice that these equations reflect the abovementioned
+linked consumption of both resource types.
+We note that this type of resource-consumer interaction is not the only way to model colimitation by more than resource; another common approach is Liebigs law of the minimum1 (Saito
+et al., 2008). Empirically, consumers show a variety of responses to addition of essential resources,
+compatible with different models (Harpole et al., 2011). Our model predicts that consumers will
+respond to addition of either resource in isolation, and will respond maximally to addition of both
+resources. This has been observed in communities of bacteria (Danger et al., 2008), plankton
+(Harpole et al., 2011), and plants (Craine and Jackson, 2010).
+For simplicity, we set µ, ν, r, K, ex , ey identical across species and resources, so that we can
+focus on the competitive effect of differences in resources preferences. We set the preference of
+1
+
+Our multiplicative model corresponds to chemicals in a vat where the reaction is C + A + B → C + C, i.e. both
+substances A and B must be present at the same time for C to generate a new C; in contrast, the Liebig scenario
+corresponds to a reaction like C + A → CA; CA + B → C + C, i.e. where there is a stable intermediate state such
+that C does not need to encounter A and B at the same time, but still needs both to generate a new C. In biological
+terms, Liebig’s law corresponds to a case where the consumer acquires each resource independently of the other but
+will not grow without both, whereas in the multiplicative model the consumer’s ability to acquire one of the resources
+depends on having access to the other.
+
+2
+
+consumer A for resource xi to be a declining function of the difference between the resource and
+the consumer’s favorite resource xA along that axis, γAXi = exp(−((xA − xi )/wx )4 ). Similarly for
+y-resources.
+
+Competition kernel
+Consumer-resource interactions do not map trivially to Lotka-Volterra competition coefficients that
+depend only on trait distances. In general, this mapping might only be valid in the vicinity of an
+equilibrium (Schoener, 1974, 1976). In fact, expansions of small perturbations around equilibria is
+the traditional approach to converting resource-consumer models to Lotka-Volterra form, and thus
+extracting competition coefficients valid in that regime (MacArthur, 1972; Abrams, 1980). This is
+the approach we adopt here.
+The competition kernel, which quantifies the competitive impact of consumers on one another,
+
+∂
+1 dA
+is comprised of the matrix elements αAB = − ∂B
+, where the asterisk denotes
+A dt
+A∗ B ∗ X ∗ Y ∗
+
+equilibrium abundances. We calculate it explicitly via linearization around the equilibrium:
+A(t) = A∗ + a(t); Xi (t) = Xi∗ + xi (t); Yj (t) = Yj∗ + yj (t)
+Substituting in the consumer equation and discarding higher order terms:
+XX
+dA
+= µ − (A∗ + a)m + (A∗ + a)ex ey
+γAXi γAYj (Xi∗ + xi )(Yj∗ + yj )
+dt
+i
+j
+X
+µ
+∗
+∗
+≈ −a ∗ + A ex ey
+γAXi γAYj (Yj xi + Xi∗ yj )
+A
+ij
+
+The competition coefficients are then
+
+
+∂
+1 dA
+αAB = −
+∂B A dt
+
+
+X
+µ
+∗ ∂yi
+∗ ∂xi
+= δAB ∗2 − ex ey
++ Xi
+γAXi γAYj Yj
+A
+∂B
+∂B
+ij
+
+
+
+
+
+µ
+∂xi
+∂yi
+∗
+T ∗
+= δAB ∗2 + ex ey (AY ) · −
++ (A X ) · −
+A
+∂B
+∂B
+
+(4)
+
+where in the last line we used compact matrix notation, with Aij ≡ γAXi γAYj , and the dot indicating
+internal product between the vectors.
+To proceed we must write x and y in terms of the consumer abundances. We do so by assuming
+resources undergo faster dynamics than consumers:
+
+
+XX
+dXi
+Xi∗ + xi
+∗
+0=
+= ν + r(Xi + xi ) 1 −
+− (Xi∗ + xi )
+γN Xi γN Yj (N ∗ + n)(Yj∗ + yj )
+dt
+K
+j
+N
+XX
+ν
+∗ xi
+∗
+∗
+= − ∗ xi − rXi
+− Xi
+γN Xi γN Yj (N yj + Yj∗ n)
+Xi
+K
+j
+N
+XX
+1
+→ xi = − ν
+γN Xi γN Yj (N ∗ yj + Yj∗ n)
+r
++
+∗2
+K
+X
+i
+
+N
+
+j
+
+We can write this expression in compact matrix notation:
+x = P x y + Qx Y∗
+3
+
+P
+P
+where Pijx = −xi N N ∗ γN Xi γN Yj , Qxij = −xi N nγN Xi γN Yj , and xi = 1/(ν/Xi∗2 + r/K). Notice
+that matrix P x is a constant whereas matrix Qx depends on the consumer perturbations.
+We get an analogous expression for the y resources:
+y = P y x + Qy X ∗
+with parameters mirroring those of the x resources.
+Solving this linear system for x and y, we get
+x = (1 − P x P y )−1 (P x Qy X∗ + Qx Y∗ )
+y = (1 − P y P x )−1 (P y Qx Y∗ + Qy X∗ )
+
+y
+y
+x ≡ x γ
+Substituting these in Eq. (4) and defining Bij
+i BXi γBYj and Bij ≡ i γBYi γBXj , we obtain our
+competition kernel:
+
+µ
+A∗2
++ ex ey (AY∗ ) · ((1 − P x P y )−1 (P x B y X∗ + B x Y∗ ))
+
+αAB = δAB
+
++ ex ey (AT X∗ ) · ((1 − P y P x )−1 (P y B x Y∗ + B y X∗ ))
+
+(5)
+
+Results
+First, we note that if we unplug the y resources from consumer dynamics, such that only the x
+resources regulate those species, then differences in x-niche strategies are almost perfect predictors
+of pairwise competitive relations. In other words, if niche space is one-dimensional, niche strategies
+fully determine competitive interactions, and we therefore have no process noise.
+Next, we add the y resources back in. Fig. S1A shows a community obtained by numerical
+simulation of this model, with species arranged by their x-niche. Despite niche space being twodimensional, with both x and y resources modulating species dynamics, the clustered abundance
+pattern is visible along the x-niche axis, as confirmed by our clustering metric (results summarized
+in the legend of the plot). Thus, even if the y-niche strategies of these species were entirely unknown,
+we would still be able to infer niche dynamics from the x-axis alone. The competition kernel, as
+calculated via Eq. (5), correlates with x-niche distances (Fig. S1C), but the relationship is noisy
+because of the contribution of the y-niche. The hidden y-niche adds process noise.
+To determine whether the noise was higher in the core or tail of the kernel, we fitted a cubic
+spline to each row of the kernel—which for each species in the community describes the competitive
+impact of all other species—and compared the expected kernel values from the spline against the
+observed values. Species pairs were deemed to be in the core or tail based on whether they were
+below or above the niche distance atPwhich the splined kernel is at the community-level mean.
+Using the chi-squared statistic χ2i = j (αij − α̂ij )2 /α̂ij , we found that the noise is higher in the
+tail (χ2core = 0.04, χ2tail = 0.07).
+The minimum of the niche distances on either axis is a better predictor of the competition
+coefficients (Fig. S1D). In particular, the minimum distance is a much better predictor of the
+kernels tail than the x-distance: unlike the x-distance, a large minimum distance is a reliable sign
+of low competitive interactions.
+These results support our assumptions in the main text that essential resource axes may lead
+to noise in the tail of the kernel, and that the pairwise competitive relations are strongly associated
+with the minimum distance in the full niche space.
+
+4
+
+To summarize our findings regarding competition for essential resources: when niche space is
+one-dimensional, niche strategies fully determine competitive interactionsi.e. there is no process
+noise. When niche space is multidimensional, the map from competition to niche strategies is noisy,
+but the minimum distance in niche space is a good approximation. If we have no information on
+one of the niche dimensions, this process noise is compounded, particularly in the tail.
+
+5
+
+Figure S1: Generalized process noise. A. Species abundances by their x-niche. Legend shows number
+of clusters (K), z-score of the gap statistic (Z), and corresponding p-value (P); B. Resource abundances along
+each resource axis; C. Pairwise competition coefficients calculated from consumer and resource abundances
+using Eq. (5), plotted against species differences in x-niche strategies. There is a visible negative correlation.
+Legend shows rank correlation (Spearmans ρ); D. Competition coefficients plotted against the minimum
+between dx and dy (scaled by the width of the respective resource use functions γ). Parameters used in the
+simulation: S = R = 100; ex = ey = 1; K = 0.1; r = 100; m = 1; µ = 10−5 ; ν = 0.1; wx = 0.11; wy = 0.08.
+All species and resources start with identical abundances, and we run the simulation until abundances are
+no longer changing.
+A
+
+Consumers
+K=9
+
+25
+
+Z = 3.5
+
+B
+
+Resources
+
+P < 0.01
+
+X resources
+Y resources
+
+Abundance / Carrying capacity
+
+0.9
+
+Abundance
+
+20
+
+15
+
+10
+
+5
+
+0.8
+
+0.7
+
+0.6
+
+0
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+0
+
+20
+
+40
+
+X − niche
+
+80
+
+100
+
+Resource index
+
+C
+
+D
+ρ = −0.53
+
+0.03
+
+ρ = −0.87
+
+0.03
+
+0.02
+
+Competition
+
+0.02
+
+Competition
+
+60
+
+0.01
+
+0.01
+
+0.00
+
+0.00
+
+−0.01
+
+−0.01
+
+0
+
+2
+
+4
+
+6
+
+8
+
+0
+
+2
+
+4
+
+6
+
+min(|dx / wx|, |dy / wy|)
+
+|dx / wx|
+
+6
+
+8
+
+C
+
+Competition for available space in two niche dimensions leads
+to core noise, and Euclidean distances are a good predictor of
+competitive interactions
+
+Consider a community of plants in a heterogeneous landscape. Plants compete for space, and the
+landscape is composed of patches, each of which can contain one individual. The local environment
+in each patch is characterized by two independent indices (for instance, soil humidity and salinity),
+and different species are optimally adapted to different suites of environmental conditions (i.e.
+different combinations of humidity and salinity). In this situation, the resource is available space
+with specific environmental conditions. Niche space is two-dimensional, in the sense that species
+niche strategies pertain to their affinities for these two independent environmental properties.
+We can model such a scenario as follows:
+dNikl
+= −mNikl + b Tikl Xkl Ni
+dt
+X
+Xkl = c −
+Nikl
+
+(6)
+(7)
+
+i
+
+where Nikl is the abundance of species i in patches with humidity k and salinity l, and Xkl is the
+number of currently unoccupied patches with those conditions. The first term in Eq. 6 represents
+death, which for simplicity we assume occurs at the same rate m for all individuals in all patches.
+The second represents births, which are mediated by the species affinity for the local environmental
+conditions, Tikl . We assume no dispersal limitation: all individuals of species i contribute offspring
+equally to all patches (hence the factor Ni in the birth term, as opposed to a weighted combination
+of Nikl ). The birth rate b is the same for all species and patches, but varies over time depending
+on abundances and site occupancy, such that the total number of births balances the total number
+of deaths. This portrays a community with a seed bank that enables newly available sites to be
+quickly colonized, but where births are limited by available space, which is in turn provided by
+deaths. The number of available patches of humidity k and salinity l is equal to the total number
+of patches c in the community with those conditions, minus the total occupancy in these sites. For
+simplicity, we assume c is the same for all environmental conditions.
+We can sum Eq. 6 over the patches to find the dynamic equation for species abundances:
+X dNikl
+kl
+
+P
+
+dt
+
+=
+
+dNi
+= −mNi + bτi Ni
+dt
+
+(8)
+
+P
+P
+where τi = kl Tikl Xkl . Note that in order to match total births and deaths, b = m( i Ni )/( i τi Ni ).
+This dependence of the birth rate on deaths reflects offspring’s need for available gaps to recruit,
+and provides a stabilizing mechanism that prevents populations from growing indefinitely.
+
+
+1 dNi
+∂
+,
+Substituting Eq. 8 in the usual definition of the competition coefficients, αij = − ∂N
+Ni dt
+j
+we get
+
+N∗
+
+
+
+∂τi
+∂b
+αij = −
+b + τi
+∂Nj
+∂Nj
+
+(9)
+
+Before we can calculate those derivatives, we must note that τi and b are defined in terms of patchspecific subpopulations. Therefore we must convert ∂/∂Nj into ∂/∂Njkl . This conversion depends
+on how an increment to the population Nj is distributed across the different patches. The natural
+assumption is that it will occur in proportion to the species affinity for the local environment in these
+
+7
+
+patches, reflecting local filters. In other words, dNjkl = P 0 01T 0 0 Tjkl dNj . The proportionality
+jk l
+k l
+P
+P
+∂
+constant ensures that kl dNjkl = dNj . It then follows that ∂N
+= P 0 01T 0 0 kl Tjkl ∂N∂jkl .
+j
+jk l
+k l
+Applying the derivatives in Eq. 9 and using Eq. 7, we obtain
+!
+P
+X
+X
+X
+Tjkl
+Tjkl
+m i0 Ni0
+m
+αij = b
+Tikl P
+τj −
+N i0
+Tikl P
+−P
++ P
+(10)
+( i0 Ni0 τi0 )2
+k0 l0 Tjk0 l0
+i0 Ni0 τi0
+k0 l0 Tjk0 l0
+0
+kl
+
+i
+
+kl
+
+P
+This expression is not particularly illuminating, but we note that it contains terms like kl Tikl Tjkl ,
+which represent the overlap in environmental preferences between species i and j. This is in the same
+spirit as the classical work by MacArthur and others (MacArthur and Levins, 1967; MacArthur,
+1972).
+To complete the model, we must specify the environmental preferences of our different species.
+Suppose species i has a preferred humidity level xi and salinity level yi . Those preferences define
+the species niche strategy. Its affinity for a patch with humidity xk and salinity yl will then be
+
+! 
+2
+2 2
+x
+−
+x
+y
+−
+y
+i
+i
+k
+l
+
+Tikl = exp−
++
+wx
+wy
+
+In words, the affinity is a declining function of the (two-dimensional) difference between the local
+environment and the species’ preferred environment. The weighting factors wx and wy set the
+relative scales of the x- and y-environmental dimensions. For instance in the limit where wy  wx ,
+species are indifferent to the y-dimension relative to the x-dimension. This will occur for example
+if they have similar tolerance to all salinity levels within the landscape’s range. In that case, niche
+space is one-dimensional.
+Results from numerical implementation of this model are shown in Fig. S2. Species cluster
+along their x-environmental preferences (the x-niche, Fig. S2A), even though competition does not
+correlate perfectly with differences in x-preference (Fig. S2B). The noise, visible as a scatter in
+the cloud of points, occurs mostly between species with similar x-preferences. In other words,
+the noise is greater in the core than in the tail. (Contrast this with the tail-heavy noise from
+the resource-consumer model of competition for essential resources, Appendix B.) The correlation
+with differences in y-preference is also imperfect (Fig. S2C). It is only when we plot competition
+coefficients against the Euclidean distance that we see a tight relationship (Fig. S2D).
+In summary, when we ignore either niche dimension, we face noise in the correspondence between
+competitive interactions and the observed niche strategies. That noise is concentrated in the core of
+the competition kernel. This is because if all we know is that two species are similar with respect to
+their x-preference, we may overestimate how strongly they compete because they may compensate
+for their x-similarity with very dissimilar y-niche requirements. On the other hand, the Euclidean
+distance in the two-dimensional niche space is an excellent predictor of competition. These results
+support our simple Lotka-Volterra model for complementary resources presented in the main text.
+
+8
+
+Figure S2: Competition for available space in two niche dimensions leads to core noise. A.
+Species abundances by their x-niche. Legend shows number of clusters (K), z-score of the gap statistic (Z),
+and corresponding p-value (P); B. Pairwise competition coefficients calculated from consumer abundances
+using Eq. (10), plotted against species differences in x-niche strategies. There is a visible negative correlation,
+but it is noisy, especially in the core; C. Competition coefficients plotted against differences in y-niche
+strategies show a similar pattern. D. Plotting competition against the Euclidean distance (with dx and
+dy scaled by the respective weighting factors) resolves the core noise. Parameters used in the simulation:
+S = 100 species; R = 10 different environmental levels in each dimension; m = 0.01; wx = 0.1; wy = 0.38.
+Both x- and y-niche strategies range from 0 to 1, as do environmental levels. All species start with identical
+abundances, totaling the carrying capacity of the community, such that community size does not vary. We
+then run the simulation until abundances are no longer changing.
+A
+
+B
+
+K=7
+
+Z = 1.6
+
+1.0
+
+P = 0.07
+
+500
+
+Competition coefficient
+
+0.8
+
+Abundance
+
+400
+
+300
+
+200
+
+0.6
+
+0.4
+
+0.2
+
+100
+
+0.0
+
+0
+
+−0.2
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+0.0
+
+0.2
+
+0.4
+
+X − niche
+
+1.0
+
+0.6
+
+0.8
+
+1.0
+
+D
+
+1.0
+
+1.0
+
+0.8
+
+0.8
+
+Competition coefficient
+
+Competition coefficient
+
+0.8
+
+dx
+
+C
+
+0.6
+
+0.4
+
+0.2
+
+0.6
+
+0.4
+
+0.2
+
+0.0
+
+0.0
+
+−0.2
+
+−0.2
+0.0
+
+0.6
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+0.0
+
+0.2
+
+0.4
+
+(dx
+
+dy
+
+9
+
+wx)2 + (dy wy)2
+
+D
+
+Generalized process noise
+
+In the main text we showed how process noise arises from incomplete access to full niche space
+in an example where niche space is two-dimensional. Here we generalize this model, assuming an
+indeterminate number of unseen niche axes and other contributing factors which collectively add
+noise to the relationship between competition and x-niche differences. We thus set
+Aij = exp(−(|xi − xj |/w)4 ) + εij ,
+where the noise term εij is a normally distributed random variable with mean 0. We vary the
+magnitude or amplitude of the noise by tuning the variance parameter. By analogy with the twodimensional scenario, where we observed that different types of relationship between the niche axes
+(complementary or essential) lead to more noise in specific regions of the kernel, here we consider
+three cases: noise can be stronger between species with small x-niche differences, large x-niche
+differences, or irrespective of x-niche differences. We call these core noise, tail noise, and uniform
+noise, in reference to the part of the kernel where most of the noise is concentrated. We achieve
+these different cases by allowing the variance of the noise to depend on distances dij on the x-niche
+axis (see Fig. S3B-D for visual representations of each). Because a noisy kernel is unique, we
+simulated 100 replicates (runs) for each noise type and magnitude to ensure robust results.
+We impose nonnegative competition coefficients between all species pairs, and positive intraspecific competition for all species in order to ensure self-regulation and thus avoid unchecked growth.
+(If the noise term brings the coefficient below zero, we set it to zero if off-diagonal, or redraw
+it otherwise.) Once all competition coefficients are drawn we rescale the matrix by its mean,
+A → µA A/A, in order to ensure that the average competitive impact between species pairs is
+the same across runs and scenarios. The rescaled mean µA affects final community size. We use
+µA = 0.2, which combined with our other parameter choices leads to community sizes between 600
+and 35,000 individuals, depending on the noise scenario and magnitude. We use a circular niche
+axis to avoid edge effects. This isolates the contribution of niche differences to pattern (further
+testing revealed this assumption is not critical for the validity of our results).
+Fig. S3 shows examples of kernels and simulation outcomes in each case. When there is no noise,
+the kernel is perfectly monotonic on x-niche distances (Fig. S3A), and the resulting community is
+visibly clustered (Fig. S3E). As process noise is added in the form of core, tail, and uniform noise,
+the kernel lose monotonicity in the respective region while retaining a statistical trend (Fig. S3BD). The resulting communities, despite the noise, are still clustered, albeit less distinctively so
+(Fig. S3F-H). Notice the parallels between core (tail) noise in this generalized process noise model
+and complementary (essential) niche axes in the two-dimensional model (cf. Fig. S3 and Fig. 3 in
+the main text).
+The probability of clustering decreases as the noise increases (Fig. S4). For the same degree
+of overall monotonic relationship between competition and x-niche differences, core noise seems to
+degrade pattern the most, and tail noise the least, with uniform noise in between (cf. blue, red, and
+green curves in Fig. S4A). Again, this is similar to what we observed in the two-dimensional case
+regarding complementary and essential niche axes. The core-tail structure predicts the probability
+of clustering consistently, whether the noise is in the core, tail, or across the kernel (Fig. S4B).
+This is also similar to our observations for the two-dimensional model (cf. Fig. S4 and Fig. 4 in
+the main text).
+The similarity between the results of our two-dimensional niche model and our generalized noise
+model indicates that higher niche dimensions add no qualitatively new phenomena to pattern along
+a single niche axis. The fact that uniform noise shows intermediate behavior between core and tail
+noise suggests that process noise originating from a combination of complementary and essential
+10
+
+“hidden” niche axes will produce intermediate effects between strictly complementary and strictly
+essential niche axes.
+Figure S3: Generalized process noise. A-D: Competition coefficients between a focal species near
+the center of the niche axis and all other species, plotted against niche difference between them. In the
+noise-free case (A), the kernel peaks at zero niche difference and decreases monotonically with absolute niche
+differences. In the noise scenarios the noise is concentrated
+Pin the core (B), tail (C), or uniform across the
+kernel (D). All kernels have the same average, A = S −2 ij Aij = 0.2. Legend numbers show the noise
+scores according to each of our two metrics, namely Spearman’s ρ and π(A) (see main text). E-H: Species
+abundance plotted against niche values. (y-axis clipped at N = 15 to emphasize abundance structure in the
+gaps between high-abundance species.) Clusters are quite distinctive in the noise-free scenario (E). In the
+noisy scenarios (F-H) the pattern is less regular but clustering still occurs—all examples shown are significant
+at statistical level p ≤ 0.01. Legend shows the estimated number of clusters and the z-score of the clustering
+statistic.
+
+●
+●
+
+1.5
+
+●
+●
+
+●
+
+●
+●
+●
+
+●
+
+●
+
+●
+●
+●
+●
+
+0.4
+
+●
+
+1.0
+
+0.5
+
+●
+●
+●
+●
+●
+●
+●
+●
+●●●●
+●● ●
+●
+●●
+●
+●●
+●●
+●●
+●●
+●
+●●
+●
+●●●●●
+●●
+●
+●
+●
+●
+●●●
+●
+●
+●
+●
+●●
+●●● ●●●●
+
+●
+●●●
+●
+●
+●
+●
+●●● ●
+●
+●●
+●●●
+●
+●
+●
+●●
+●
+●●
+● ●
+●
+●
+●
+●
+●●
+●● ●●●●●
+●●
+●● ●●
+
+−0.4
+
+−0.2
+
+0.0
+
+E
+
+0.2
+
+●
+●
+
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●●●
+●
+●
+●
+●●● ●
+●
+●●
+●●●
+●
+●
+●
+●●
+●
+●●
+● ●
+●
+●
+●
+●
+●●
+●● ●●●●●
+●●
+●● ●●
+
+0.4
+
+−0.4
+
+−0.2
+
+15
+
+Z = 10.7 **
+
+0.2
+
+0.4
+
+0.6
+trait
+
+0.8
+
+1.0
+
+−0.2
+
+0.2
+
+0.6
+trait
+
+0.8
+
+1.0
+
+●
+
+●
+●
+●
+
+●
+●
+● ●
+●
+
+●
+
+●
+●
+●
+
+−0.2
+
+Z = 3.7 **
+
+●
+
+●
+●
+
+●
+
+●
+
+● ●
+●
+● ●
+● ●●
+●
+●● ●●
+●●● ● ●●
+●●
+●● ● ●●●● ●●
+●
+●
+●● ●●
+●
+
+−0.4
+
+●●
+●
+●● ●
+●
+● ●
+
+●
+
+●
+
+● ● ●
+●
+●
+●
+●
+● ●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+●●●
+●●●● ●●●
+●●●
+●● ●
+●
+●●●
+●
+●●●
+●
+●
+
+●●
+
+●●
+●●
+●
+
+●
+●● ●●
+●
+●●●●●
+●
+
+0.0
+
+H
+15
+
+●
+
+●
+
+●
+●
+
+●●
+
+0.2
+
+0.4
+
+dtrait
+
+K=8
+
+Z = 3.7 **
+
+10
+
+5
+
+0
+0.0
+
+0.2
+
+Species niche value
+
+11
+
+● ●
+
+●
+
+●
+
+●●●
+
+●
+●
+●
+
+●
+
+●
+
+●
+
+0.4
+
+0
+0.4
+
+●
+●
+●
+
+0.0
+
+dtrait
+
+K=8
+
+●
+
+●
+●
+
+●●
+
+●
+
+5
+
+0.2
+
+●
+●
+
+●●
+●
+
+●
+
+0.6
+
+0.2
+
+10
+
+0.0
+
+●
+
+●●
+
+0.4
+
+●
+●●
+
+0.0
+
+●
+
+●
+●
+
+●
+
+●
+●
+
+●
+●● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●● ●
+●
+●
+●●
+●
+●●
+●
+●
+●
+●
+●
+●●●●
+●● ●
+●●
+●
+●●●
+●●
+●●
+●
+●● ●●●
+●●
+●
+●
+●●
+●●
+● ●
+●●●
+
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ● ● ●●
+●
+●
+● ●●
+● ●● ●●
+●●●
+●
+●
+●●
+●●
+●
+●
+●● ●
+●●● ●
+● ●
+●
+●● ● ●●
+●● ●
+●
+●●●
+
+−0.4
+
+Z = 3.7 **
+
+● ●
+●
+
+●●
+
+●
+
+●
+●
+●
+●
+●
+●●●
+●●
+●
+●
+●●
+●●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+
+●●
+●
+●
+
+G
+
+0
+0.0
+
+●●
+
+15
+
+5
+
+0
+
+0.0
+
+0.4
+
+10
+
+5
+
+●
+
+N
+
+10
+
+0.2
+
+dtrait
+
+K=8
+
+●
+
+●
+
+●● ●
+●
+●
+●
+●
+●
+●
+●
+●●●●
+●● ●
+●
+●●
+●
+●●
+●●
+●●
+●●
+●
+●●
+●
+●●●●●
+●●
+●
+●
+●
+●
+●●●
+●
+●
+●
+●
+●●
+●●● ●●●●
+
+●●
+
+●
+
+●
+
+0.5
+
+●
+
+0.0
+
+F
+
+dtrait
+
+K=7
+
+0.0
+
+●
+
+●
+●
+●
+●
+●
+●●
+
+●
+
+●
+●●
+
+●
+
+●●
+
+●
+
+N
+
+Abundance
+N
+
+15
+
+● ●
+●
+●
+
+1.5
+
+1.0
+
+●
+
+●
+
+●
+
+0.0
+
+●
+●
+
+●
+●
+
+●
+
+●
+●
+●
+●
+●
+●
+●
+
+0.2
+
+●●
+
+●
+
+●
+
+●
+●
+
+●
+
+●
+
+●
+●
+●
+
+●
+●
+
+0.8
+
+●
+
+● ●
+●● ●
+
+A[, 100]
+
+0.6
+
+●
+
+1.0
+
+●●
+
+●
+
+ρ = −0.55
+π = −0.78
+
+1.2
+
+2.0
+
+●
+
+General noise
+
+D
+●
+
+ρ = −0.38
+π = −0.75
+
+2.5
+
+●●
+
+A[, 100]
+
+Kernel
+A[, 100]
+
+●
+●
+
+●
+
+0.8
+
+Tail noise
+
+C
+
+●
+
+ρ = −0.99
+π = −0.96
+
+●
+●
+●
+●
+
+A[, 100]
+
+●
+●
+●
+●
+●
+
+Core noise
+
+B
+2.0
+
+●
+●
+●
+●
+●
+●●●
+●●
+●
+●
+●
+
+ρ = −1.00
+π = −1.00
+
+N
+
+Noise−free
+
+A
+1.0
+
+0.4
+
+0.6
+trait
+
+0.8
+
+1.0
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+trait
+
+0.8
+
+1.0
+
+Figure S4: Probability of clustering by magnitude of noise. The probability of clustering is estimated
+as the percentage of runs of each noise scenario where clustering was statistically significant (p ≤ 0.05), out
+of a total 100 replicates each. The noise is measured as the degree of randomness between the kernel and the
+x-niche axis (process noise) or the trait axis (measurement noise), using two indices: A: Monotonic decline of
+competition with species differences, measured with Spearman’s rank correlation coefficient ρ. B: Core-tail
+structure, defined as the difference between the proportion of tail and core elements that exceed the kernel
+mean. Scenarios shown are process noise with complementary niche axes (blue curves), process noise with
+essential niche axes (red), and measurement noise (black). Compare with Fig. 3 in the main text.
+B
+100
+
+80
+
+80
+
+60
+
+60
+
+40
+
+40
+
+20
+
+20
+
+0
+
+0
+−1.0
+
+−0.8
+
+−0.6
+
+−0.4
+
+−0.2
+
+0.0
+
+Spearman's ρ(A, d)
+
+E
+
+Core noise
+Tail noise
+General noise
+
+p
+
+p
+% Runs with significant
+clustering
+
+A
+100
+
+−1.0
+
+−0.8
+
+−0.6
+
+−0.4
+
+−0.2
+
+P(Atail > A) − P(Acore > A)
+
+0.0
+
+Estimating the niche value through multiple proxy traits
+
+In the main text we wrote
+tai = ba xi + ca + εai ,
+
+(11)
+
+where tai is species i’s trait value on trait axis a, xi is species i’s niche strategy, ba and ca are
+constants, and εai is the measurement noise. Written this way, it looks like we are assuming the
+niche causes the trait. However, this is not so.
+In general, species i’s niche strategy along a niche axis will be a function of its trait values
+along n functional trait axes: xi = f (Ti1 , Ti2 , . . . , Tin ). Our example in the main text corresponds
+P
+to the particular case where that function is linear in all of the trait values, xi = k 0 + nj=1 k j Tij .
+This expression can be easily inverted to write the species trait along a given P
+trait axis as a linear
+a
+a
+0
+a
+function of its niche strategy and all other trait values: Ti = 1/k xi − k /k − j6=a k j /k a Tij . This
+makes it clear that the measurement error εai between trait axis a and the niche axis in Eq. 11 stands
+for the combined contribution of the unmeasured trait axes. Assuming no correlation between trait
+values along different trait axes, we can find a linear transformation of Tia that recovers Eq. 11,
+with Mean(εai ) = 0 and Var(εai ) = σa2 . Parameter σa reflects the amplitude of the noise between
+i
+
+i
+
+trait axis a and the niche axis x. This noise amplitude will be small when the contribution of the
+unmeasured traits is small.
+In the main text we assume furthermore that the noise is normally distributed, unbiased, and
+uncorrelated. In other words, εai ∼ N (0, σa ), cov(xi , εai ) = 0, and cov(εai , εbj ) = 1 if i = j and a = b,
+and 0 otherwise. In these circumstances, the first principal component of such a set of proxy traits
+will typically predict species niche values better than most proxy traits individually. An example
+is shown in Fig. S5.
+Consider the special case where the expected value of each trait is the true niche value (ba = 1
+and ca = 0, for each a = 1, 2, . . . , L). The coefficient of determination between the niche axis
+12
+
+2
+
+a
+
+t )
+2
+, where σx2 , σa2 , and cov(x, ta ) are respectively the
+and trait axis a is defined as Rx,a
+= covσ2(x,
+2
+x σa
+variance in niche values, variance in trait values, and covariance between niche and trait values
+across species. Substituting we get
+2
+Rx,a
+=
+
+=
+=
+
+cov2 (x, x + εa )
+σx2 σa2
+cov2 (x, x)
+σx2 (σx2 + σa2 )
+σx2
+σx2 + σa2
+
+P
+We define
+trait zi as the average across its proxy traits: zi = 1/L a tai =
+P a a species’ consensus
+xi + a εi /L = xi + εai . It is also a random variable whose expected value
+q is the true niche value,
+with the advantage that it has a lower-magnitude error: εai ∼ N (0,
+
+σa2 /L). By analogy with
+σx2
+.
+σx2 +σa2 /L
+a
+given trait t
+
+2 =
+the calculation above, the R2 between the niche values and the consensus trait is Rx,z
+
+Therefore the consensus trait will have a higher R2 against the niche axis than a
+if σa2 /L < σa2 . If all traits have the same noise amplitude, then σa2 = σa2 and the condition is
+trivially met for any number of trait axes L > 1. When the noise amplitudes differ across traits,
+the consensus trait will still have a higher coefficient of determination that then “typical” trait with
+noise amplitude σa2 .
+In the more general case where ba and ca differ across proxy traits, the first principal component
+replaces the simple trait average as the best predictor of the niche value. In Fig. S5 we show results
+for an example with 8 proxy traits where the constants ba and ca were respectively drawn from a
+normal distribution centered at 1 and 0: ba ∼ N (1, σb ), ca ∼ N (0, σc ). We used σb = σc = 0.5.
+The amplitude of the measurement noise σa for each trait was drawn from a uniform distribution
+between 0.05 and 0.25.
+In the example shown in Fig. S5, most trait axes fail to reveal the existing clustering pattern
+along the niche axis, even those with high R2 (Trait 7 and Trait 8). In contrast, the first principal
+component is clustered (clustering z-score = 3.0, p-value < 0.01). Note that in this example the first
+principal component is a better predictor of the niche than seven of the eight traits (R2 = 0.94),
+but is a poorer predictor than Trait 1, which is tightly linked to the niche (R2 = 0.99) and is the
+only clustered trait (z-score = 3.3, p-value < 0.01). In general, the first principal component will
+typically have a higher coefficient of determination with the niche axis than individual trait axes,
+and is also more likely to be clustered.
+
+13
+
+Figure S5: Example showing relationship between the trait value of each species (x-axis) and the niche
+value (y-axis) for 8 proxy traits that predict the niche value with varying degrees of precision, plus the first
+principal component (ninth panel). The legend in each panel shows the coefficient of determination between
+the niche and trait values R2 , the estimated number of species clusters along that trait axis K, and the
+clustering z-score Z, with the number of stars indicating significance (2 stars for p ≤ 0.01, 1 star for p ≤ 0.05,
+zero stars for p > 0.05).
+
+0.2
+●●
+
+0.0
+
+●
+●
+● ● ●
+●●
+● ●●●
+● ●
+●
+●●
+●
+
+0.5
+
+1.0
+
+1.5
+
+● ●● ●
+●
+● ●
+●
+●
+●●
+●
+●
+●
+● ●●
+●
+●
+● ●
+●
+●
+●
+
+●
+
+●
+●
+
+●
+
+0.2
+
+−0.8
+
+●
+●
+●● ●
+●
+● ● ●
+●● ● ●●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●
+● ● ●
+●
+●●
+●●
+●
+●
+●
+●
+●
+●
+●●
+●
+● ●
+●●● ●
+●
+●
+●
+●
+●
+●
+● ● ●●
+●
+●
+●● ●
+●
+●
+●●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●● ●
+●
+●● ● ●
+● ●●
+●
+●
+●
+● ●● ●
+●
+●
+● ●●
+●
+●
+● ●●
+●
+●
+●●
+●● ●●
+●●
+●
+●
+●●●
+●
+●
+●
+● ●●
+●
+●
+●
+●
+●● ●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+●●
+● ●●
+● ●●
+●
+●
+●
+●
+●
+●
+●
+●
+●● ● ●
+●
+●
+●
+●
+● ●
+●
+●
+●●
+
+0.6
+0.4
+●
+
+●
+●
+
+0.2
+
+●
+●
+●
+
+0.0
+0.5
+
+●
+
+●
+
+1.0
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●●
+●
+●
+●
+
+−0.7
+
+1.5
+
+0.8
+0.6
+
+trait
+
+0.6
+0.4
+0.2
+●
+
+0.0
+
+●
+
+0.0
+
+F
+
+0.4
+●
+●
+●
+
+0.2
+●
+
+●●
+
+●
+●
+
+0.0
+
+−0.4
+
+●● ●
+●
+●
+●
+●
+● ●●
+●
+●
+●● ●
+●
+● ●
+●
+●
+● ●●
+●
+●
+● ●
+●
+●●
+●
+●
+● ● ● ● ●● ●
+●
+● ●●
+●
+●
+●
+●
+●●● ● ● ●
+●
+●●
+●
+●
+●
+●
+●
+● ●
+● ● ●
+● ●
+●
+●
+●
+●● ●
+●
+●● ●
+●
+●
+● ●
+●
+●
+●●
+
+●
+
+●
+
+●
+
+−1.0
+
+1.0
+
+●
+
+● ●
+
+0.8
+
+−0.5
+
+0.2
+
+0.4
+
+0.8
+0.6
+0.4
+0.2
+0.0
+
+●
+
+0.4
+●
+●
+
+0.2
+
+0.2
+
+●
+●
+
+●
+
+●
+
+0.0
+
+0.4
+
+●
+●
+
+0.5
+
+1.0
+
+●●
+●
+●
+●
+●
+
+●
+●
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+●
+
+●
+
+0.5
+
+●
+
+●
+
+●
+
+●
+
+●●
+●
+● ●●
+● ●
+●
+
+●
+
+●
+
+●
+●
+● ●
+
+●
+●
+
+●
+
+●
+●
+● ●
+● ● ●●
+● ● ● ●
+●
+●
+●●
+●
+●
+● ● ● ● ●
+●
+●●●
+●● ● ●●
+●
+● ●●●
+●
+● ●● ●
+●●
+● ●
+●
+● ●●
+●
+●
+●
+●
+● ●●
+● ●●● ●
+● ● ● ●●
+●
+● ●
+●
+●●
+● ● ●
+●
+●●
+●
+●
+●●
+●
+●
+●
+● ●
+● ●
+●
+●
+● ●
+●
+●
+● ●
+●●
+●
+●●●● ●●
+● ●
+● ●●
+●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●●
+●●
+●
+●● ●
+● ●● ●
+●
+●
+●
+● ●
+●
+●●● ●●
+●
+●
+●
+●
+●●
+●
+●
+● ●
+
+●
+●
+●
+
+R2 = 0.57
+
+−0.5
+
+1.5
+
+meas[, j]
+Trait
+value
+
+1.0
+
+●
+
+0.8
+
+0.0
+
+0.5
+
+1.0
+
+0.4
+0.2
+
+2.0
+
+0.0
+
+●
+● ● ●
+●
+●
+●
+●
+●
+●●●●
+●
+● ●
+●● ●●●
+● ●
+● ●●● ●
+●
+●●
+●
+●
+●
+●
+●
+●
+●
+● ●●
+●
+● ●
+●
+●
+●
+● ●
+●●
+●
+● ● ●● ●●●● ●
+●
+● ●
+●
+●●● ●
+●
+●
+●●● ●
+●
+● ●
+●
+●
+●
+● ● ●● ●●
+●
+● ●●
+●
+●
+●
+●
+●● ●
+●● ● ●
+●●●
+●● ● ●●
+●
+●●
+●●●●● ●
+●
+● ● ●
+●
+●●
+● ● ●●●● ●
+●
+●
+●●
+●●
+● ●●●
+●●
+●●
+●
+● ●●
+● ●●
+●
+● ●
+●●
+● ●
+●
+●
+●● ●
+● ●
+●
+●
+● ●
+●
+●
+●●
+●
+●
+●● ●
+● ● ●●● ●
+●
+●
+●
+●
+● ●
+●
+●
+●●
+
+●
+
+K=7
+Z = 3.0 **
+
+0.6
+
+R2 = 0.85
+
+0.0
+
+●
+
+●●
+●
+
+First principal
+meas[,component
+j]
+
+●
+●
+●
+●●
+● ●●●
+●●
+●
+●●
+●● ●
+●
+● ●●
+●●
+●
+● ●
+●
+●●
+●
+● ● ●
+●● ●
+●● ● ●
+●●
+●
+●●●
+●
+●
+●●●●
+●
+● ●
+●
+●
+●
+● ●●● ●
+●
+●●
+●●
+●
+●
+● ●
+●
+● ●● ●
+●
+●
+●●
+●
+●
+●
+● ●●
+●
+● ●●
+●
+●
+●● ● ● ●
+●●
+● ●●
+●●
+●
+●
+●
+●
+●
+●
+● ●●
+●
+● ● ●●● ●●
+●
+●
+●
+●● ●
+●● ● ●●
+●
+●
+●
+●
+● ●●
+●
+●
+●
+●
+● ●
+●
+● ●
+● ●
+●
+● ●
+●
+●
+●
+● ●●●● ●
+●●
+● ●●
+● ●
+● ●
+●
+●
+●●● ● ●●
+●
+●
+● ●
+● ●●
+●
+●
+● ●●
+
+−1.0
+
+●
+
+0.6
+
+●●
+
+0.0
+
+K = 13
+Z = −0.2
+
+●
+
+●
+
+0.0
+
+● ●
+
+Trait
+meas[, 8
+j]
+1.0
+
+●
+●●
+●
+●
+
+R2 = 0.38
+
+K=5
+Z = −0.2
+
+●
+●
+
+●●
+
+●●
+
+−0.6 −0.4 −0.2
+
+●
+
+●
+●
+
+●● ● ●
+●
+● ●●
+●
+●● ●
+●
+● ●●
+●
+●
+●
+●
+●
+●
+●●
+● ●
+●
+●●
+●
+●
+●
+●
+●●
+● ●●
+● ● ●●
+●
+●
+●
+●
+●● ● ● ●
+●
+●
+●
+●
+● ●
+●
+●
+● ●● ●
+●●
+● ●
+●
+● ● ●
+●● ●
+●
+●
+● ●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ●
+●●
+●●
+●●
+●
+● ●
+●
+● ●●
+●
+●
+●●● ●● ●
+●
+●
+●
+●
+● ●
+●
+●
+●● ●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+● ●
+● ●
+●● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+● ●
+● ● ●
+●
+●
+●●
+●
+●● ●
+●
+●
+●
+●
+●
+
+●
+
+Trait
+meas[, 6
+j]
+
+R2 = 0.34
+
+0.0
+
+●
+
+meas[, j]
+
+●
+
+−0.5
+
+●
+●
+●●
+●
+●● ●
+● ● ●
+●
+●●
+●
+●
+● ●
+●
+● ●●
+● ●
+●
+●
+●
+●
+●
+● ● ●
+●
+●
+●
+●
+●
+●
+● ●
+●
+● ●
+● ●
+●
+●
+● ●
+●
+●
+●
+● ●
+●●●
+●
+● ● ●●
+●
+●
+●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+
+●●
+
+2.5
+
+R2 = 0.89
+
+−0.4
+
+●●
+●●
+●
+●
+
+●
+● ●
+
+●
+
+●
+
+●
+
+0.2
+
+● ●
+●
+● ●
+●
+●
+● ● ●
+●
+●
+● ● ● ●
+●●●
+●●
+●● ● ●
+●●
+● ●
+●
+●●
+●
+●
+●
+● ●
+●
+●
+●
+●●
+●●
+●
+● ●
+●
+●
+●
+● ●● ● ● ●
+●
+●
+●
+●●
+● ●
+●
+●
+● ●
+● ●●
+●
+● ●●●
+●●
+●
+●● ● ● ●
+●
+●
+●
+● ●●
+●
+●
+● ●●
+●
+● ● ● ●
+●●
+●
+●
+● ● ●● ●
+●
+●
+● ●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●●
+● ● ● ●● ●
+●● ●
+●
+●●
+● ●●●
+● ●●
+●
+●
+●
+● ●
+●
+●●
+●
+●
+●●
+●
+●●
+●●
+●●
+● ●
+●
+●●
+●
+● ●
+● ● ●●
+●
+●
+●
+●
+●
+● ●
+● ●● ●
+●● ●
+●●
+●
+●
+●● ●
+
+−0.8
+
+0.6
+
+●
+
+●
+
+●
+
+0.4
+
+trait
+
+0.8
+
+●
+
+●
+●
+
+●
+
+●
+
+2.0
+
+K = 18
+Z = −0.5
+
+●
+
+●
+
+K = 11
+Z = 0.5
+
+●
+
+●
+
+●
+
+Trait
+meas[, 7
+j]
+1.0
+
+0.8
+
+●
+
+−0.6
+
+●
+●
+
+R2 = 0.59
+
+1.0
+
+●
+●
+
+●
+
+●
+●
+● ●
+●
+●
+●●
+●
+●● ●
+●
+●
+●
+●●
+●
+●●
+● ●
+●●
+●
+●
+●
+●
+● ●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+● ● ●●●
+●
+●
+●
+●
+●
+●
+● ●
+●
+●
+●
+●
+●●
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●
+
+K = 19
+Z = −0.1
+
+trait
+
+Nichetraitvalue
+
+0.8
+
+●
+●
+●
+
+●
+●
+
+●
+
+Trait
+meas[, 5
+j]
+
+●●
+
+K=7
+Z = −0.2
+
+●
+●●●
+●
+
+●
+
+●
+
+Trait
+meas[, 4
+j]
+1.0
+
+Trait 3
+
+R2 = 0.04
+
+0.0
+
+2.5
+
+●
+●
+●
+●●
+●●
+● ●
+●
+●● ● ●
+●●
+●
+
+●
+●
+●
+●
+● ●
+●●●
+● ●
+●
+●
+●
+● ●
+● ●
+
+0.4
+
+2.0
+
+●
+
+●
+
+0.6
+
+R2 = 0.97
+
+●●
+
+●
+
+●● ●
+●
+●
+
+●
+
+●
+●●
+●
+●
+●
+●
+●
+
+●
+
+trait
+
+trait
+0.4
+
+●
+
+●
+
+0.8
+
+●
+
+●
+
+1.0
+
+●
+
+●● ●
+
+K=9
+Z = 0.2
+
+●
+
+●
+●●
+●
+●●
+●●●
+●● ●
+●
+●●
+●●
+● ● ●
+●
+●● ●● ●
+●
+●
+●●
+●
+●
+●
+●●
+●● ●
+●
+●●●
+●●
+●● ●
+●
+●●
+●●●●●●●
+●
+●
+● ●●
+●● ● ●●● ●
+●●
+●
+●
+●
+●
+●●
+●●● ●
+●
+●●
+●
+●
+●●
+●
+● ● ●●
+●
+●
+●● ●
+● ●
+●
+●●
+●●●
+●●● ●
+●
+●●
+
+0.6
+
+●
+●
+
+trait
+
+K=7
+Z = 3.3 **
+
+1.0
+
+●
+
+trait
+
+0.8
+
+Trait 2
+●●
+●●
+●
+●
+● ● ●
+●● ●
+● ● ●● ●
+● ●●●● ● ●
+● ● ●
+●
+●●
+●
+● ●
+●●
+●
+● ●●
+●
+●●
+●● ●
+●
+●● ● ●
+●
+●●
+●●
+●
+●
+●
+
+trait
+
+Trait 1
+1.0
+
+●
+
+0.2
+
+R2 = 0.94
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+1.2
+
+1.4
+
+pc
+
+Clustering metric — the gap statistic via k-means clustering
+
+Here we describe a metric to identify and quantify clustering between species on a niche or trait
+axis2 , based on a method developed by Tibshirani et al. (2001). The metric receives as input the
+species abundances and their niche (trait) values, and then estimates the number of clusters that
+best fits the data. It also provides an index—the gap statistic—that quantifies the degree to which
+the species assemblage fits that number of clusters better than a set of reference (null) assemblages.
+For each candidate number of clusters k within a provided range [kmin , kmax ], we calculate the
+goodness of fit of k clusters to our species assemblage, fk , as well as the goodness of fit of k clusters
+to each of the null assemblages f˜k,i , where i = 1, 2, . . . , Nnulls and Nnulls is the total number of
+2
+
+The method also applies in general to a niche or trait space with any number of dimensions, as long as that space
+allows a meaningful definition of “distance” between species—such as Euclidean distance.
+
+14
+
+null assemblages. We then record the difference (the gap) between the former and the average of
+the latter: ∆k = fk − f˜k . The estimated number of clusters k̂ is the k that maximizes the gap,
+∆k̂ = max(∆k ), and the maximum gap itself is the gap statistic, Gap = ∆k̂ .
+k
+
+The method is quite general, and both the null assemblages and the measure of goodness of fit
+must be specified. We generate our null assemblages by shuffling abundances among species, i.e.
+we randomly redistribute observed species abundances to observed niche (trait) values. This keeps
+both the set of abundances and the set of traits, while randomizing the map between them.
+As for the goodness of fit, following (Tibshirani et al., 2001) we use the k-means clustering
+algorithm (see MacQueen 1967). This method partitions individuals into a specified number of
+groups such that the so-called dispersion between individuals within the same group is minimized.
+P
+Let Dr be the total pairwise squared distance between members of group r, that is, Dr = i,j (xi −
+xj )2 , where xi is the niche or trait value of individual i. The dispersion Wk is then the sum of
+P
+those numbers across all k groups, Wk = kr=1 Dr . The k-means algorithm consists in assigning
+each individual to one of the k groups so that Wk is as low as possible3,4 .
+We then set fk = log(1/Wk ) as the goodness of fit, and feed it into the gap statistic algorithm to
+estimate the number of clusters k. Notice that it does not make sense to compare the goodness of fit
+fk directly across different ks because fk necessarily increases with k, as the average within-cluster
+distance is always lower for higher numbers of clusters. By comparing against null assemblages, the
+gap method finds the biggest increase in goodness of fit beyond what is expected from the increase
+in k. The reason we use log(1/Wk ) rather than simply 1/Wk is that the expected increments in
+1/Wk with increasing k are multiplicative rather thanadditive. See (Tibshirani
+ et al., 2001) for
+more details. Our metric is then defined as Gap = max log(1/Wk ) − log(1/W̃k ) , and the value of
+k
+
+k at which the quantity in the parenthesis is maximal is the estimated number of clusters k̂.
+If we knew the expected distribution of this statistic under the null hypothesis where species
+niches (traits) and abundances are unrelated to each other, we could stop here, as the value of Gap
+would tell us about both degree of clustering and statistical significance. Because we do not know
+that distribtution, we must compare it with a null set of values. We therefore calculate the metric
+on each of our null assemblages, and from that we obtain a z-score and a p-value. Those are defined
+˜ i ≥ Gap) where Gap
+˜ i is the gap statistic
+˜ / σ(Gap)
+˜ and p = 1 PNnulls I(Gap
+as z = (Gap − Gap)
+i=1
+Nnulls
+˜ and σ(Gap)
+˜ are the mean and standard deviation across
+obtained for the i-th null assemblage, Gap
+those values, and I is the index function, equal to 1 if its argument is true and zero otherwise.
+The z-score and p-value quantify respectively the degree to which the gap statistic returned by our
+species assemblage exceeds null expectations, and whether that result is statistically significant.
+
+G
+
+Kernel structure in the trait-noise scenario
+
+In the trait-noise scenario, the competition coefficients plotted against proxy trait values resemble
+the core-noise kernel, with most of the noise occurring for pairs with small trait difference (compare
+3
+
+Dispersion can be defined in different ways, depending on how one wishes to weigh the number of members per
+group. While Tibshirani et al. (2001) choose to scale the squared distances by the number of individuals in the group,
+Yan and Ye (2007) argue that scaling it by the number of pairs in the group is a a better choice in some cases.
+In our study we saw no qualitative difference between those different scaling options, and opted to use the simpler
+unweighted sum of squared distances.
+4
+In our model, all conspecific individuals have the same niche (trait) value, and therefore necessarily belong in
+the same cluster. Species are therefore trivial clusters of individuals. Ecologists are of course interested in clustering
+beyond the obvious grouping of individuals into species.
+
+15
+
+Figs. 3A and 5H in the main text). However, a closer look reveals that the measurement-noise kernel
+is more structured (Fig. S6): unlike the core-noise scenario, the matrix is symmetric and the noise
+is autocorrelated. We note that there is a permutation of the rows and columns of the competition
+matrix in the trait noise scenario that restores the noise-free matrix. This is not the case with any
+of the kernel noise scenarios presented in the main text.
+Figure S6: Comparison between the competition kernel from the core-noise scenario and the trait-noise
+scenario. Left: Core-noise competition coefficients between species pairs plotted against their respective
+niche values, with darker shades of gray representing stronger competition. Coefficients tend to be higher
+when species have similar niche values (the top-left and bottom-right corners are continuations of the diagonal, as the niche axis is circular). The noise is manifested in the fine-grained pixelation of the grey band,
+and lacks any visible structure. Right: Trait-noise competition coefficients plotted against trait values. As
+in the core-noise scenario, the noise is concentrated in the diagonal band where competition is stronger.
+However, unlike the core-noise scenario, the matrix is symmetric and the pixel sizes are larger, indicating
+autocorrelation in the noise.
+
+Core noise
+
+Trait noise
+1.0
+0.8
+
+Proxy trait
+
+Niche value
+
+0.8
+0.6
+0.4
+
+0.6
+0.4
+0.2
+
+0.2
+0.0
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+0.0
+
+Niche value
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+Proxy trait
+
+References
+Abrams, P. (1980). Are Competition Coefficients Constant? Inductive Versus Deductive Approaches. The American Naturalist, 116(5):730–735.
+Craine, J. M. and Jackson, R. D. (2010). Plant nitrogen and phosphorus limitation in 98 North
+American grassland soils. Plant and Soil, 334(1):73–84.
+Danger, M., Daufresne, T., Lucas, F., Pissard, S., and Lacroix, G. (2008). Does Liebig’s law of the
+minimum scale up from species to communities? Oikos, 117(11):1741–1751.
+Harpole, W. S., Ngai, J. T., Cleland, E. E., Seabloom, E. W., Borer, E. T., Bracken, M. E., Elser,
+J. J., Gruner, D. S., Hillebrand, H., Shurin, J. B., and Smith, J. E. (2011). Nutrient co-limitation
+of primary producer communities. Ecology Letters, 14(9):852–862.
+
+16
+
+Huber, S. K. and Podos, J. (2006). Beak morphology and song features covary in a population of
+Darwin’s finches (Geospiza fortis). Biological Journal of the Linnean Society, 88(3):489–498.
+MacArthur, R. H. (1972). Geographical ecology; patterns in the distribution of species. Harper &
+Row.
+MacArthur, R. H. and Levins, R. (1967). The Limiting Similarity, Convergence, and Divergence of
+Coexisting Species. The American Naturalist, 101(921):377–385.
+MacQueen, J. B. (1967). Some Methods for classification and Analysis of Multivariate Observations.
+5th Berkeley Symposium on Mathematical Statistics and Probability 1967, 1(233):281–297.
+Saito, M. A., Goepfert, T. J., and Ritt, J. T. (2008). Some thoughts on the concept of colimitation:
+Three definitions and the importance of bioavailability. Limnology and Oceanography, 53(1):276–
+290.
+Schluter, D. and Grant, P. R. (1984). Determinants of Morphological Patterns in Communities of
+Darwin’s Finches. The American Naturalist, 123(2):175–196.
+Schoener, T. W. (1974). Resource partitioning in ecological communities. Science (New York,
+N.Y.), 185(4145):27–39.
+Schoener, T. W. (1976). Alternatives to Lotka-Volterra competition: models of intermediate complexity. Theoretical population biology, 10(3):309–33.
+Tibshirani, R., Walther, G., and Hastie, T. (2001). Estimating the number of clusters in a data set
+via the gap statistic. Journal of the Royal Statistical Society: Series B (Statistical Methodology),
+63:411–423.
+Yan, M. and Ye, K. (2007). Determining the number of clusters using the weighted gap statistic.
+Biometrics, 63(4):1031–1037.
+
+17
+
+
