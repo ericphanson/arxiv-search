@@ -1,0 +1,482 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'The full stack for the paper processing pipeline of Arxiv-Search. '
+Resources:
+  BatchEditStatusTableLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-lambda-code
+        S3Key: 171f4736b87ba4238787382388ae0d69
+      Description: 'A lambda to be manually run to edit the status table. Shouldn''t
+        be invokable from other lambdas etc. '
+      Environment:
+        Variables:
+          StatusTable:
+            Fn::GetAtt:
+            - StatusTable
+            - Arn
+      Handler: out/index.BatchEditStatusTableLambda
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - InfrastructureLambdaRole
+        - Arn
+      Runtime: nodejs6.10
+      Timeout: 300
+    Type: AWS::Lambda::Function
+  IncomingBucket:
+    DependsOn:
+    - IncomingBucketPermission
+    Properties:
+      NotificationConfiguration:
+        LambdaConfigurations:
+        - Event: s3:ObjectCreated:*
+          Function:
+            Fn::GetAtt:
+            - WatchIncomingLambda
+            - Arn
+    Type: AWS::S3::Bucket
+  IncomingBucketPermission:
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+        - WatchIncomingLambda
+        - Arn
+      Principal: s3.amazonaws.com
+      SourceAccount:
+        Ref: AWS::AccountId
+    Type: AWS::Lambda::Permission
+  InfrastructureLambdaPolicy:
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Action: '*'
+          Effect: Allow
+          Resource:
+          - Fn::Join:
+            - /
+            - - Fn::GetAtt:
+                - PrivateBucket
+                - Arn
+              - '*'
+          - Fn::Join:
+            - /
+            - - Fn::GetAtt:
+                - PublicBucket
+                - Arn
+              - '*'
+          - Fn::Join:
+            - /
+            - - Fn::GetAtt:
+                - IncomingBucket
+                - Arn
+              - '*'
+          - Fn::GetAtt:
+            - StatusTable
+            - Arn
+          - Fn::GetAtt:
+            - StatusTable
+            - StreamArn
+          - Fn::GetAtt:
+            - ProcessWrapperLambda
+            - Arn
+          - Fn::GetAtt:
+            - MakeThumbLambda
+            - Arn
+          - Fn::GetAtt:
+            - MakeFullTextLambda
+            - Arn
+        - Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          Effect: Allow
+          Resource: arn:aws:logs:*:*:*
+        Version: '2012-10-17'
+      PolicyName: InfrastructureLambdaPolicy
+      Roles:
+      - Ref: InfrastructureLambdaRole
+    Type: AWS::IAM::Policy
+  InfrastructureLambdaRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+    Type: AWS::IAM::Role
+  MakeFullTextLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-lambda-code
+        S3Key: 9689e6ba088f88619fa6366f0e9a53b7
+      Description: Extracts the fulltext given a pdf using PDF.js
+      Handler: index.handler
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - ProcessorLambdaRole
+        - Arn
+      Runtime: nodejs6.10
+      Timeout: 100
+    Type: AWS::Lambda::Function
+  MakeThumbLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-lambda-code
+        S3Key: 98568939de1b5ef2c5754228bd714b69
+      Description: Makes a thumbnail given a pdf using imagemagick
+      Handler: index.handler
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - ProcessorLambdaRole
+        - Arn
+      Runtime: nodejs6.10
+      Timeout: 100
+    Type: AWS::Lambda::Function
+  PrivateBucket:
+    Properties:
+      AccessControl: Private
+    Type: AWS::S3::Bucket
+  ProcessFilesLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-lambda-code
+        S3Key: 171f4736b87ba4238787382388ae0d69
+      Description: Process files passed through the API to workers.
+      Environment:
+        Variables:
+          IncomingBucket:
+            Fn::GetAtt:
+            - IncomingBucket
+            - Arn
+          StatusTable:
+            Fn::GetAtt:
+            - StatusTable
+            - Arn
+      Handler: out/index.ProcessFilesLambda
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - InfrastructureLambdaRole
+        - Arn
+      Runtime: nodejs6.10
+      Timeout: 300
+    Type: AWS::Lambda::Function
+  ProcessFilesLambdaPermission:
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Fn::GetAtt:
+        - ProcessFilesLambda
+        - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RequestWorkAPI}/*/POST/*
+    Type: AWS::Lambda::Permission
+  ProcessWrapperLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-lambda-code
+        S3Key: 171f4736b87ba4238787382388ae0d69
+      Description: Wraps a processor lambda and updates the table after it executes.
+      Environment:
+        Variables:
+          StatusTable:
+            Fn::GetAtt:
+            - StatusTable
+            - Arn
+      Handler: out/index.ProcessWrapperLambda
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - InfrastructureLambdaRole
+        - Arn
+      Runtime: nodejs6.10
+      Timeout: 300
+    Type: AWS::Lambda::Function
+  ProcessorLambdaPolicy:
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Action:
+          - s3:GetObject
+          - s3:PutObject
+          - s3:DeleteObject
+          - s3:ListObjects
+          - s3:ReplicateObject
+          Effect: Allow
+          Resource:
+          - Fn::Join:
+            - /
+            - - Fn::GetAtt:
+                - PrivateBucket
+                - Arn
+              - '*'
+          - Fn::Join:
+            - /
+            - - Fn::GetAtt:
+                - PublicBucket
+                - Arn
+              - '*'
+          - Fn::Join:
+            - /
+            - - Fn::GetAtt:
+                - IncomingBucket
+                - Arn
+              - '*'
+        - Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          Effect: Allow
+          Resource: arn:aws:logs:*:*:*
+        Version: '2012-10-17'
+      PolicyName: ProcessorLambdaPolicy
+      Roles:
+      - Ref: ProcessorLambdaRole
+    Type: AWS::IAM::Policy
+  ProcessorLambdaRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+    Type: AWS::IAM::Role
+  PublicBucket:
+    Properties:
+      AccessControl: PublicRead
+    Type: AWS::S3::Bucket
+  RequestWorkAPI:
+    Properties:
+      Body:
+        basePath: /dev
+        definitions:
+          Empty:
+            title: Empty Schema
+            type: object
+        host: d93p49z8ua.execute-api.us-east-1.amazonaws.com
+        info:
+          title: testAPI
+          version: '2018-03-09T15:12:06Z'
+        paths:
+          /testprocesswork:
+            options:
+              consumes:
+              - application/json
+              produces:
+              - application/json
+              responses:
+                '200':
+                  description: 200 response
+                  headers:
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Origin:
+                      type: string
+                  schema:
+                    $ref: '#/definitions/Empty'
+              x-amazon-apigateway-integration:
+                passthroughBehavior: when_no_match
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  default:
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+                      method.response.header.Access-Control-Allow-Methods: '''POST,OPTIONS'''
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                    statusCode: '200'
+                type: mock
+            post:
+              produces:
+              - application/json
+              responses:
+                '200':
+                  description: 200 response
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                  schema:
+                    $ref: '#/definitions/Empty'
+              x-amazon-apigateway-integration:
+                contentHandling: CONVERT_TO_TEXT
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+                responses:
+                  default:
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: '''*'''
+                    statusCode: '200'
+                type: aws_proxy
+                uri:
+                  Fn::Join:
+                  - ''
+                  - - 'arn:aws:apigateway:'
+                    - Ref: AWS::Region
+                    - :lambda:path/2015-03-31/functions/
+                    - Fn::GetAtt:
+                      - ProcessFilesLambda
+                      - Arn
+                    - /invocations
+        schemes:
+        - https
+        swagger: '2.0'
+        x-amazon-apigateway-gateway-responses:
+          DEFAULT_4XX:
+            responseParameters:
+              gatewayresponse.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+              gatewayresponse.header.Access-Control-Allow-Methods: '''POST,OPTIONS'''
+              gatewayresponse.header.Access-Control-Allow-Origin: '''*'''
+          DEFAULT_5XX:
+            responseParameters:
+              gatewayresponse.header.Access-Control-Allow-Headers: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+              gatewayresponse.header.Access-Control-Allow-Methods: '''POST,OPTIONS'''
+              gatewayresponse.header.Access-Control-Allow-Origin: '''*'''
+      Description: Used by paper downloaders to request papers that need to be downloaded.
+    Type: AWS::ApiGateway::RestApi
+  RestApiDeployment:
+    Properties:
+      RestApiId:
+        Ref: RequestWorkAPI
+      StageName: v1
+    Type: AWS::ApiGateway::Deployment
+  StatusEventSourceMapping:
+    DependsOn:
+    - WatchStatusLambda
+    - StatusTable
+    - InfrastructureLambdaPolicy
+    - InfrastructureLambdaRole
+    Properties:
+      BatchSize: 100
+      EventSourceArn:
+        Fn::GetAtt:
+        - StatusTable
+        - StreamArn
+      FunctionName:
+        Fn::GetAtt:
+        - WatchStatusLambda
+        - Arn
+      StartingPosition: TRIM_HORIZON
+    Type: AWS::Lambda::EventSourceMapping
+  StatusTable:
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: idvv
+        AttributeType: S
+      KeySchema:
+      - AttributeName: idvv
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '5'
+        WriteCapacityUnits: '5'
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+    Type: AWS::DynamoDB::Table
+  UpdateStatusLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-lambda-code
+        S3Key: 171f4736b87ba4238787382388ae0d69
+      Description: Updates the status table with new entries and (TODO) updates elastic
+        search.
+      Environment:
+        Variables:
+          StatusTable:
+            Fn::GetAtt:
+            - StatusTable
+            - Arn
+      Handler: out/index.UpdateStatusLambda
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - InfrastructureLambdaRole
+        - Arn
+      Runtime: nodejs6.10
+      Timeout: 300
+    Type: AWS::Lambda::Function
+  WatchIncomingLambda:
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-lambda-code
+        S3Key: 171f4736b87ba4238787382388ae0d69
+      Description: Watches additions to the IncomingBucket and updates the corresponding
+        entry on StatusTable.
+      Environment:
+        Variables:
+          StatusTable:
+            Fn::GetAtt:
+            - StatusTable
+            - Arn
+      Handler: out/index.WatchIncomingLambda
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - InfrastructureLambdaRole
+        - Arn
+      Runtime: nodejs6.10
+      Timeout: 3
+    Type: AWS::Lambda::Function
+  WatchStatusLambda:
+    DependsOn:
+    - InfrastructureLambdaRole
+    - InfrastructureLambdaPolicy
+    Properties:
+      Code:
+        S3Bucket: arxiv-search-lambda-code
+        S3Key: 171f4736b87ba4238787382388ae0d69
+      Description: Watches changes to the database and determines if it is possible
+        to perform any processing on the papers.
+      Environment:
+        Variables:
+          IncomingBucket:
+            Fn::GetAtt:
+            - IncomingBucket
+            - Arn
+          MakeFullTextLambda:
+            Fn::GetAtt:
+            - MakeFullTextLambda
+            - Arn
+          MakeThumbLambda:
+            Fn::GetAtt:
+            - MakeThumbLambda
+            - Arn
+          PrivateBucket:
+            Fn::GetAtt:
+            - PrivateBucket
+            - Arn
+          ProcessWrapperLambda:
+            Fn::GetAtt:
+            - ProcessWrapperLambda
+            - Arn
+          PublicBucket:
+            Fn::GetAtt:
+            - PublicBucket
+            - Arn
+          StatusTable:
+            Fn::GetAtt:
+            - StatusTable
+            - Arn
+      Handler: out/index.WatchStatusLambda
+      MemorySize: 128
+      Role:
+        Fn::GetAtt:
+        - InfrastructureLambdaRole
+        - Arn
+      Runtime: nodejs6.10
+      Timeout: 60
+    Type: AWS::Lambda::Function

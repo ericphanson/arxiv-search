@@ -3,6 +3,7 @@
 import * as AWS from "aws-sdk";
 import * as path from 'path';
 import { getClient } from "./es_connection";
+import { ElasticsearchDestinationUpdate } from "aws-sdk/clients/firehose";
 
 
 const REGION = 'us-east-1';
@@ -43,15 +44,17 @@ const Lambdas = {
 */
 
 function uploadES(idvv: string, field: string, value: string) {
-    let es_client = getClient()
-    let id = idvv.split("v")[0]
+    // let es_client = getClient()
+    // let id = idvv.split("v")[0]
     console.log(`Setting ${field} to ${value.substring(0, 30) + "..."} for ${idvv} on ES.`)
-    let body = {}
-    body[field] = value;
-    es_client.index({
-        index: 'arxiv_pointer', type: 'paper', id, body
-    }).then( (resp) => console.log(`Response ${resp}`)).catch((err) => console.log(err))
+    // let body = {}
+    // body[field] = value;
+    // es_client.index({
+    // index: 'arxiv_pointer', type: 'paper', id, body
+    // }).then( (resp) => console.log(`Response ${JSON.stringify(resp)}`)).catch((err) => console.log(err))
 
+    // seems to overwrite the whole ES document... I should search the logs and restore the messed up docs.
+    // failed on: 1005.1190v1, 1007.4004v7, 1002.2938v2
 }
 
 type resource_dict = { [resource: string]: { bucket: string, subdir: string, ext: string } };
@@ -144,9 +147,9 @@ async function run(event: event, context) {
         Payload
     }
     console.log("firing " + lambda_name + " with payload=" + Payload);
-    let resp;
+    let resp : AWS.Lambda.InvocationResponse;
     try {
-        resp = await lambda.invoke(params).promise();
+        resp  = await lambda.invoke(params).promise();
         console.log(`The lambda ${lambda_name}returned without error`);
         await validate(bk_outs);
         console.log(`The lambda created the correct outputs.`);
@@ -158,7 +161,9 @@ async function run(event: event, context) {
     if (resp) {
         // console.log(`Got response ${JSON.stringify(resp)} from the Lambda.`)
         if (ESfield) {
-            uploadES(idvv, ESfield, resp.payload)
+            if (resp.Payload){
+                uploadES(idvv, ESfield, JSON.stringify(resp.Payload))
+            }
         }
     }
 
