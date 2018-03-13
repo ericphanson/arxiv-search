@@ -19,7 +19,8 @@
                                     { "Fn::GetAtt": [ "StatusTable", "Arn" ]  },
                                     { "Fn::GetAtt": [ "StatusTable", "StreamArn" ]  },
                                     { "Fn::GetAtt": [ "ProcessWrapperLambda", "Arn" ]  },
-                                    { "Fn::GetAtt": [ "MakeThumbLambda", "Arn" ]  }
+                                    { "Fn::GetAtt": [ "MakeThumbLambda", "Arn" ]  },
+                                    { "Fn::GetAtt": [ "MakeFullTextLambda", "Arn" ]  }
                                 ]
                             },
                             {
@@ -164,8 +165,10 @@
                         "StatusTable": { "Fn::GetAtt": [ "StatusTable",  "Arn"  ]  },
                         "ProcessWrapperLambda": {  "Fn::GetAtt": [ "ProcessWrapperLambda", "Arn" ]  },
                         "MakeThumbLambda": { "Fn::GetAtt": [  "MakeThumbLambda", "Arn" ] },
+                        "MakeFullTextLambda": { "Fn::GetAtt": [  "MakeFullTextLambda", "Arn" ] },
                         "IncomingBucket": { "Fn::GetAtt": [  "IncomingBucket", "Arn" ] },
-                        "PublicBucket": { "Fn::GetAtt": [ "PublicBucket",   "Arn" ]  }
+                        "PublicBucket": { "Fn::GetAtt": [ "PublicBucket",   "Arn" ]  },
+                        "PrivateBucket": { "Fn::GetAtt": [ "PrivateBucket",   "Arn" ]  }
                     }
                 },
                 "MemorySize": 128,
@@ -230,11 +233,40 @@
                 "Runtime": "nodejs6.10"
             }
         },
+        "BatchEditStatusTableLambda": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "A lambda to be manually run to edit the status table. Shouldn't be invokable from other lambdas etc. ",
+                "Code": "./infrastructure",
+                "Environment": {
+                    "Variables": {
+                        "StatusTable": {  "Fn::GetAtt": [ "StatusTable", "Arn" ]  }
+                    }
+                },
+                "MemorySize": 128,
+                "Handler": "out/index.BatchEditStatusTableLambda",
+                "Role": {"Fn::GetAtt" : ["InfrastructureLambdaRole", "Arn"]},
+                "Timeout": 300,
+                "Runtime": "nodejs6.10"
+            }
+        },
         "MakeThumbLambda": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
                 "Description": "Makes a thumbnail given a pdf using imagemagick",
                 "Code": "./processors/MakeThumbLambda",
+                "MemorySize": 128,
+                "Handler": "index.handler",
+                "Role": {"Fn::GetAtt" : ["ProcessorLambdaRole", "Arn"]},
+                "Timeout": 100,
+                "Runtime": "nodejs6.10"
+            }
+        },
+        "MakeFullTextLambda": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Extracts the fulltext given a pdf using PDF.js",
+                "Code": "./processors/MakeFullTextLambda",
                 "MemorySize": 128,
                 "Handler": "index.handler",
                 "Role": {"Fn::GetAtt" : ["ProcessorLambdaRole", "Arn"]},

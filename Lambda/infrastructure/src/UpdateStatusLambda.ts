@@ -55,6 +55,7 @@ async function fromOAI(event) {
     const ONLY_GENERATE_THIS_MANY_ENTRIES = 50; //set to undefined in production mode TODO make this an env variable.
     const LATEST_ONLY = true;
     let resumptionToken : undefined | string = undefined;
+    let grandTotal = 0;
     while(true) {
         let url = base_url + (resumptionToken === undefined ? query : `verb=ListRecords&resumptionToken=${resumptionToken}`);
         console.log(url);
@@ -81,10 +82,11 @@ async function fromOAI(event) {
             let listRecords = oai["OAI-PMH"].ListRecords[0];
             resumptionToken = listRecords.resumptionToken[0]._;
             let oaiRecords = listRecords.record;
-            let haveCount = 0;
-            let haves_in_a_row = 0;
-            let total = 0;
-            for (let record of oaiRecords) {
+            if (ONLY_GENERATE_THIS_MANY_ENTRIES !== undefined) {
+                let needThisMany = Math.max(0, ONLY_GENERATE_THIS_MANY_ENTRIES - grandTotal)
+                oaiRecords = oaiRecords.slice(0, needThisMany);
+            }
+            let wasANewPaper = await Promise.all(oaiRecords.map(record => {
                 let header = record.header[0];
                 let meta = record.metadata[0].arXivRaw[0];
                 let id = meta.id[0];
@@ -93,35 +95,26 @@ async function fromOAI(event) {
                 let versions = LATEST_ONLY ? [meta.version[vNumbers.findIndex(x => x === maxVNumber)]] : meta.version;
                 for (let v of versions) {
                     if (v === undefined) {continue;}
-                    total++;
                     let vv = v.$.version;
                     let date = v.date[0]; //in format "Thu, 21 Jun 2007 14:27:55 GMT"
                     let idvv_with_slash = id + vv;
-                    let was_added = DONT_WRITE_TO_DB || await addToDB(idvv_with_slash);
-                    if (was_added) {
-                        haves_in_a_row = 0;
-                    }
-                    else {
-                        haves_in_a_row++;
-                        if (haves_in_a_row > stop_if_we_already_have_this_many_in_a_row) {
-                            console.log(`Already had ${haves_in_a_row} consecutive papers, so assume we are up to date.`);
-                            return;
-                        }
-                        haveCount++;
-                    }
-                    if (ONLY_GENERATE_THIS_MANY_ENTRIES !== undefined && (total - haveCount) >= ONLY_GENERATE_THIS_MANY_ENTRIES) {
-                        console.log(`Only generating ${ONLY_GENERATE_THIS_MANY_ENTRIES} entries because the constant 'ONLY_GENERATE_THIS_MANY_ENTRIES' is not undefined.`);
-                        return;
-                    }
+                    if (DONT_WRITE_TO_DB) {return Promise.resolve(true);}
+                    return addToDB(idvv_with_slash);
                 }
+            }))
+            let total = wasANewPaper.length;
+            let newPaperCount = wasANewPaper.reduce((n,b) => n + (b ? 1 : 0), 0);
+            grandTotal += newPaperCount;
+            if (ONLY_GENERATE_THIS_MANY_ENTRIES !== undefined && grandTotal >= ONLY_GENERATE_THIS_MANY_ENTRIES) {
+                console.log(`Only generating ${ONLY_GENERATE_THIS_MANY_ENTRIES} entries because the constant 'ONLY_GENERATE_THIS_MANY_ENTRIES' is not undefined.`);
+                return;
             }
-            console.log(`Processed ${total} entries. ${total - haveCount} new entries added to database. Resumption token = ${resumptionToken}`);
+            console.log(`Processed ${total} entries. ${newPaperCount} new entries added to database. Resumption token = ${resumptionToken}`);
             if (resumptionToken === undefined) {return;}
         }
         else {
             throw new Error("unrecognised response status code: "+ resp.statusCode);
         }
-        console.log("waiting 11 seconds so I don't get banned.");
         //TODO check the context to see if we have time to do another loop.
         await timeout;
     }
@@ -131,12 +124,13 @@ async function fromOAI(event) {
 async function addToDB(idvv_with_slash: string) {
     let idvv = idvv_with_slash.replace("/", "");
     try {
-        console.log(`adding ${idvv_with_slash} to database.`);
+        //console.log(`adding ${idvv_with_slash} to database.`);
         await db.putItem({
             TableName : process.env["StatusTable"].split("/")[1],
             Item: {
                 "idvv": { "S": idvv },
                 "pdf": { "S": "want" },
+                "fulltext": { "S": "want" },                
                 "thumb": { "S": "want" },
                 "pdf_url": { "S": `https://export.arxiv.org/pdf/${idvv_with_slash}.pdf` },
                 "src": { "S": "want" },
@@ -149,7 +143,7 @@ async function addToDB(idvv_with_slash: string) {
     }
     catch (e) {
         if (e.message === "The conditional request failed") {
-            console.log(`already have ${idvv} in database.`);
+            //console.log(`already have ${idvv} in database.`);
             return false;
         }
         else {

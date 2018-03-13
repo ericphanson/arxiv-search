@@ -191,13 +191,6 @@ async function handleError(event : errorEvent) {
 /** Called by AWS */
 export const handler = (http_resp, context, callback) => {
     let event : event = JSON.parse(http_resp.body)
-    // try {
-    // event = JSON.parse(JSON.parse(http_resp.body));
-    // }
-    // catch (e) {
-    //     console.log(e)
-    //     event =JSON.parse(http_resp.body);
-    // }
 
     let promise;
     if (event.kind === "request") {

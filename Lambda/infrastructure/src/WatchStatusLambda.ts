@@ -85,7 +85,23 @@ async function run(event: event, context) {
         },
         'lambda_name': process.env["MakeThumbLambda"]
     };
-    const processors = [thumbs]
+    const fulltext: process = {
+        'resources': {
+            'pdf': {
+                'bucket': incomingBucket,
+                'ext': '.pdf'
+            }
+        },
+        'outputs': {
+            'fulltext': {
+                'bucket': process.env["PrivateBucket"].split("arn:aws:s3:::")[1],
+                'subdir': 'fulltexts',
+                'ext': '.txt'
+            }
+        },
+        'lambda_name': process.env["MakeFullTextLambda"]
+    };
+    const processors = [thumbs, fulltext]
     let lambdas_fired = 0;
     for (let record of event.Records) {
         console.log(`Stream record: ${JSON.stringify(record, undefined, 2)}`);

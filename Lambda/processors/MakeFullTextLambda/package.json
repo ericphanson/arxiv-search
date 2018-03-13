@@ -1,0 +1,17 @@
+{
+  "name": "makefulltextlambda",
+  "version": "1.0.0",
+  "description": "Takes a pdf file and extracts the fulltext using PDF.js.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "aws-sdk": "^2.207.0",
+    "@types/node": "^9.4.7"
+  }
+}
