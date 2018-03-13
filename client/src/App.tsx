@@ -118,18 +118,18 @@ export class App extends React.Component<{}, state> {
             <div className="helvetica bg-washed-yellow">
                 <header className="bg-maroon">
                     <div className="container">
-                        <nav className="ma1">
+                        <nav className="ma1 flex justify-between">
                             <div className="di">
                                 <h1 className="ma2 white f3">ARXIV-SEARCH.COM</h1>
                                 <h2 className="ma1 f5 white">Based on <a className="link white" href="http://arxiv-sanity.com">arxiv-sanity</a> built by <a className="link white" href="https://twitter.com/karpathy">@karpathy</a></h2>
                             </div>
                             {
                                 user === "None" ?
-                                    (<form action="login" method="post" className="f5">
-                                        <input className="ba bw1 b--white br2 dib pa2" type="text" name="username" placeholder="Username" />
-                                        <input className="ba bw1 b--white br2 dib pa2" type="password" name="password" placeholder="Password" />
+                                    (<form action="login" method="post" className="f5 mv2">
+                                        <input className="ba bw1 b--white br2 dib pa2 ma1" type="text" name="username" placeholder="Username" />
+                                        <input className="ba bw1 b--white br2 dib pa2 ma1" type="password" name="password" placeholder="Password" />
                                         <input type="submit" value="Login or Create"
-                                            className="link white ba bw1 b--white bg-transparent br2 pointer dib b tc v-mid pa2 pointer hover-bg-dark-red" />
+                                            className="ma1 link white ba bw1 b--white bg-transparent br2 pointer dib b tc v-mid pa2 pointer hover-bg-dark-red" />
                                     </form>)
                                     :
                                     <span className="ma2">

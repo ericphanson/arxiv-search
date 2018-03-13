@@ -13,39 +13,8 @@
     position: relative;
     max-width: 1228px;
     margin: 0 auto;
-    padding: 0 88px;
+    padding: .5rem 88px;
 }
-
-/* nav form {
-    display: flex;
-}
-
-nav input {
-    margin: 4px;
-} */
-
-/* .form-control {
-    padding: 0.375rem 1rem;
-    font-size: 1em;
-    color: #495057;
-    background-color: #fff;
-    background-clip: padding-box;
-    border: 1px solid #999;
-    border-radius: 4px;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.form-control:focus {
-    color: #495057;
-    background-color: #fff;
-    border-color: #ffffff;
-    outline: 0;
-    box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.75);
-}
-
-input[type="submit"]:focus {
-    outline : unset;
-} */
 
 .app-searchbar {
     grid-area : search;
