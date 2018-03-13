@@ -1,7 +1,6 @@
 
-.apaper {
-	display: grid;
-	grid-template-columns: auto minmax(auto, min-content);
+/* .apaper {
+	max-width: 1000px;
 }
 .paperdesc {
 	grid-column: 1;
@@ -22,4 +21,4 @@
 .abstract {
 	grid-column: 1 / span 2;
 	grid-row: 3;
-}
+} */

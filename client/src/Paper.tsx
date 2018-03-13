@@ -37,7 +37,23 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
     let pdf_link = p.link.replace("abs", "pdf");
     let pdf_url = pdf_link === p.link ? pdf_link : pdf_link + ".pdf";
     return (
-        <div className="apaper bb pa4 b--light-gray" id={p.pid}>
+        <div className="bb pa4 b--light-gray" id={p.pid}>
+            <div className="tr fr">
+                <span className="mid-gray ma1 f6">{p.pid}</span>
+                <a href={pdf_url} target="_blank">pdf</a>
+                <br />
+                <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }} >scirate</a>
+                <br />
+                <img
+                    src={p.in_library ? "static/saved.png" : "static/save.png"}
+                    className="pointer ma1"
+                    style={{ width: "24px", height: "24px" }}
+                    title={p.in_library ? "unsave paper" : "save paper to library (requires login)"}
+                    id={"lib" + p.pid}
+                    onClick={() =>
+                        sendRequest("libtoggle", { pid: p.pid }, ({ on }) => (on !== "FAIL") && props.onToggle(on))}
+                />
+            </div>
             {/* The below line has something to do with  " OpenURL COinS metadata element -- readable by Zotero, Mendeley, etc." */}
             {/* <span className="Z3988" title={build_ocoins_str(p)}></span> */}
             <div className="paperdesc mr3">
@@ -62,22 +78,7 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
                 }</span>
                 {p.comment && <div title="comments from arxiv.org" className="f6 gray mb1">{p.comment}</div>}
             </div>
-            <div className="tr dllinks">
-                <span className="mid-gray ma1 f6">{p.pid}</span>
-                <a href={pdf_url} target="_blank">pdf</a>
-                <br />
-                <a href={`https://scirate.com/arxiv/${p.pid.split("v")[0]}`} style={{ color: "black" }} >scirate</a>
-                <br />
-                <img
-                    src={p.in_library ? "static/saved.png" : "static/save.png"}
-                    className="pointer ma1"
-                    style={{ width: "24px", height: "24px" }}
-                    title={p.in_library ? "unsave paper" : "save paper to library (requires login)"}
-                    id={"lib" + p.pid}
-                    onClick={() =>
-                        sendRequest("libtoggle", { pid: p.pid }, ({ on }) => (on !== "FAIL") && props.onToggle(on))}
-                />
-            </div>
+
             {p.img !== undefined && <div className="animg"><Image src={p.img} /></div>}
             {p.abstract && <div className="f5 tj abstract"><WithMaths text={p.abstract} /></div>}
         </div>

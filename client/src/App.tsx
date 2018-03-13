@@ -115,92 +115,97 @@ export class App extends React.Component<{}, state> {
         let loggedIn = user !== "None"
         let cats = query.category.map(x => x[0]);
         return (
-            <div className="app-root helvetica bg-washed-yellow">
-                <div className="header-bg bg-maroon"></div>
-                <nav className="header ma1">
-                <div className="di">
-                        <h1 className="ma2 white f3">ARXIV-SEARCH.COM</h1>
-                        <h2 className="ma1 f5 white">Based on <a className="link white" href="http://arxiv-sanity.com">arxiv-sanity</a> built by <a className="link white" href="https://twitter.com/karpathy">@karpathy</a></h2>
-                </div>
-                    {
-                        user === "None" ?
-                            (<form action="login" method="post" className="f5">
-                                <input className="ba bw1 b--white br2 dib pa2" type="text" name="username" placeholder="Username" />
-                                <input className="ba bw1 b--white br2 dib pa2" type="password" name="password" placeholder="Password" />
-                                <input type="submit" value="Login or Create" 
-                                className="link white ba bw1 b--white bg-transparent br2 pointer dib b tc v-mid pa2 pointer hover-bg-dark-red" />
-                            </form>)
-                            :
-                            <span className="ma2">
-                                <span style={{ fontWeight: 700, color: "white" }}>Hello, {username}</span>
-                                <a href="logout" className="link white ba bw1 b--white bg-transparent br2 pointer dib b tc v-mid pa2 pointer hover-bg-dark-red" style={{ marginLeft: "16px" }}>log out</a>
-                            </span>
-                    }
-                </nav>
-
-                <div className="app-searchbar">
-                    <input type="text" className="ba br2 br--left b--moon-gray f2 pa2 w-100"
-                        value={query.query}
-                        onChange={e => this.handleQueryboxChange(e)}
-                        onKeyDown={e => e.keyCode === 13 && this.activateQuery()}
-                        placeholder="Search" />
-                    <button
-                        id="qbutton"
-                        className="link ba bl-0-l br2 br--right b--moon-gray bg-white hover-bg-light-blue"
-                        onClick={e => this.activateQuery()}></button>
-                </div>
-                <div className="app-filters">
-                    <TimeGrid className="mb2" handleTime={(t) => this.handleTime(t)} current={query.time} time_filter_data={meta.time_filter_data} />
-                    <Select
-                        className="mb2"
-                        onBlurResetsInput={false}
-                        onSelectResetsInput={false}
-                        placeholder="primary category"
-                        options={categories as any}
-                        simpleValue
-                        clearable={true}
-                        name="prim"
-                        value={query.primaryCategory || ""}
-                        searchable={true}
-                        onChange={(selected: any) => this.handlePrimCat(selected)} />
-                    <Select
-                        className="mb2"
-                        onBlurResetsInput={false}
-                        onSelectResetsInput={false}
-                        placeholder="categories"
-                        options={categories as any}
-                        simpleValue
-                        clearable={true}
-                        name="categories"
-                        value={cats}
-                        searchable={true}
-                        multi
-                        onChange={(selected: any) => this.handleCat(selected.split(","))} />
-                    <LeaderBoard cats={cats} in_data={meta.in_data} primaryCategory={query.primaryCategory} handleCat={x => this.handleCat(x)} />
-                    {loggedIn && <label htmlFor="my-arxiv-checkbox">Recommended<input type="checkbox" checked={query.rec_lib} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ rec_lib: e.target.checked }, () => this.activateQuery())} /></label>}
-                    {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
-                    <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
-                    <Tuning rt={query.rec_tuning} onChange={rt => this.setNextQuery({ rec_tuning: rt }, () => this.activateQuery())} />
-                </div>
-                <Infinite
-                    className="app-results ba br2 b--light-gray bg-white"
-                    pageStart={0}
-                    loadMore={() => this.handleLoadMore()}
-                    hasMore={!isDone}
-                    loader={<div key="loading" className="pa4 tc f3">Loading...</div>}
-                    threshold={500} >
-
-                    <div key="rtable">
-                        {this.state.tot_num_papers && (<div className="bb pa4 b--black-10"><strong>{this.state.tot_num_papers.toLocaleString()}</strong> {this.state.tot_num_papers === 1 ? "result" : "results"}</div>)}
-                        {papers.map((p, i) => <Paper p={p} key={p.pid}
-                            onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
-                            onCategoryClick={(c) => this.handleCat(cats.addUnique(c))}
-                            onAuthorClick={a => this.handleAuthor(a)}
-                        />)}
-                        {this.state.isDone && <h2 className="pa4 tc f3">no more results</h2>}
+            <div className="helvetica bg-washed-yellow">
+                <header className="bg-maroon">
+                    <div className="container">
+                        <nav className="ma1">
+                            <div className="di">
+                                <h1 className="ma2 white f3">ARXIV-SEARCH.COM</h1>
+                                <h2 className="ma1 f5 white">Based on <a className="link white" href="http://arxiv-sanity.com">arxiv-sanity</a> built by <a className="link white" href="https://twitter.com/karpathy">@karpathy</a></h2>
+                            </div>
+                            {
+                                user === "None" ?
+                                    (<form action="login" method="post" className="f5">
+                                        <input className="ba bw1 b--white br2 dib pa2" type="text" name="username" placeholder="Username" />
+                                        <input className="ba bw1 b--white br2 dib pa2" type="password" name="password" placeholder="Password" />
+                                        <input type="submit" value="Login or Create"
+                                            className="link white ba bw1 b--white bg-transparent br2 pointer dib b tc v-mid pa2 pointer hover-bg-dark-red" />
+                                    </form>)
+                                    :
+                                    <span className="ma2">
+                                        <span style={{ fontWeight: 700, color: "white" }}>Hello, {username}</span>
+                                        <a href="logout" className="link white ba bw1 b--white bg-transparent br2 pointer dib b tc v-mid pa2 pointer hover-bg-dark-red" style={{ marginLeft: "16px" }}>log out</a>
+                                    </span>
+                            }
+                        </nav>
                     </div>
+                </header>
+                <section>
+                    <div className="container maingrid">
+                        <div className="app-searchbar">
+                            <input type="text" className="ba br2 br--left b--moon-gray f2 pa2 w-100"
+                                value={query.query}
+                                onChange={e => this.handleQueryboxChange(e)}
+                                onKeyDown={e => e.keyCode === 13 && this.activateQuery()}
+                                placeholder="Search" />
+                            <button
+                                id="qbutton"
+                                className="link ba bl-0-l br2 br--right b--moon-gray bg-white hover-bg-light-blue"
+                                onClick={e => this.activateQuery()}></button>
+                        </div>
+                        <div className="app-filters">
+                            <TimeGrid className="mb2" handleTime={(t) => this.handleTime(t)} current={query.time} time_filter_data={meta.time_filter_data} />
+                            <Select
+                                className="mb2"
+                                onBlurResetsInput={false}
+                                onSelectResetsInput={false}
+                                placeholder="primary category"
+                                options={categories as any}
+                                simpleValue
+                                clearable={true}
+                                name="prim"
+                                value={query.primaryCategory || ""}
+                                searchable={true}
+                                onChange={(selected: any) => this.handlePrimCat(selected)} />
+                            <Select
+                                className="mb2"
+                                onBlurResetsInput={false}
+                                onSelectResetsInput={false}
+                                placeholder="categories"
+                                options={categories as any}
+                                simpleValue
+                                clearable={true}
+                                name="categories"
+                                value={cats}
+                                searchable={true}
+                                multi
+                                onChange={(selected: any) => this.handleCat(selected.split(","))} />
+                            <LeaderBoard cats={cats} in_data={meta.in_data} primaryCategory={query.primaryCategory} handleCat={x => this.handleCat(x)} />
+                            {loggedIn && <label htmlFor="my-arxiv-checkbox">Recommended<input type="checkbox" checked={query.rec_lib} name="v1" id="my-arxiv-checkbox" onChange={(e) => this.setNextQuery({ rec_lib: e.target.checked }, () => this.activateQuery())} /></label>}
+                            {user !== "None" && <label>In library: <input type="checkbox" checked={query.only_lib} onChange={(event) => this.setNextQuery({ only_lib: event.target.checked }, () => this.activateQuery())} /></label>}
+                            <label htmlFor="v1-checkbox">v1 only: <input id="v1-checkbox" type="checkbox" checked={query.v1} onChange={(e) => this.setNextQuery({ v1: e.target.checked }, () => this.activateQuery())} /></label>
+                            <Tuning rt={query.rec_tuning} onChange={rt => this.setNextQuery({ rec_tuning: rt }, () => this.activateQuery())} />
+                        </div>
+                        <Infinite
+                            className="app-results ba br2 b--light-gray bg-white"
+                            pageStart={0}
+                            loadMore={() => this.handleLoadMore()}
+                            hasMore={!isDone}
+                            loader={<div key="loading" className="pa4 tc f3">Loading...</div>}
+                            threshold={500} >
+                            <div key="rtable">
+                                {this.state.tot_num_papers && (<div className="bb pa4 b--black-10"><strong>{this.state.tot_num_papers.toLocaleString()}</strong> {this.state.tot_num_papers === 1 ? "result" : "results"}</div>)}
+                                {papers.map((p, i) => <Paper p={p} key={p.pid}
+                                    onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
+                                    onCategoryClick={(c) => this.handleCat(cats.addUnique(c))}
+                                    onAuthorClick={a => this.handleAuthor(a)}
+                                />)}
+                                {this.state.isDone && <h2 className="pa4 tc f3">no more results</h2>}
+                            </div>
 
-                </Infinite>
+                        </Infinite>
+                    </div>
+                </section>
             </div>
         )
     }

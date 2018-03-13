@@ -11,3 +11,4 @@ Lambda/add-new-papers-to-db/index.js
 runAD.lockfile
 runAD.log
 runAD.sh
+*.log
