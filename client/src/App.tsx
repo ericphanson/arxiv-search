@@ -1,9 +1,8 @@
 import { notimpl, sendRequest, update, lens, toKeyValueArray } from './basic';
 import { paper, request, response, query, meta, timeFilter, category, rec_tuning } from './types';
 import * as React from 'react';
-import * as Infinite from 'react-infinite-scroller';
+import {InfiniteScroll as Infinite} from './Infinite';
 import Select from "react-select";
-import { CSSTransitionGroup } from 'react-transition-group';
 import { Paper } from './Paper';
 import { all_categories, cat_desc, cat_col, is_ams } from './categories';
 import { CatBadge } from './CatBadge';

@@ -4,28 +4,21 @@
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>arxiv-search</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0/katex.min.css" integrity="sha384-TEMocfGvRuD1rIAacqrknm5BQZ7W7uWitoih+jMNFXQIbNl16bO8OZmylH/Vi/Ei"
+    crossorigin="anonymous">
   <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
   <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" />
-  <script src="{{ url_for('static', filename='vendor.js')}}"></script>
-  <script src="{{ url_for('static', filename='bundle.js')}}"></script>
+  <link rel="stylesheet" href="https://unpkg.com/react-select/dist/react-select.css">
   <script>
-   
-   
-    
     var results_url = "{{ url_for('_getpapers') }}";
     var beta_results_url = "{{ url_for('_getpapers') }}";
-    // if (get_param('sort') === 'rec') {
-    //   var msg = "Sorting by personalized relevance (" + numresults + '):'
-    // } else {
-    //   var msg = "Most recent papers (" + (numresults) + '):';
-    // }
     var user = "{{g.user}}";
-    console.log(user);
     var username = "{{ g.user.username }}";
     var pointer_ix = 0
     var wait_for_write = false;
     var urlq = ''; // global will be read in to QueryString when load is done
   </script>
+  <script data-main="{{ url_for('static', filename='config.js') }}" src="{{ url_for('static', filename='require.js') }}"></script>
 </head>
 
 <body>

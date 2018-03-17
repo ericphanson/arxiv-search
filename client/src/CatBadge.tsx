@@ -1,5 +1,6 @@
 import { cat_col, cat_desc } from "./categories";
 import * as React from 'react';
+console.log("CatBadge loaded.")
 export function CatBadge({onClick, cat}) {
     let {bg,dark} = cat_col(cat);
     return <a 
