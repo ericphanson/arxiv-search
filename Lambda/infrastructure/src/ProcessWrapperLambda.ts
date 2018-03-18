@@ -3,8 +3,6 @@
 import * as AWS from "aws-sdk";
 import * as path from 'path';
 import { getClient } from "./es_connection";
-import { ElasticsearchDestinationUpdate } from "aws-sdk/clients/firehose";
-
 
 const REGION = 'us-east-1';
 AWS.config.region = REGION;
@@ -44,14 +42,15 @@ const Lambdas = {
 */
 
 function uploadES(idvv: string, field: string, value: string) {
-    // let es_client = getClient()
-    // let id = idvv.split("v")[0]
-    console.log(`Setting ${field} to ${value.substring(0, 30) + "..."} for ${idvv} on ES.`)
-    // let body = {}
-    // body[field] = value;
-    // es_client.index({
-    // index: 'arxiv_pointer', type: 'paper', id, body
-    // }).then( (resp) => console.log(`Response ${JSON.stringify(resp)}`)).catch((err) => console.log(err))
+    let es_client = getClient()
+    let id = idvv.split("v")[0]
+    console.log(`Setting ${field} to ${value.substring(0, 200) + "..."} for ${idvv} on ES.`)
+    let doc = {}
+    doc[field] = value
+    let body = {doc};
+    es_client.update({
+    index: 'arxiv_pointer', type: 'paper', id, body
+    }).then( (resp) => console.log(`Response ${JSON.stringify(resp)}`)).catch((err) => console.log(err))
 
     // seems to overwrite the whole ES document... I should search the logs and restore the messed up docs.
     // failed on: 1005.1190v1, 1007.4004v7, 1002.2938v2
