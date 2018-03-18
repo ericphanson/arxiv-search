@@ -19,17 +19,25 @@ let replacements = [
     {x: /\\'o/g, r : "ó"},
     {x: /\\'u/g, r : "ú"}, 
 
-    {x: /\\"A/, r : 'Ä'},
-    {x: /\\"E/, r : 'Ë'},
-    {x: /\\"I/, r : 'Ï'},
-    {x: /\\"O/, r : 'Ö'},
-    {x: /\\"U/, r : 'Ü'},
-    {x: /\\"a/, r : 'ä'},
-    {x: /\\"e/, r : 'ë'},
-    {x: /\\"i/, r : 'ï'},
-    {x: /\\"o/, r : 'ö'},
-    {x: /\\"u/, r : 'ü'}, 
-    {x: /\\"y/, r : 'ÿ'}, 
+    {x: /\\"A/g, r : 'Ä'},
+    {x: /\\"E/g, r : 'Ë'},
+    {x: /\\"I/g, r : 'Ï'},
+    {x: /\\"O/g, r : 'Ö'},
+    {x: /\\"U/g, r : 'Ü'},
+    {x: /\\"a/g, r : 'ä'},
+    {x: /\\"e/g, r : 'ë'},
+    {x: /\\"i/g, r : 'ï'},
+    {x: /\\"o/g, r : 'ö'},
+    {x: /\\"u/g, r : 'ü'}, 
+    {x: /\\"y/g, r : 'ÿ'}, 
+
+    {x: /{?\\l}?/g, r : 'ł'}, 
+    {x: /{?\\L}?/g, r : 'Ł'}, 
+    {x: /{?\\o}?/g, r : 'ø'}, 
+    {x: /{?\\O}?/g, r : 'Ø'}, 
+    {x: /{?\\i}?/g, r : 'ı'},
+    //knuth dropped the ball on cedillas
+    {x: /\\c{?c}?/g, r : 'ç'}, 
 ];
 export function Author(props : {a : string, onClick(a : string) : void}) {
     let {a, onClick} = props;
