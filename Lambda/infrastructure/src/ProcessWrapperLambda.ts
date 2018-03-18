@@ -17,29 +17,6 @@ const s3 = new AWS.S3({
 
 
 
-/*
-const thumbs = {
-    'resources': {
-        'pdf': {
-            'bucket': 'arxiv-temp-pdfs',
-            'subdir': 'pdfs',
-            'ext': '.pdf'
-        }
-    },
-    'outputs': {
-        'thumb': {
-            'bucket': 'arxiv-temp-pdfs',
-            'subdir': 'thumbs',
-            'ext': '.jpg'
-        }
-    }
-};
-
-
-const Lambdas = {
-    'make-thumb-from-papers-status-update': thumbs
-};
-*/
 
 function uploadES(idvv: string, field: string, value: string) {
     let es_client = getClient()
@@ -48,23 +25,33 @@ function uploadES(idvv: string, field: string, value: string) {
     let doc = {}
     doc[field] = value
     let body = {doc};
-    es_client.update({
+    return es_client.update({
     index: 'arxiv_pointer', type: 'paper', id, body
-    }).then( (resp) => console.log(`Response ${JSON.stringify(resp)}`)).catch((err) => console.log(err))
-
+    })
     // seems to overwrite the whole ES document... I should search the logs and restore the messed up docs.
     // failed on: 1005.1190v1, 1007.4004v7, 1002.2938v2
 }
 
-type resource_dict = { [resource: string]: { bucket: string, subdir: string, ext: string } };
-type bucket_key_dict = { [resource: string]: { "Bucket": string, "Key": string } };
+interface s3_resource {
+    bucket: string, 
+    ext: string, 
+    subdir?: string
+    res_type : "s3_resource"
+}
+interface es_resource {
+    ESfield : string,
+    res_type : "es_resource"
+}
+
+
+type bk =  { "Bucket": string, "Key": string } ;
+type es_resp = string ;
 
 interface event {
     idvv: string,
-    resources: resource_dict,
-    outputs: resource_dict,
-    lambda_name: string,
-    ESfield?: string
+    resources: { [name:string] : s3_resource | es_resource },
+    outputs: { [name:string] : s3_resource | es_resource },
+    lambda_name: string
 }
 
 async function run(event: event, context) {
@@ -74,69 +61,76 @@ async function run(event: event, context) {
     let outputs = event.outputs
     let lambda_name = event.lambda_name
 
-    let ESfield = event.ESfield || undefined
-    /** Given a dictionary of resources, like
-    {
-        'pdf': {
-            'bucket': BUCKET,
-            'subdir': 'pdfs',
-            'ext': '.pdf'
-        },
-        'tex': {
-            'bucket': BUCKET,
-            'subdir': 'texfiles',
-            'ext': '.tex'
-        }
-    }
-     return a dictionary like
-         {
-        'pdf': {
-            'Bucket': BUCKET,
-            'Key': 'pdfs/1705.1233.pdf',
-        },
-        'tex': {
-            'Bucket': BUCKET,
-            'Key': 'texfiles/1705.1233.tex',
-        }
-    } 
-    that can be fed into s3 commands.*/
-    function make_bucket_key_dict(resource_dict: resource_dict): bucket_key_dict {
-        let buck_key_dict: bucket_key_dict = {}
-        for (let k of Object.getOwnPropertyNames(resource_dict)) {
-            let r = resource_dict[k];
-            if (r === undefined) { throw new Error("need to specify a bucket"); }
+    function make_bk(r: s3_resource): bk {
+        if (r === undefined) { throw new Error("need to specify a bucket"); }
             let Key = r.subdir ? (r.subdir + "/" + idvv + r.ext) : (idvv + r.ext);
-            buck_key_dict[k] = {
+            let buck_key = {
                 "Bucket": r.bucket,
                 "Key": Key
             };
-        }
-        return buck_key_dict;
+        return buck_key;
     }
-    let bk_res = make_bucket_key_dict(resources);
-    let bk_outs = make_bucket_key_dict(outputs);
-    /** Given a bucket-key dictionary, check that each key has a valid document. */
-    async function validate(bk_dict: bucket_key_dict) {
-        for (let k of Object.getOwnPropertyNames(bk_dict)) {
-            try {
-                await s3.headObject(bk_dict[k]).promise();
-            } catch (err) {
-                if (err.errorType === "Forbidden") {
-                    throw new Error(`Forbidden access the needed bucket ${k}: ${JSON.stringify(bk_dict[k])}. ${err}`);
-                }
-                else {
-                    throw new Error(`Failed to find the resource for key ${k}: ${JSON.stringify(bk_dict[k])}. ${err}`);
-                }
+
+    async function fetch_es(r : es_resource) : Promise<es_resp>  {
+        
+        // TODO: fetch a field from elasticsearch
+        return Promise.resolve("")
+    }
+
+    async function validate_s3(bk_pair : bk) {
+        try {
+            await s3.headObject(bk_pair).promise();
+        } catch (err) {
+            if (err.errorType === "Forbidden") {
+                throw new Error(`Forbidden access the needed bucket: ${JSON.stringify(bk_pair)}. ${err}`);
+            }
+            else {
+                throw new Error(`Failed to find the resource: ${JSON.stringify(bk_pair)}. ${err}`);
             }
         }
     }
-    // 1. Validate resources
-    await validate(bk_res);
+    let validated_resources : {[name : string] : bk | es_resp };
+    validated_resources = {};
+    // 1. Validate resources and build payload
+    try {
+
+    for (let k of Object.getOwnPropertyNames(resources))
+    {
+        let d : bk | string;
+        if (resources[k].res_type==='s3_resource')
+        {
+            d = make_bk(resources[k] as s3_resource)
+            await validate_s3(d)
+        } else if (resources[k].res_type==='es_resource'){
+            d = await fetch_es(resources[k] as es_resource)
+        }
+        validated_resources[k] = d
+    }
+    }  catch (err) {
+        await call_db("error");
+        throw err;
+    }
+
+    let s3_outs : { [name : string] : bk};
+    s3_outs = {};
+    let es_outs : { [name : string] : es_resource };
+    es_outs = {};
+    for (let k of Object.getOwnPropertyNames(outputs))
+    {
+        if (outputs[k].res_type==='s3_resource')
+        {
+            s3_outs[k] = make_bk(outputs[k] as s3_resource)
+        } else if (outputs[k].res_type ==='es_resource') 
+        {
+            es_outs[k] = outputs[k] as es_resource
+        }
+    }
+
     // 2. Fire lambda
     let lambda = new AWS.Lambda();
     let Payload = JSON.stringify({
-        'resources': bk_res,
-        'outputs': bk_outs,
+        'resources': validated_resources,
+        'outputs': s3_outs,
         'region': REGION
     });
     let params = {
@@ -150,21 +144,24 @@ async function run(event: event, context) {
     try {
         resp  = await lambda.invoke(params).promise();
         console.log(`The lambda ${lambda_name}returned without error`);
-        await validate(bk_outs);
-        console.log(`The lambda created the correct outputs.`);
+        
+        // validate s3 outputs
+        let bks = Object.getOwnPropertySymbols(s3_outs) as any        
+        await Promise.all(bks.map(validate_s3))
+        console.log(`The lambda created the correct outputs in s3.`);
+        for (let k of Object.getOwnPropertyNames(es_outs))
+        {
+            let field  = es_outs[k].ESfield
+            let value = JSON.stringify(resp.Payload[k]) as es_resp
+            uploadES(idvv, field, value).then( (resp) => console.log(`Response ${JSON.stringify(resp)}`)).catch((err) => {throw err;})
+        }
+        
         await call_db("have");
     } catch (err) {
         await call_db("error");
         throw err;
     }
-    if (resp) {
-        // console.log(`Got response ${JSON.stringify(resp)} from the Lambda.`)
-        if (ESfield) {
-            if (resp.Payload){
-                uploadES(idvv, ESfield, JSON.stringify(resp.Payload))
-            }
-        }
-    }
+
 
     // 3. Update db
     async function call_db(value) {

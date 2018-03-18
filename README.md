@@ -31,7 +31,7 @@ The source code to run the server.
 
 ### `keys`
 
-You must add a directory `./keys/` containing the following keys:
+You must add a directory `.server/keys/` containing the following keys:
 - `AWS_ACCESS_KEY.txt`
 - `AWS_SECRET_KEY.txt`
 - `cache_key.txt`
@@ -43,4 +43,4 @@ You must add a directory `./keys/` containing the following keys:
 - `ES_PASS.txt`
 - `ES_LOG_PASS.txt`
 
-You must add a directory `./user_db` where the file `as.db` will go to store the user data.
+You must add a directory `.server/user_db` where the file `as.db` will go to store the user data.

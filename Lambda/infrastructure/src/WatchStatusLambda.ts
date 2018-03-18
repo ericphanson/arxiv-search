@@ -8,11 +8,22 @@ const db = new AWS.DynamoDB({
 
 const ProcessWrapperLambda = process.env["ProcessWrapperLambda"];
 
+interface s3_resource {
+    bucket: string, 
+    ext: string, 
+    subdir?: string
+    res_type : "s3_resource"
+}
+interface es_resource {
+    ESfield : string,
+    res_type : "es_resource"
+}
+
+
 interface process {
-    resources: { [name: string]: { bucket: string, ext: string, subdir?: string } },
-    outputs: { [name: string]: { bucket: string, ext: string, subdir?: string } },
-    lambda_name: string,
-    ESfield?: string
+    resources: { [name:string] : s3_resource | es_resource },
+    outputs: { [name:string] : s3_resource | es_resource },
+    lambda_name: string
 }
 
 
@@ -74,12 +85,14 @@ async function run(event: event, context) {
     const thumbs: process = {
         'resources': {
             'pdf': {
+                'res_type' : 's3_resource',
                 'bucket': incomingBucket,
                 'ext': '.pdf'
             }
         },
         'outputs': {
             'thumb': {
+                'res_type' : 's3_resource',
                 'bucket': process.env["PublicBucket"].split("arn:aws:s3:::")[1],
                 'subdir': 'thumbs',
                 'ext': '.jpg'
@@ -90,18 +103,17 @@ async function run(event: event, context) {
     const fulltext: process = {
         'resources': {
             'pdf': {
+                'res_type' : 's3_resource',
                 'bucket': incomingBucket,
                 'ext': '.pdf'
             }
         },
-        'outputs': {
-            'fulltext': {
-                'bucket': process.env["PrivateBucket"].split("arn:aws:s3:::")[1],
-                'subdir': 'fulltexts',
-                'ext': '.txt'
+        'outputs' : {
+            'fulltext' : {
+                'res_type' : 'es_resource',
+                'ESfield' : 'fulltext'
             }
         },
-        'ESfield' : 'fulltext',
         'lambda_name': process.env["MakeFullTextLambda"]
     };
     const processors = [thumbs, fulltext]

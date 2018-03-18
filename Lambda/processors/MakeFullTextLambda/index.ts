@@ -29,15 +29,18 @@ export const handler = (event, context, callback) => {
             let text = fs.readFileSync(outputFile, "utf8");
             put_params['Body'] = text
             put_params['ContentType'] = "text/plain";
-            console.log(`Text successfully extracted, writing to S3: ${put_params['Key']}`);
-            s3.putObject(put_params, (err, result) => {
-                if (err) {
-                    console.error("couldn't put to S3 bucket: ", err);
-                    callback(err);
-                } else {
-                    callback(null, text);
-                }
-            });};
+            console.log("Text successfully extracted; sending with callback.")
+            callback(null, {"fulltext" : text});
+            // console.log(`Text successfully extracted, writing to S3: ${put_params['Key']}`);            
+            // s3.putObject(put_params, (err, result) => {
+            //     if (err) {
+            //         console.error("couldn't put to S3 bucket: ", err);
+            //         callback(err);
+            //     } else {
+            //         callback(null, {"fulltext" : text});
+            //     }
+            // });
+        };
 
         let proc = child_process
             .execFile("pdftotext", ["-enc", "UTF-8", "-layout", inputFile, "-"], {encoding: "utf8"});
