@@ -1,4 +1,4 @@
-export function notimpl() {
+export function notimpl() : never {
     throw new Error("not implemented.")
 }
 

@@ -67,7 +67,9 @@ export interface query {
     /** only show papers in the library */
     only_lib : boolean
     /** list of ids to boost the score of papers similar to them. */
-    sim_to? : string[]
+    sim_to? : string[],
+    /**A number used to track distinct queries client-side */
+    queryID? : number
 }
 /**JSON object sent to _get_results() */
 export interface request {

@@ -33,6 +33,7 @@ export class Filters extends React.Component<props,state> {
         <TimeGrid 
         className="mb2" 
         handleTime={(t) => this.handleTime(t)} current={query.time} time_filter_data={meta.time_filter_data} />
+        <input placeholder="author" className="mb2" type="text" value={query.author || ""} onChange={(e) => this.props.onQueryUpdate({author : e.target.value})}/>
         <Select
             className="mb2"
             onBlurResetsInput={false}

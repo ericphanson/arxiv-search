@@ -3,7 +3,7 @@ import { paper, request, response, query, meta, timeFilter, category, rec_tuning
 import * as React from 'react';
 import { InfiniteScroll as Infinite } from './Infinite';
 import { Paper } from './Paper';
-import { BrowserRouter as Router, Route, Link } from 'react-router-dom';
+// import { BrowserRouter as Router, Route, Link } from 'react-router-dom';
 import { Filters } from './Filters';
 
 interface state {
@@ -38,9 +38,32 @@ const defaultQuery: query = {
     time: "alltime",
     rec_tuning: rec_tuning_default
 }
+let queryIDCount = 0;
 declare const beta_results_url: string;
 declare const user: any;
 declare const username: string;
+
+function unparseQuery(q: query) {
+    let { query, rec_lib, category, v1, only_lib, time, primaryCategory, author } = q;
+    let tags = new Array();
+    q.query && tags.push(`"${q.query}"`);
+    primaryCategory && tags.push("prim:" + primaryCategory);
+    time && tags.push("time:" + time);
+    author && tags.push(`by:"${author}"`);
+    tags = tags.concat(category.map(ors => `in:${ors.join("|")}`));
+    rec_lib && tags.push("rec:true");
+    q.v1 && tags.push("v1:true");
+    q.only_lib && tags.push("lib:true");
+    return tags.join(" ").replace(/\\|\//g, "")
+}
+function parseQuery(s: string): query | undefined {
+    return notimpl();
+}
+function isQuery(q: any): q is query {
+    if (!q) { return false; }
+    return  q.time && typeof q.time === "string"
+    //TODO etc. 
+}
 
 
 function AppHeader(props) {
@@ -88,6 +111,14 @@ export class App extends React.Component<{}, state> {
     }
     componentDidMount() {
         this.activateQuery();
+
+        //add a hook to window.history.onpopstate
+        window.onpopstate = (event) => {
+            if (isQuery(event.state) && event.state.queryID !== this.state.activeQuery.queryID) {
+                this.setState({ nextQuery: event.state }, () => this.activateQuery(false));
+            }
+        }
+        //the handler for this will 
     }
     getPapers() {
         let query = this.state.activeQuery;
@@ -111,19 +142,34 @@ export class App extends React.Component<{}, state> {
             this.setState({ papers: p, isLoading: false, isDone: papers.length < num_get, tot_num_papers: r.tot_num_papers });
         });
     }
-    /**Replace activeQuery with nextQuery and fetch papers. */
-    activateQuery() {
-        this.setState({ activeQuery: this.state.nextQuery, requestCount: 10, papers: [], isDone: false, meta: {} }, () => {
-            this.getPapers();
-            let request = { query: this.state.activeQuery };
-            sendRequest("_getmeta", request, (meta: Partial<meta>) =>
-                this.setState({ meta: { ...this.state.meta, ...meta } }));
-            sendRequest("_getslowmeta", request, (meta: Partial<meta>) =>
-                this.setState({ meta: { ...this.state.meta, ...meta } }));
-        });
+    /**Replace activeQuery with nextQuery and fetch papers. And set history. */
+    activateQuery(setHistory = true) {
+        this.setState(
+            {
+                activeQuery: {...this.state.nextQuery, queryID : queryIDCount++},
+                requestCount: 10,
+                papers: [],
+                isDone: false,
+                meta: {}
+            },
+            () => {
+                this.getPapers();
+                let request = { query: this.state.activeQuery };
+                sendRequest("_getmeta", request, (meta: Partial<meta>) =>
+                    this.setState({ meta: { ...this.state.meta, ...meta } }));
+                sendRequest("_getslowmeta", request, (meta: Partial<meta>) =>
+                    this.setState({ meta: { ...this.state.meta, ...meta } }));
+                if (setHistory) {
+                    window.history.pushState(this.state.activeQuery, "", "/" + unparseQuery(this.state.activeQuery));
+                }
+            }
+        );
     }
     setNextQuery(query: Partial<query>, callback?) {
-        this.setState({ nextQuery: { ...this.state.nextQuery, ...query } }, callback);
+        this.setState(
+            { nextQuery: { ...this.state.nextQuery, ...query } },
+            callback === true ? () => this.activateQuery() : callback
+        );
     }
     handleQueryboxChange(event) {
         this.setNextQuery({ query: event.target.value });
