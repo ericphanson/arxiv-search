@@ -17,8 +17,8 @@ require.config({
         "react-select" : "https://unpkg.com/react-select/dist/react-select",
 
         //react-router
-        "react-router" : "https://unpkg.com/react-router/umd/react-router.min",
-        "react-router-dom" : "https://unpkg.com/react-router-dom/umd/react-router-dom.min",
+        // "react-router" : "https://unpkg.com/react-router/umd/react-router.min",
+        // "react-router-dom" : "https://unpkg.com/react-router-dom/umd/react-router-dom.min",
     }
 });
 require(["index"]);
