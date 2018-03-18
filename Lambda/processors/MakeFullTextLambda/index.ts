@@ -1,5 +1,7 @@
 'use strict';
 import * as AWS from "aws-sdk"
+import * as l from "aws-lambda"
+
 import * as fs from "fs"
 const child_process = require("child_process");
 
@@ -11,12 +13,13 @@ type bucket_key_dict = {
 };
 
 export const handler = (event, context, callback) => {
+    
     process.env["PATH"] = process.env["PATH"] + ":" + process.env["LAMBDA_TASK_ROOT"];
     const s3 = new AWS.S3();
     let get_params = (event.resources as bucket_key_dict)["pdf"];
     console.log(JSON.stringify(get_params));
-    let put_params = (event.outputs as bucket_key_dict)["fulltext"];
-    console.log(JSON.stringify(put_params));
+    // let put_params = (event.outputs as bucket_key_dict)["fulltext"];
+    // console.log(JSON.stringify(put_params));
     s3.getObject(get_params, (err, data) => {
         if (err) {
             callback(err);
@@ -27,8 +30,8 @@ export const handler = (event, context, callback) => {
         let writeStream = fs.createWriteStream(outputFile, "utf8");
         let onClose =  () => {
             let text = fs.readFileSync(outputFile, "utf8");
-            put_params['Body'] = text
-            put_params['ContentType'] = "text/plain";
+            // put_params['Body'] = text
+            // put_params['ContentType'] = "text/plain";
             console.log("Text successfully extracted; sending with callback.")
             callback(null, {"fulltext" : text});
             // console.log(`Text successfully extracted, writing to S3: ${put_params['Key']}`);            

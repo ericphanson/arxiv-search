@@ -143,7 +143,13 @@ async function run(event: event, context) {
     let resp : AWS.Lambda.InvocationResponse;
     try {
         resp  = await lambda.invoke(params).promise();
-        console.log(`The lambda ${lambda_name}returned without error`);
+        if (resp.StatusCode && resp.StatusCode >  299)
+        {
+            throw Error(resp.FunctionError)
+        } else {
+            console.log(`The lambda ${lambda_name} returned without error`);            
+        }
+        console.log(`The lambda returned payload ${resp.Payload}`);
         
         // validate s3 outputs
         let bks = Object.getOwnPropertySymbols(s3_outs) as any        
@@ -152,7 +158,8 @@ async function run(event: event, context) {
         for (let k of Object.getOwnPropertyNames(es_outs))
         {
             let field  = es_outs[k].ESfield
-            let value = JSON.stringify(resp.Payload[k]) as es_resp
+            
+            let value = JSON.stringify(JSON.parse(resp.Payload as any)[k]) as es_resp
             uploadES(idvv, field, value).then( (resp) => console.log(`Response ${JSON.stringify(resp)}`)).catch((err) => {throw err;})
         }
         
