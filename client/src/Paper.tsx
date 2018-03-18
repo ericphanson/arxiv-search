@@ -7,7 +7,40 @@ export function WithMaths(props: { text: string }) {
     let { text } = props;
     return <span>{text.split("$").map((s: string, i) => (i % 2 === 0) ? s : <Math latex={s} key={i} />)}</span>
 }
+let replacements = [
+    {x: /\\'A/g, r : "Á"},
+    {x: /\\'E/g, r : "É"},
+    {x: /\\'I/g, r : "Í"},
+    {x: /\\'O/g, r : "Ó"},
+    {x: /\\'U/g, r : "Ú"},
+    {x: /\\'a/g, r : "á"},
+    {x: /\\'e/g, r : "é"},
+    {x: /\\'i/g, r : "í"},
+    {x: /\\'o/g, r : "ó"},
+    {x: /\\'u/g, r : "ú"}, 
 
+    {x: /\\"A/, r : 'Ä'},
+    {x: /\\"E/, r : 'Ë'},
+    {x: /\\"I/, r : 'Ï'},
+    {x: /\\"O/, r : 'Ö'},
+    {x: /\\"U/, r : 'Ü'},
+    {x: /\\"a/, r : 'ä'},
+    {x: /\\"e/, r : 'ë'},
+    {x: /\\"i/, r : 'ï'},
+    {x: /\\"o/, r : 'ö'},
+    {x: /\\"u/, r : 'ü'}, 
+    {x: /\\"y/, r : 'ÿ'}, 
+];
+export function Author(props : {a : string, onClick(a : string) : void}) {
+    let {a, onClick} = props;
+    let show = a;
+    for (let {x,r} of replacements) {
+        show = show.replace(x,r);
+    }
+    return <a className="f6 link maroon hover-ul" onClick={() => onClick(a)}>{show}</a>
+}
+//TODO: ÀÂÃÅÆÇÈÊÌÎÐÑÒÔÕØÙÛÝÞßàâãåæçèêìîðñòôõøùúûýþŒœŠšŸ
+    
 class Image extends React.Component<any, { failed }> {
     constructor(props) {
         super(props);
@@ -53,15 +86,13 @@ export function Paper(props: { p: paper, onToggle: (on: boolean) => void, onCate
                         sendRequest("libtoggle", { pid: p.pid }, ({ on }) => (on !== "FAIL") && props.onToggle(on))}
                 />
             </div>
-            {/* The below line has something to do with  " OpenURL COinS metadata element -- readable by Zotero, Mendeley, etc." */}
-            {/* <span className="Z3988" title={build_ocoins_str(p)}></span> */}
             <div className="paperdesc mr3">
                 <a href={p.link} target="_blank" className="link b black hover-ul"> <WithMaths text={p.title} /></a>
                 {p.score && [<span className="ma1 green f5" title={p.explain_sentence || ""}> Relevance: {p.score.toPrecision(3)}</span>]}
                 <br />
                 <span>
                     {p.authors.map((a: string) =>
-                        <a key={a} className="f6 link maroon hover-ul" onClick={() => onAuthorClick(a)}>{a}</a>)
+                        <Author key={a} onClick={props.onAuthorClick} a={a}/>)
                         .interlace(", " as any)}
                 </span>
                 <br />
