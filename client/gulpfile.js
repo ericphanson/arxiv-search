@@ -19,6 +19,7 @@ let tsproj = ts.createProject({
     lib : ["es6", "dom"],
     moduleResolution: "node",
     outFile: "bundle.js",
+    ignoreErrors: true,
 });
 
 function scripts() {

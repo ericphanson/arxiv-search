@@ -3,8 +3,10 @@ require.config({
         //our code
         "index" : ["bundle"],
         
+        //katex
         "katex" :  ["https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0/katex.min"],
 
+        //react
         "react" : ["https://unpkg.com/react@16/umd/react.development"],
         "react-dom" : ["https://unpkg.com/react-dom@16/umd/react-dom.development"],
         
@@ -14,6 +16,9 @@ require.config({
         "react-input-autosize" : "https://unpkg.com/react-input-autosize@2.0.0/dist/react-input-autosize",
         "react-select" : "https://unpkg.com/react-select/dist/react-select",
 
+        //react-router
+        "react-router" : "https://unpkg.com/react-router/umd/react-router.min",
+        "react-router-dom" : "https://unpkg.com/react-router-dom/umd/react-router-dom.min",
     }
 });
 require(["index"]);
