@@ -36,9 +36,10 @@ let replacements = [
     {x: /{?\\o}?/g, r : 'ø'}, 
     {x: /{?\\O}?/g, r : 'Ø'}, 
     {x: /{?\\i}?/g, r : 'ı'},
-    //knuth dropped the ball on cedillas
-    {x: /\\c{?c}?/g, r : 'ç'}, 
+    {x: /\\c{c}/g, r : 'ç'}, 
 ];
+//TODO: ÀÂÃÅÆÇÈÊÌÎÐÑÒÔÕØÙÛÝÞßàâãåæçèêìîðñòôõøùúûýþŒœŠšŸ
+//my plan is to add them when I see them in the wild.
 export function Author(props : {a : string, onClick(a : string) : void}) {
     let {a, onClick} = props;
     let show = a;
@@ -47,8 +48,7 @@ export function Author(props : {a : string, onClick(a : string) : void}) {
     }
     return <a className="f6 link maroon hover-ul" onClick={() => onClick(a)}>{show}</a>
 }
-//TODO: ÀÂÃÅÆÇÈÊÌÎÐÑÒÔÕØÙÛÝÞßàâãåæçèêìîðñòôõøùúûýþŒœŠšŸ
-    
+
 class Image extends React.Component<any, { failed }> {
     constructor(props) {
         super(props);

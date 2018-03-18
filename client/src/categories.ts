@@ -66,7 +66,6 @@ export const cat_col = (cat: category) => {
   return { bg: "grey", dark: false }
 }
 
-
 export module Categories {
   let _isFulfilled = false;
   export const isFulfilled = () => _isFulfilled;
@@ -78,7 +77,9 @@ export module Categories {
   /**Look up the description of a given category. */
   export const cat_desc = (cat: category): string | undefined => desc_table[cat]
 
-  export const all_categories_promise : Promise<{ c: string, d: string }[]> = window.fetch("static/all_categories.json").then(resp => resp.ok ? resp.json() : Promise.reject(resp));
+  export const all_categories_promise: Promise<{ c: string, d: string }[]> =
+    window.fetch("static/all_categories.json")
+      .then(resp => resp.ok ? resp.json() : Promise.reject(resp));
 
   all_categories_promise.then(ac => {
     _all_categories = ac;

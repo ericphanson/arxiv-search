@@ -1,7 +1,7 @@
 .maingrid {
     display: grid;
     justify-content: center;
-    grid-template-columns: 200px 1fr ;
+    grid-template-columns: 256px 1fr ;
     grid-template-rows: auto auto;
     grid-gap: .5rem;
     grid-template-areas:
