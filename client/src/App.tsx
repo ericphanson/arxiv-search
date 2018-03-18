@@ -2,10 +2,11 @@ import { notimpl, sendRequest, update, lens, toKeyValueArray } from './basic';
 import { paper, request, response, query, meta, timeFilter, category, rec_tuning } from './types';
 import * as React from 'react';
 import {InfiniteScroll as Infinite} from './Infinite';
-import Select from "react-select";
 import { Paper } from './Paper';
-import { all_categories, cat_desc, cat_col, is_ams } from './categories';
+import { Categories, cat_col, is_ams } from './categories';
 import { CatBadge } from './CatBadge';
+// @ts-ignore
+import * as Select from 'react-select';
 interface state {
     papers: paper[],
     /**The number of papers that should be visible */
@@ -42,7 +43,10 @@ const defaultQuery: query = {
 declare const beta_results_url: string;
 declare const user: any;
 declare const username: string;
-let categories = all_categories.map(x => ({ value: x.c, label: x.c, desc: x.d }))
+let categories = [];
+Categories.all_categories_promise.then(ac => {
+    categories = ac.map(x => ({ value: x.c, label: x.c, desc: x.d }));
+})
 
 export class App extends React.Component<{}, state> {
     constructor(props) {

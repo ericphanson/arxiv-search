@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "katex": "^0.9.0-beta1",
-    "object-assign": "^4.1.1",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
     "react-select": "^1.2.1"

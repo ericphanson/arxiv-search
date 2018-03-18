@@ -9,10 +9,10 @@ require.config({
         "react-dom" : ["https://unpkg.com/react-dom@16/umd/react-dom.development"],
         
         //react-select
-        "prop-types" : "https://unpkg.com/prop-types@15.5.10/prop-types.js",
-        "classnames" : "https://unpkg.com/classnames@2.2.5/index.js",
-        "react-input-autosize" : "https://unpkg.com/react-input-autosize@2.0.0/dist/react-input-autosize.js",
-        "react-select" : "https://unpkg.com/react-select/dist/react-select.js",
+        "prop-types" : "https://unpkg.com/prop-types@15.5.10/prop-types",
+        "classnames" : "https://unpkg.com/classnames@2.2.5/index",
+        "react-input-autosize" : "https://unpkg.com/react-input-autosize@2.0.0/dist/react-input-autosize",
+        "react-select" : "https://unpkg.com/react-select/dist/react-select",
 
     }
 });

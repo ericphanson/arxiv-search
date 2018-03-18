@@ -21,7 +21,6 @@ export function sendRequest(url: string, request, callback: (response: any) => v
         ).then(callback);
 }
 
-import * as assign from "object-assign";
 export function lens(item, ...path) {
     let nested = path.scan((s,p,i) => s[p], item);
     return (value) => {
@@ -33,7 +32,7 @@ export function lens(item, ...path) {
     }
 }
 export function update(obj, ps) {
-    return assign(Object.create(Object.getPrototypeOf(obj)), obj, ps)
+    return Object.assign(Object.create(Object.getPrototypeOf(obj)), obj, ps)
 } 
 
 declare global {
