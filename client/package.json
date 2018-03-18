@@ -10,10 +10,13 @@
   "devDependencies": {
     "@types/react": "^16.0.36",
     "@types/react-dom": "^16.0.3",
+    "del": "^3.0.0",
     "gulp": "4.0",
+    "gulp-clean-css": "^3.9.3",
     "gulp-concat": "^2.6.1",
     "gulp-sourcemaps": "^2.6.4",
     "gulp-typescript": "^4.0.1",
+    "gulp-uglify": "^3.0.0",
     "merge2": "^1.2.1",
     "typescript": "^2.7.1"
   },
@@ -25,6 +28,7 @@
   },
   "scripts": {
     "build": "gulp build",
-    "watch": "gulp watch"
+    "watch": "gulp watch",
+    "production" : "gulp production"
   }
 }
