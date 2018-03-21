@@ -215,7 +215,7 @@ export class App extends React.Component<{}, state> {
                                         <strong>
                                             {this.state.tot_num_papers.toLocaleString()}
                                         </strong>
-                                        {this.state.tot_num_papers === 1 ? "result" : "results"}
+                                        {this.state.tot_num_papers === 1 ? " result" : " results"}
                                     </div>)}
                                 {papers.map((p, i) => <Paper p={p} key={p.pid}
                                     onToggle={(on) => { let p = [...this.state.papers]; p[i].in_library = on; this.setState({ papers: p }) }}
