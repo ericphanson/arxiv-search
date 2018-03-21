@@ -51,15 +51,14 @@ export class Filters extends React.Component<props,state> {
             onBlurResetsInput={false}
             onSelectResetsInput={false}
             placeholder="categories"
-            options={categories as any}
+            options={categories.length === 0 ? [] : categories as  any}
             simpleValue
             clearable={true}
             name="categories"
             value={cats}
             searchable={true}
-            multisetNextQuery
-            setNextQuery
-            onChange={(selected: any) => this.handleCat(selected.split(","))} />
+            multi
+            onChange={(selected: any) => this.handleCat(selected ? selected.split(",") : [])} />
         <LeaderBoard
             cats={cats}
             in_data={meta.in_data}
