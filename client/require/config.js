@@ -14,7 +14,7 @@ require.config({
         "prop-types" : "https://unpkg.com/prop-types@15.5.10/prop-types",
         "classnames" : "https://unpkg.com/classnames@2.2.5/index",
         "react-input-autosize" : "https://unpkg.com/react-input-autosize@2.0.0/dist/react-input-autosize",
-        "react-select" : "https://unpkg.com/react-select/dist/react-select",
+        "react-select" : "https://unpkg.com/react-select@1.2.1/dist/react-select",
 
         //react-router
         // "react-router" : "https://unpkg.com/react-router/umd/react-router.min",
