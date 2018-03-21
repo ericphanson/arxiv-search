@@ -160,7 +160,7 @@ export class App extends React.Component<{}, state> {
                 sendRequest("_getslowmeta", request, (meta: Partial<meta>) =>
                     this.setState({ meta: { ...this.state.meta, ...meta } }));
                 if (setHistory) {
-                    window.history.pushState(this.state.activeQuery, "", "/" + unparseQuery(this.state.activeQuery));
+                    window.history.pushState(this.state.activeQuery, "", "/?" + unparseQuery(this.state.activeQuery));
                 }
             }
         );

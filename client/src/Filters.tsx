@@ -20,6 +20,7 @@ interface props {
 interface state {
 
 }
+
 export class Filters extends React.Component<props,state> {
 
     handlePrimCat(cat: category) { this.props.onQueryUpdate({ primaryCategory: cat }) }
@@ -51,7 +52,7 @@ export class Filters extends React.Component<props,state> {
             onBlurResetsInput={false}
             onSelectResetsInput={false}
             placeholder="categories"
-            options={categories.length === 0 ? [] : categories as  any}
+            options={ categories as  any}
             simpleValue
             clearable={true}
             name="categories"
