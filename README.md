@@ -1,5 +1,15 @@
 # arxiv-search
 
+This was a project to partially rewrite and extend [arxiv sanity](https://github.com/karpathy/arxiv-sanity-preserver) by [Andrej Karpathy](https://github.com/karpathy) to all of the [arXiv](https://arxiv.org/) and add features such as
+
+* Faceted search
+* UI improvements, e.g. infinite scroll
+* Elasticsearch as a backend database
+
+We also started rewriting the ingest pipeline to work through Amazon AWS using Lambdas.
+
+Ultimately, we decided to end the project due to time constraints and improvements in the native arxiv interface (see [https://ericphanson.com/blog/2018/arxiv-search/](https://ericphanson.com/blog/2018/arxiv-search/)).
+
 ## Build instructions
 
 First time:
